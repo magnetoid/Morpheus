@@ -21,7 +21,7 @@ from plugins.installed.payments.models import PaymentGatewayConfig, PaymentTrans
 from plugins.installed.payments.services.stripe import PaymentService
 from themes.registry import theme_registry
 
-THEMES = ['dot_books', 'supernatural_shop', 'irving_survival']
+THEMES = ['dot_books', 'supernatural_shop', 'irving_survival', 'dawnchild']
 if apps.is_installed('plugins.installed.booking_marketplace'):
     THEMES += ['montenegro', 'croatia']
 

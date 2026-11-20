@@ -1,0 +1,585 @@
+{% load morph %}{% load caching %}{% load i18n %}<!DOCTYPE html>
+<html lang="{% get_current_language as LANG %}{{ LANG|default:'en' }}">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#8a7f3d">
+<link rel="icon" href="/favicon.ico" type="image/svg+xml">
+{% comment %}The entire SEO head — title, description, canonical, robots, Open Graph,
+Twitter, hreflang, pagination, verification metas and the JSON-LD graph — comes from
+one core tag (ADR 0036). The theme supplies fallback copy for a store that has not
+filled in its SEO settings; everything else is resolved per page by the seo app, so
+this template never needs to know what kind of page it is rendering. Do NOT add a
+<title>, canonical or og:* tag alongside this call: they would duplicate.{% endcomment %}
+{% image_frame_style %}
+{% block seo %}
+{% storefront_head title=seo_title description=seo_description %}
+{% endblock %}
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+{% caching_resource_hints %}
+{% caching_preload_fonts %}
+<link href="https://fonts.googleapis.com/css2?family=Abril+Fatface&family=Libre+Caslon+Display&family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+{% caching_font_display %}
+{% caching_service_worker_register %}
+{% load static %}
+{% comment %}Two stylesheets, both in the head so no page re-flows when one arrives:
+compat.css gives the shared shop pages the Dawnchild palette through the token
+names they already use; dawnchild.css is the design's own stylesheet and loads
+last, so the design wins wherever both speak.{% endcomment %}
+<link rel="stylesheet" href="{% static 'dawnchild/compat.css' %}">
+<link rel="stylesheet" href="{% static 'dawnchild/dawnchild.css' %}">
+<script nonce="{{ csp_nonce }}">document.documentElement.classList.add('js');</script>
+
+{% block extra_head %}{% endblock %}
+
+{% comment %}Site-wide JSON-LD, verification metas, hreflang, the OpenSearch link and
+the LLM hint now arrive in the single storefront_head call at the top of this file.
+Journal RSS/Atom autodiscovery still arrives via seo's global_head block — a hard
+url tag for the seo namespace here 500'd every page once seo was disabled.{% endcomment %}
+
+{# PWA manifest + apple-touch-icon are injected by the pwa plugin's storefront block (global_below_body), which also registers the service worker. #}
+
+{# Speculation Rules API — hover-prerenders PDP/category/vendor links. Skips side-effect-y paths. #}
+<script nonce="{{ csp_nonce }}" type="speculationrules">
+{
+  "prerender": [{
+    "where": {
+      "and": [
+        { "href_matches": "/*" },
+        { "not": { "href_matches": "/cart/*" } },
+        { "not": { "href_matches": "/checkout/*" } },
+        { "not": { "href_matches": "/account/*" } },
+        { "not": { "href_matches": "/auth/*" } },
+        { "not": { "href_matches": "/api/*" } },
+        { "not": { "href_matches": "/r/*" } }
+      ]
+    },
+    "eagerness": "moderate"
+  }]
+}
+</script>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="{{ STORE_NAME|default:'Dawnchild Books' }}">
+{# apple-touch-icon now provided by the pwa plugin block (real icon, was a 404). #}
+
+{# Catch unhandled JS errors + unhandledrejection → /api/errors/client/. #}
+<script nonce="{{ csp_nonce }}" src="{% static 'core/error-capture.js' %}" {% error_capture_attrs %} defer></script>
+
+{# Motion One — ~3kb vanilla animator with spring built-in. Exposed as window.__motion #}
+<script nonce="{{ csp_nonce }}" type="module">
+  import { animate, stagger } from 'https://cdn.jsdelivr.net/npm/motion@10.18.0/+esm';
+  window.__motion = { animate, stagger };
+  window.dispatchEvent(new CustomEvent('motion:ready'));
+</script>
+
+{% comment %}
+Plugin-contributed <head> content — motion's animation CSS and seo's feed
+links arrive here. Must stay LAST in <head> so a contributed style overrides
+the theme's own defaults.
+{% endcomment %}
+{% storefront_blocks "global_head" %}
+</head>
+<body class="{% block body_class %}{% endblock %}">
+<a class="skip" href="#main">{% translate "Skip to content" %}</a>
+{% include "storefront/_admin_bar.html" %}
+
+<header class="site-head">
+<div class="wrap head-inner">
+  {% include "storefront/_lockup.html" %}
+  <nav class="nav" aria-label="{% translate 'Main' %}">
+    {% comment %}Menu-driven (dashboard → CMS → Menus, key "header"). An entry with
+    children gets the design's titles panel. Until a header menu exists the theme
+    shows the design's five: the shelf, the authors (only while the book app is
+    on), the notes, About and the trade page (CMS page "trade").{% endcomment %}
+    {% if header_menu and header_menu.items %}
+      {% for item in header_menu.items %}
+        {% if item.children %}
+        <div class="nav-item has-menu">
+          <a href="{{ item.url|default:'/products/' }}">{{ item.label }}</a><button type="button" class="menu-toggle" aria-expanded="false" aria-controls="nav-menu-{{ forloop.counter }}" aria-label="{% blocktranslate with label=item.label %}Show: {{ label }}{% endblocktranslate %}"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M3 6l5 5 5-5"/></svg></button>
+          <div class="menu" id="nav-menu-{{ forloop.counter }}" role="group" aria-label="{{ item.label }}">
+            {% for c in item.children %}<a class="title" href="{{ c.url }}"{% if c.target == '_blank' %} target="_blank" rel="noopener"{% endif %}><span class="title-name">{{ c.label }}</span></a>{% endfor %}
+            {% if item.url %}<a class="all" href="{{ item.url }}">{% blocktranslate with label=item.label %}All: {{ label }}{% endblocktranslate %}</a>{% endif %}
+          </div>
+        </div>
+        {% elif item.kind == 'mega_categories' or item.kind == 'mega_topics' or item.kind == 'mega_authors' %}<a href="{{ item.url|default:'/products/' }}">{{ item.label|default:_("Books") }}</a>
+        {% else %}<a href="{{ item.url }}"{% if item.target == '_blank' %} target="_blank" rel="noopener"{% endif %}>{{ item.label }}</a>{% endif %}
+      {% endfor %}
+    {% else %}
+      {% plugin_enabled "book_product" as books_on %}{% plugin_enabled "cms" as cms_on %}
+      <a href="/products/">{% translate "Books" %}</a>
+      {% if books_on %}<a href="/authors/">{% translate "Authors" %}</a>{% endif %}
+      {% if cms_on %}<a href="/journal/">{% translate "Notes" %}</a>{% endif %}
+      <a href="/about/">{% translate "About" %}</a>
+      {% if cms_on %}<a href="/p/trade/">{% translate "Trade" %}</a>{% endif %}
+    {% endif %}
+    {% storefront_blocks "nav_primary_extra" %}
+  </nav>
+  {% comment %}The design shows a pound/dollar switch here. A currency choice is the
+  markets app's, so the theme draws none of its own; search and the account menu,
+  which the design leaves out and a shop needs, take the place.{% endcomment %}
+  <div class="head-tools">
+    <button type="button" id="quicksearch-toggle" class="head-tool" aria-expanded="false" aria-controls="quicksearch-panel">{% translate "Search" %}</button>
+    {% plugin_enabled "marketplace" as marketplace_on %}{% plugin_enabled "affiliates" as affiliates_on %}
+    <div class="acct">
+      <a href="/account/" class="head-tool" aria-expanded="false" aria-controls="acct-menu" data-acct-toggle>{% translate "Account" %}</a>
+      <div class="acct__menu" id="acct-menu" hidden>
+        {% if user.is_authenticated %}
+        <a href="/account/" data-acct-item="account">{% translate "My account" %}</a>
+        <a href="/account/orders/" data-acct-item="orders">{% translate "Orders" %}</a>
+        {% else %}
+        <a href="/auth/login/" data-acct-item="sign-in">{% translate "Sign in" %}</a>
+        <a href="/auth/signup/" data-acct-item="sign-up">{% translate "Create an account" %}</a>
+        {% endif %}
+        {% if affiliates_on or marketplace_on %}
+        <p class="acct__label">{% translate "Partners" %}</p>
+        {% if affiliates_on %}<a href="/affiliates/me/" data-acct-item="affiliate">{% if user.is_authenticated %}{% translate "Affiliate dashboard" %}{% else %}{% translate "Affiliate login" %}{% endif %}</a>{% endif %}
+        {% if marketplace_on %}<a href="/vendor/me/" data-acct-item="vendor">{% if user.is_authenticated %}{% translate "Publisher dashboard" %}{% else %}{% translate "Publisher login" %}{% endif %}</a>{% endif %}
+        {% endif %}
+        {% if user.is_authenticated %}
+        <hr class="acct__sep">
+        <a href="/auth/logout/" data-acct-item="sign-out">{% translate "Sign out" %}</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  <a href="/cart/" class="basket-btn cart-icon" id="cart-icon-link">{% translate "Basket" %} <span class="basket-count cart-badge" id="cart-badge" hidden></span></a>
+</div>
+</header>
+{% if theme_config.notice_text %}<div class="notice" role="region" aria-label="{% translate 'Shop notice' %}"><div class="wrap"><span>{{ theme_config.notice_text }}</span></div></div>{% endif %}
+
+<!-- Quick search overlay — opened by the topbar search icon. Search-as-
+     you-type with a debounced fetch to /api/quick-search/. ESC or
+     backdrop click closes; Enter submits to /products/?q=. -->
+<div id="quicksearch-panel" class="quicksearch" hidden>
+  <button type="button" class="quicksearch__backdrop" data-quicksearch-close aria-label="Close search"></button>
+  <form class="quicksearch__panel" role="search" action="/products/" method="get">
+    <div class="quicksearch__head">
+      <svg class="quicksearch__icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path>
+      </svg>
+      <input type="search" name="q" id="quicksearch-input" autocomplete="off" spellcheck="false"
+             placeholder="{% translate 'Search the books…' %}" aria-label="{% translate 'Search the books' %}"
+             role="combobox" aria-expanded="false"
+             aria-autocomplete="list" aria-controls="quicksearch-results">
+      <button type="button" class="quicksearch__close" data-quicksearch-close aria-label="Close">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div id="quicksearch-results" class="quicksearch__results" role="listbox" aria-label="Search suggestions"></div>
+    <div class="quicksearch__foot">
+      <span class="meta">Press <kbd>Enter</kbd> for all results · <kbd>Esc</kbd> to close</span>
+    </div>
+  </form>
+</div>
+
+
+<script nonce="{{ csp_nonce }}">
+/* Topbar quick-search overlay — opens on icon click, fetches results
+   via /api/quick-search/?q=… (250ms debounce), arrow-key + Enter
+   navigation, ESC + backdrop close. Submitting the form jumps to the
+   full /products/?q=… results page. */
+(function () {
+  var toggle = document.getElementById('quicksearch-toggle');
+  var panel  = document.getElementById('quicksearch-panel');
+  if (!toggle || !panel) return;
+  var input   = document.getElementById('quicksearch-input');
+  var results = document.getElementById('quicksearch-results');
+  var ctrl    = null;
+  var debounce;
+
+  function open() {
+    panel.hidden = false;
+    toggle.setAttribute('aria-expanded', 'true');
+    document.body.style.overflow = 'hidden';
+    setTimeout(function () { input.focus(); }, 50);
+  }
+  function close() {
+    panel.hidden = true;
+    toggle.setAttribute('aria-expanded', 'false');
+    input.setAttribute('aria-expanded', 'false');
+    input.removeAttribute('aria-activedescendant');
+    document.body.style.overflow = '';
+    input.value = '';
+    results.innerHTML = '';
+    toggle.focus();
+  }
+  function escapeHTML(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  /* A landing page's address comes from the server; anything but a path on
+     this site is dropped rather than linked. */
+  function sitePath(url) {
+    return typeof url === 'string' && url.charAt(0) === '/' && url.charAt(1) !== '/' ? url : '';
+  }
+  function option(n, href, inner, extra) {
+    return '<a class="quicksearch__hit' + (extra || '') + '" role="option" id="qs-opt-' + n
+      + '" aria-selected="false" href="' + escapeHTML(href) + '">' + inner + '</a>';
+  }
+  function group(label, rows) {
+    return '<div class="quicksearch__group" role="group" aria-label="' + escapeHTML(label) + '">'
+      + '<p class="quicksearch__group-label" aria-hidden="true">' + escapeHTML(label) + '</p>'
+      + rows + '</div>';
+  }
+  /* Matching landing pages (categories, genres, authors…) first, then products. */
+  function render(d) {
+    var groups = d.groups || [];
+    var items = d.results || [];
+    var n = 0;
+    input.removeAttribute('aria-activedescendant');
+    if (!items.length && !groups.length) {
+      input.setAttribute('aria-expanded', 'false');
+      results.innerHTML = '<div class="quicksearch__empty">No matches yet. Try a different word.</div>';
+      return;
+    }
+    input.setAttribute('aria-expanded', 'true');
+    var html = groups.map(function (g) {
+      return group(g.label, (g.items || []).map(function (it) {
+        var href = sitePath(it.url);
+        if (!href) return '';
+        return option(n++, href,
+          '<span class="quicksearch__hit-name">' + escapeHTML(it.name) + '</span>'
+          + (it.meta ? '<span class="quicksearch__hit-price">' + escapeHTML(it.meta) + '</span>' : ''),
+          ' quicksearch__hit--page');
+      }).join(''));
+    }).join('');
+    if (items.length) {
+      html += group('Products', items.map(function (r) {
+        var img = r.image_url
+          ? '<img class="quicksearch__hit-cover" src="' + escapeHTML(r.image_url) + '" alt="" loading="lazy" decoding="async">'
+          : '<div class="quicksearch__hit-cover" aria-hidden="true"></div>';
+        return option(n++, '/products/' + encodeURIComponent(r.slug) + '/',
+          img
+          + '<div class="quicksearch__hit-meta">'
+          +   '<p class="quicksearch__hit-name">' + escapeHTML(r.name) + '</p>'
+          +   '<p class="quicksearch__hit-price">' + escapeHTML(r.price || '') + '</p>'
+          + '</div>');
+      }).join(''));
+    }
+    results.innerHTML = html;
+  }
+  function fetchResults(q) {
+    if (ctrl) ctrl.abort();
+    if (!q || q.length < 2) { results.innerHTML = ''; return; }
+    ctrl = new AbortController();
+    fetch('/api/quick-search/?q=' + encodeURIComponent(q), { signal: ctrl.signal, credentials: 'same-origin' })
+      .then(function (r) { return r.ok ? r.json() : { results: [] }; })
+      .then(function (d) { render(d || {}); })
+      .catch(function (e) { if (e.name !== 'AbortError') results.innerHTML = ''; });
+  }
+
+  toggle.addEventListener('click', function () {
+    if (panel.hidden) open(); else close();
+  });
+  panel.addEventListener('click', function (e) {
+    if (e.target.matches('[data-quicksearch-close]')) close();
+  });
+  input.addEventListener('input', function () {
+    clearTimeout(debounce);
+    debounce = setTimeout(function () { fetchResults(input.value.trim()); }, 250);
+  });
+  /* Arrow-key navigation through the results list. */
+  input.addEventListener('keydown', function (e) {
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp' && e.key !== 'Enter' && e.key !== 'Escape') return;
+    if (e.key === 'Escape') { e.preventDefault(); close(); return; }
+    var hits = Array.prototype.slice.call(results.querySelectorAll('.quicksearch__hit'));
+    if (!hits.length) return;
+    var idx = hits.findIndex(function (h) { return h.classList.contains('is-focused'); });
+    if (e.key === 'ArrowDown') { e.preventDefault(); idx = (idx + 1) % hits.length; }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); idx = (idx <= 0 ? hits.length - 1 : idx - 1); }
+    else if (e.key === 'Enter' && idx >= 0) { e.preventDefault(); window.location.href = hits[idx].href; return; }
+    hits.forEach(function (h, i) {
+      var on = i === idx;
+      h.classList.toggle('is-focused', on);
+      h.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    if (idx >= 0 && hits[idx].id) { input.setAttribute('aria-activedescendant', hits[idx].id); }
+    else { input.removeAttribute('aria-activedescendant'); }
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && !panel.hidden) close();
+    /* Cmd/Ctrl+K opens the panel — power-user shortcut. */
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); open(); }
+  });
+})();
+</script>
+
+
+<!-- Global feedback toast: a polite live-region for post-redirect flashes
+     (cart/coupon/subscribe) + JS-driven notices, replacing native alert(). -->
+<div id="sf-toast" class="sf-toast" role="status" aria-live="polite" aria-atomic="true">
+  {% if messages %}{% for message in messages %}<div class="sf-toast__msg{% if message.tags %} sf-toast__msg--{{ message.tags }}{% endif %}">{{ message }}</div>{% endfor %}{% endif %}
+</div>
+<div class="wrap">
+<main id="main" tabindex="-1">
+  {% block content %}{% endblock %}
+</main>
+</div>
+
+
+<footer class="site-foot">
+<div class="wrap foot-inner">
+  <div>
+    {% include "storefront/_lockup.html" with small=True %}
+    {% if theme_config.imprint_line %}<p>{{ theme_config.imprint_line }}</p>{% endif %}
+    {% plugin_enabled "newsletter" as has_newsletter %}
+    {% if has_newsletter %}
+    {% comment %}Posts to the newsletter app. The line under the field is whatever
+    the app answered; the theme never prints a success of its own.{% endcomment %}
+    <form class="signup-form foot-letter" id="footer-newsletter" method="post" action="/newsletter/subscribe/" data-dc-signup data-fail="{% translate 'That did not work. Please check the address.' %}" toolname="subscribe_to_newsletter" tooldescription="Subscribe an email address to the shop newsletter">
+      {% csrf_token %}
+      <input type="hidden" name="source" value="footer">
+      <label for="email-footer">{% translate "The letter: first word when a book can be ordered." %}</label>
+      <div class="signup"><input id="email-footer" type="email" name="email" placeholder="you@example.com" autocomplete="email" required maxlength="254" toolparamdescription="The email address to subscribe"><button class="btn" type="submit">{% translate "Send me the letter" %}</button></div>
+      <p data-signup-msg role="status"></p>
+      {% bot_check "newsletter" %}
+    </form>
+    {% endif %}
+  </div>
+  <nav aria-label="{% translate 'Footer' %}" data-footer-layout="grouped-v1">
+    {% comment %}CMS-owned (Menus, key "footer"): an entry with children is a group.
+    The partial is included only while the CMS is on, so this base never loads
+    the cms tag library itself.{% endcomment %}
+    {% plugin_enabled "cms" as footer_cms_on %}
+    {% if footer_cms_on %}{% include "storefront/_footer_nav.html" %}{% else %}{% include "storefront/_footer_fallback.html" %}{% endif %}
+    {% storefront_blocks "footer_extra" %}
+  </nav>
+</div>
+<div class="wrap foot-signoff">
+  <span>© {% now "Y" %} {{ STORE_NAME|default:"Dawnchild Books" }}</span>
+  <span class="foot-legal">{% storefront_blocks "footer_legal" %}</span>
+</div>
+</footer>
+
+
+<script nonce="{{ csp_nonce }}">
+(() => {
+  // The account menu (owner's ask, 2026-10-10). Without this script the icon is a
+  // plain link to /account/, so nothing is lost when it does not run.
+  const toggle = document.querySelector('[data-acct-toggle]');
+  const menu = document.getElementById('acct-menu');
+  if (!toggle || !menu) return;
+  const setOpen = (open) => {
+    menu.hidden = !open;
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  };
+  toggle.addEventListener('click', (e) => {
+    e.preventDefault();
+    const open = menu.hidden;
+    setOpen(open);
+    if (open && e.detail === 0) menu.querySelector('a')?.focus();
+  });
+  document.addEventListener('click', (e) => {
+    if (!menu.hidden && !menu.contains(e.target) && !toggle.contains(e.target)) setOpen(false);
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !menu.hidden) { setOpen(false); toggle.focus(); }
+  });
+  menu.addEventListener('focusout', (e) => {
+    const next = e.relatedTarget;
+    if (next && !menu.contains(next) && next !== toggle) setOpen(false);
+  });
+})();
+</script>
+<script nonce="{{ csp_nonce }}">
+// Global feedback toast — append a polite live-region notice; auto-dismiss.
+window.sfToast = function (msg, kind) {
+  var root = document.getElementById('sf-toast');
+  if (!root || !msg) return;
+  var el = document.createElement('div');
+  el.className = 'sf-toast__msg' + (kind ? ' sf-toast__msg--' + kind : '');
+  el.textContent = msg;
+  root.appendChild(el);
+  setTimeout(function () { el.style.opacity = '0'; setTimeout(function () { el.remove(); }, 300); }, 4000);
+};
+document.querySelectorAll('#sf-toast .sf-toast__msg').forEach(function (el) {
+  setTimeout(function () { el.style.opacity = '0'; setTimeout(function () { el.remove(); }, 300); }, 5000);
+});
+</script>
+{% storefront_blocks "global_below_body" %}
+<script nonce="{{ csp_nonce }}" src="{% static 'dawnchild/dawnchild.js' %}" defer></script>
+
+
+{% include "storefront/_cart_drawer.html" %}
+
+
+<script nonce="{{ csp_nonce }}">
+(function () {
+  function tagFade(img) {
+    if (img.classList.contains('is-loaded') || img.classList.contains('ko-fade-img')) return;
+    // Already decoded (cache / eager) — never hide the cover for a paint frame.
+    if (img.complete && img.naturalWidth > 0) {
+      img.classList.add('is-loaded');
+      return;
+    }
+    img.classList.add('ko-fade-img');
+    img.addEventListener('load', function () { img.classList.add('is-loaded'); }, {once: true});
+    img.addEventListener('error', function () { img.classList.add('is-loaded'); }, {once: true});
+  }
+  document.querySelectorAll('img[loading="lazy"]').forEach(tagFade);
+  // Catch images added dynamically (e.g. cart drawer, infinite scroll later).
+  new MutationObserver(function (records) {
+    records.forEach(function (r) {
+      r.addedNodes.forEach(function (n) {
+        if (n.nodeType !== 1) return;
+        if (n.tagName === 'IMG' && n.getAttribute('loading') === 'lazy') tagFade(n);
+        n.querySelectorAll && n.querySelectorAll('img[loading="lazy"]').forEach(tagFade);
+      });
+    });
+  }).observe(document.documentElement, {childList: true, subtree: true});
+})();
+</script>
+
+<script nonce="{{ csp_nonce }}">
+/* Motion II — scroll-reveal engine, dot-stamp trigger, topbar elevation,
+   and PLP→PDP cover-morph wiring. Kept as one small IIFE at the end of
+   <body> so it runs after the DOM exists and before first user scroll. */
+(function () {
+  var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // Gates the CSS initial-hidden states — without JS nothing is ever hidden.
+  document.documentElement.classList.add('has-motion');
+
+  /* Scroll reveal. Targets: manual [data-reveal] hooks, every .grid-books
+     child present now (staggered per row position), and .display headings
+     (which only stamp their brand period — the heading itself never hides).
+     Elements already in the viewport get .is-in in this same synchronous
+     pass so they never paint hidden (LCP-safe); the rest reveal on entry. */
+  var reveal = [];
+  var stamp = [];
+  document.querySelectorAll('[data-reveal]').forEach(function (el) { reveal.push(el); });
+  // Skip rail (.grid-books--rail) children: in a horizontal scroller the
+  // off-screen-right cards would never satisfy the vertical in-view check and
+  // could stay hidden. The rail wrapper carries its own [data-reveal] instead.
+  document.querySelectorAll('.grid-books:not(.grid-books--rail)').forEach(function (grid) {
+    Array.prototype.forEach.call(grid.children, function (el, i) {
+      el.style.setProperty('--reveal-delay', (i % 12 < 8 ? i % 12 : 8) * 55 + 'ms');
+      reveal.push(el);
+    });
+  });
+  
+
+  reveal.forEach(function (el) { el.classList.add('will-reveal'); });
+  var all = reveal.concat(stamp);
+  if (reduced || !('IntersectionObserver' in window)) {
+    all.forEach(function (el) { el.classList.add('is-in'); });
+  } else {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (!en.isIntersecting) return;
+        en.target.classList.add('is-in');
+        io.unobserve(en.target);
+      });
+    }, { rootMargin: '0px 0px -8% 0px', threshold: 0.05 });
+    all.forEach(function (el) {
+      var r = el.getBoundingClientRect();
+      if (r.top < window.innerHeight * 0.95 && r.bottom > 0) el.classList.add('is-in');
+      else io.observe(el);
+    });
+  }
+
+  /* Book-rail carousels — prev/next turn a page of whole cards (as many as the
+     rail shows), so a page never starts on a cut-off cover; each arrow hides at
+     its end. */
+  document.querySelectorAll('[data-book-rail]').forEach(function (rail) {
+    var wrap = rail.closest('.book-rail-wrap');
+    if (!wrap) return;
+    var prev = wrap.querySelector('[data-rail-prev]');
+    var next = wrap.querySelector('[data-rail-next]');
+    var step = function () {
+      var cards = rail.children;
+      if (cards.length < 2) return rail.clientWidth;
+      var pitch = cards[1].offsetLeft - cards[0].offsetLeft;
+      if (pitch <= 0) return rail.clientWidth;
+      // Whole cards in view: the first starts after the rail's padding, and the
+      // last needs no gap after it.
+      var room = rail.clientWidth - (parseFloat(getComputedStyle(rail).paddingLeft) || 0)
+        + (pitch - cards[0].offsetWidth);
+      return Math.max(Math.floor((room + 1) / pitch), 1) * pitch;
+    };
+    var sync = function () {
+      var max = rail.scrollWidth - rail.clientWidth - 2;
+      if (prev) prev.disabled = rail.scrollLeft <= 2;
+      if (next) next.disabled = rail.scrollLeft >= max;
+    };
+    if (prev) prev.addEventListener('click', function () { rail.scrollBy({ left: -step(), behavior: 'smooth' }); });
+    if (next) next.addEventListener('click', function () { rail.scrollBy({ left: step(), behavior: 'smooth' }); });
+    rail.addEventListener('scroll', sync, { passive: true });
+    window.addEventListener('resize', sync, { passive: true });
+    sync();
+  });
+
+
+  /* Cover morph — the PDP gallery already names its hero image
+     `cover-<slug>` for cross-document view transitions; give the clicked
+     card's cover the matching name at click time (not statically, so a
+     product repeated across two rails never creates a duplicate name,
+     which would abort the whole transition). */
+  if (!reduced) {
+    document.addEventListener('click', function (e) {
+      var a = e.target.closest && e.target.closest('a[href^="/products/"]');
+      if (!a) return;
+      var m = (a.getAttribute('href') || '').match(/^\/products\/([\w-]+)\/$/);
+      if (!m) return;
+      var img = a.querySelector('.cover-wrap img');
+      if (img) img.style.viewTransitionName = 'cover-' + m[1];
+    }, true);
+  }
+})();
+</script>
+
+<script nonce="{{ csp_nonce }}">
+/* A product row can outlive its image FILE — an import that carried rows but not
+   uploads, or media restored without its objects. The template can only test
+   whether a primaryImage row exists, so a missing file reaches the browser as a
+   broken <img> with its alt text showing. Degrade to the same title-card
+   placeholder an image-less product already gets.
+   Capture phase: `error` does not bubble. With <picture>, this fires only once
+   every candidate source has failed, so a working webp still wins over a
+   missing avif. */
+(function () {
+  function swap(img) {
+    if (!img || img.tagName !== 'IMG') return;
+    var wrap = img.closest('.cover-wrap, .window__cover, .pdp-hero__slide');
+    if (!wrap || wrap.querySelector('.placeholder')) return;
+    var ph = document.createElement('div');
+    ph.className = 'placeholder';
+    ph.textContent = img.getAttribute('alt') || '';
+    (img.closest('picture') || img).replaceWith(ph);
+  }
+  document.addEventListener('error', function (e) { swap(e.target); }, true);
+  /* A listener added at the end of <body> cannot see an error that already
+     fired. The hero is loading="eager" fetchpriority="high", so a 404 on it
+     resolves while the parser is still working through the page — the lazy
+     card images below error later and are caught, the hero never was. Sweep
+     whatever has already failed, and again once decoding settles. */
+  function sweep() {
+    var imgs = document.querySelectorAll('img');
+    for (var i = 0; i < imgs.length; i++) {
+      if (imgs[i].complete && imgs[i].naturalWidth === 0) swap(imgs[i]);
+    }
+  }
+  sweep();
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', sweep);
+  }
+  window.addEventListener('load', sweep);
+})();
+</script>
+
+{# Speculation Rules — Chrome 122+ prefetches/prerenders PDPs on hover. #}
+{# No-op on browsers without support. Eagerness 'moderate' = on hover/touchstart. #}
+<script nonce="{{ csp_nonce }}" type="speculationrules">
+{
+  "prefetch": [{
+    "source": "document",
+    "where": { "href_matches": "/products/*" },
+    "eagerness": "moderate"
+  }]
+}
+</script>
+</body>
+</html>

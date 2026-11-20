@@ -1,0 +1,152 @@
+{% extends "storefront/base.html" %}
+{% load morph %}{% load i18n %}{% load seo %}{% load tracking %}
+{% comment %}
+Home, after the "Dawnchild Home - soft" design: the banner, the four reasons,
+the shelves, the readers' line, one note, buying, and the letter.
+
+What the design fills with its own four books this page fills from the store:
+the banner leads with the first featured book (its cover, its own short
+description, its author on the plaque); the shelves are the featured books
+under their catalogue categories; the note is the newest journal post. A
+store with nothing featured gets the imprint's statement and a way to the shelf,
+never an invented book. The design's two rows of plates are not here: the home
+query carries one image per book, so there is nothing real to hang in them.
+{% endcomment %}
+
+{% block seo %}{% trans "Dawnchild Books — illustrated books for children and the whole family" as home_title %}{% trans "Illustrated books for children and the whole family, back in print with every picture." as home_description %}{% storefront_head title=home_title description=home_description %}{% endblock %}
+
+{% block extra_head %}
+{% if featured_products %}{% dl_view_item_list featured_products list_id='home_featured' list_name='Home shelves' %}{% endif %}
+{% endblock %}
+
+{% block content %}
+{% with lead=hero_products.0 %}
+<section class="page is-active" id="page-home" aria-labelledby="home-h">
+  <div class="home-banner{% if not lead.primaryImage.url %} home-banner--plain{% endif %}" id="home-banner">
+    {% if lead.primaryImage.url %}
+    <figure class="home-banner-art">
+      <a href="/products/{{ lead.slug }}/"><picture><img fetchpriority="high" decoding="async" src="{{ lead.primaryImage.url }}" alt="{{ lead.primaryImage.altText|default:lead.name }}"></picture></a>
+    </figure>
+    {% endif %}
+    <div class="home-banner-text">
+      {% if lead %}
+      {% product_card_meta lead as lead_meta %}
+      <p class="eyebrow">{{ lead.name }}</p>
+      <h1 id="home-h">{% if lead.shortDescription %}{{ lead.shortDescription|first_sentence }}{% else %}{{ lead.name }}{% endif %}</h1>
+      {% if STORE_DESCRIPTION %}<p class="lead">{{ STORE_DESCRIPTION }}</p>{% endif %}
+      <div class="actions">
+        <a class="btn" href="/products/{{ lead.slug }}/">{% translate "See the book" %}</a>
+        <a class="btn ghost" href="/products/">{% translate "All the books" %}</a>
+      </div>
+      {% if lead_meta.author %}
+      <div class="hb-author home-why" role="group" aria-labelledby="home-author-h">
+        <h2 class="hw-plaque" id="home-author-h">
+          <svg class="hw-plaque-frame" viewBox="0 0 1000 100" preserveAspectRatio="none" aria-hidden="true" focusable="false"><path d="M30 3H970Q976 3 976 9V38Q976 46 990 50Q976 54 976 62V91Q976 97 970 97H30Q24 97 24 91V62Q24 54 10 50Q24 46 24 38V9Q24 3 30 3Z" fill="#bcb474" stroke="#241404" stroke-width="4" vector-effect="non-scaling-stroke"/><path d="M46 14Q37 30 37 40Q37 47 29 50Q37 53 37 60Q37 70 46 86M954 14Q963 30 963 40Q963 47 971 50Q963 53 963 60Q963 70 954 86" fill="none" stroke="#241404" stroke-width="1" vector-effect="non-scaling-stroke"/></svg>
+          <span class="hw-plaque-top">{% translate "The books of" %}</span>
+          <span class="hw-plaque-name">{{ lead_meta.author }}</span>
+          <span class="hw-plaque-sub">{% translate "back in print with every picture" %}</span>
+        </h2>
+      </div>
+      {% endif %}
+      {% else %}
+      <p class="eyebrow">{{ STORE_NAME|default:"Dawnchild Books" }}</p>
+      <h1 id="home-h">{% translate "Some books disappear. We go and fetch them back." %}</h1>
+      <p class="lead">{% if STORE_DESCRIPTION %}{{ STORE_DESCRIPTION }}{% else %}{% translate "Illustrated books for children and the whole family that have been out of print for too long, returned with their pictures where they belong." %}{% endif %}</p>
+      <div class="actions">
+        <a class="btn" href="/products/">{% translate "See the books" %}</a>
+        <a class="btn ghost" href="/about/">{% translate "About the imprint" %}</a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="home-why" id="home-why" role="region" aria-label="{% translate 'Why these books' %}">
+    <ul class="hw-points">
+      <li><strong>{% translate "Every picture kept" %}</strong><span>{% translate "Each plate and drawing, placed where the first printing has it." %}</span></li>
+      <li><strong>{% translate "Set afresh" %}</strong><span>{% translate "Clean new type from an early printing, never a photograph of an old copy." %}</span></li>
+      <li><strong>{% translate "Printed for you" %}</strong><span>{% translate "Each copy is made to order." %}</span></li>
+      <li><strong>{% translate "A note in every book" %}</strong><span>{% translate "Who wrote it, who drew it and why it disappeared." %}</span></li>
+    </ul>
+  </div>
+
+  {% if featured_products %}
+  <div class="home-shelves" id="home-shelves">
+    {% comment %}One shelf per catalogue category. The featured books arrive in
+    the merchant's own order and regroup gathers neighbours, so books of one
+    category that are not next to each other make two shelves rather than
+    dropping out; a book with no category gets a shelf of its own.{% endcomment %}
+    {% regroup featured_products by category.name as shelves %}
+    {% for shelf in shelves %}
+    <section class="home-shelf {% cycle 'hs-kids' 'hs-family' %}" aria-label="{% if shelf.grouper %}{{ shelf.grouper }}{% else %}{% translate 'More books' %}{% endif %}">
+      <header class="hs-head">
+        <div class="hs-name">
+          <p class="hs-kicker">{% translate "The shelf" %}</p>
+          <h2 class="hs-h">{% if shelf.grouper %}<a href="/category/{{ shelf.list.0.category.slug }}/">{{ shelf.grouper }}</a>{% else %}{% translate "More books" %}{% endif %}</h2>
+        </div>
+      </header>
+      <div class="hs-books">
+        {% for p in shelf.list %}{% include "storefront/_home_card.html" with product=p %}{% endfor %}
+      </div>
+    </section>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="cartouche">
+    <h2 class="eyebrow">{% translate "The shelf" %}</h2>
+    <p class="prose" style="margin-top:8px">{% translate "No book is on the front shelf yet. Mark a book as featured in the catalogue and it appears here." %} <a href="/products/">{% translate "See all the books" %}</a></p>
+  </div>
+  {% endif %}
+
+  <div class="home-notes" role="region" aria-label="{% translate 'Readers’ memories' %}">
+    <p class="hn-q">{% translate "Did you, or your mother or grandmother, have one of these books as a child?" %}</p>
+    <p class="hn-a">{% translate "Tell us who gave it to you and what it was like to read." %} <a href="/contact/">{% translate "Share your memory" %}</a></p>
+  </div>
+
+  {% with note=journal_teasers.0 %}{% if note %}
+  <section class="home-story{% if not note.image %} home-story--plain{% endif %}" aria-labelledby="home-story-h">
+    {% if note.image %}<img class="hst-art" loading="lazy" decoding="async" src="{{ note.image }}" alt="">{% endif %}
+    <div>
+      <p class="eyebrow">{% translate "Notes on the books" %}{% if note.date_label %} · {{ note.date_label }}{% endif %}</p>
+      <h2 class="hst-h" id="home-story-h"><a href="/journal/{{ note.slug }}/">{{ note.title }}</a></h2>
+      {% if note.excerpt %}<p>{{ note.excerpt }}</p>{% endif %}
+      <p class="hst-links"><a href="/journal/{{ note.slug }}/">{% translate "Read the note" %}<span class="sr-only">: {{ note.title }}</span></a> · <a href="/journal/">{% translate "All the notes" %}</a></p>
+    </div>
+  </section>
+  {% endif %}{% endwith %}
+
+  <section class="home-buying" aria-labelledby="home-buying-h">
+    <h2 class="hby-h" id="home-buying-h">{% translate "Buying from us" %}</h2>
+    <div>
+      {% comment %}The design lists delivery and returns terms here. Those are
+      promises the shipping and returns pages own, so this block links to them
+      instead of restating them.{% endcomment %}
+      <ul>
+        <li>{% translate "Delivery choices and their prices are shown in the basket before you pay." %}</li>
+        <li>{% blocktranslate trimmed %}Booksellers and librarians can <a href="/p/trade/">enquire about ordering direct from us</a>.{% endblocktranslate %}</li>
+      </ul>
+      <p class="hby-more"><a href="/shipping/">{% translate "Shipping" %}</a><span> · </span><a href="/returns/">{% translate "Returns" %}</a><span> · </span><a href="/contact/">{% translate "Questions before you buy" %}</a></p>
+    </div>
+  </section>
+
+  {% plugin_enabled "newsletter" as home_newsletter_on %}
+  {% if home_newsletter_on %}
+  <section class="next" aria-label="{% translate 'The letter' %}">
+    <div>
+      <h2 class="eyebrow">{% translate "Next from the imprint" %}</h2>
+      <p class="lead" style="margin-top:8px">{% translate "The letter carries first word when a book can be ordered." %}</p>
+    </div>
+    <form class="signup-form" id="signup-home" method="post" action="/newsletter/subscribe/" data-dc-signup data-fail="{% translate 'That did not work. Please check the address.' %}">
+      {% csrf_token %}
+      <input type="hidden" name="source" value="home">
+      <label for="email-home">{% translate "Your email address. You confirm it from a message we send, and every letter has an unsubscribe link." %}</label>
+      <div class="signup"><input id="email-home" type="email" name="email" placeholder="you@example.com" autocomplete="email" required maxlength="254"><button class="btn" type="submit">{% translate "Send me the letter" %}</button></div>
+      <p class="quiet" style="font-size:.9rem;margin-top:8px" data-signup-msg role="status"></p>
+      {% bot_check "newsletter" %}
+    </form>
+  </section>
+  {% endif %}
+</section>
+{% endwith %}
+
+{% storefront_blocks "home_below_grid" %}
+{% endblock %}

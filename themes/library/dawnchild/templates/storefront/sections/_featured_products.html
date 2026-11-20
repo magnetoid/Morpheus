@@ -1,0 +1,16 @@
+<section style="padding: 4rem 0;">
+  <div class="wrap">
+    {% if settings.heading %}
+    <h2 class="display display-l" style="margin: 0 0 2rem;">{{ settings.heading }}<span class="text-accent">.</span></h2>
+    {% endif %}
+    {% if products %}
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem;">
+      {% for p in products %}
+      {% include "storefront/_product_card.html" with product=p %}
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="meta" style="text-align: center;">No products to feature yet.</p>
+    {% endif %}
+  </div>
+</section>

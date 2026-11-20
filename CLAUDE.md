@@ -42,7 +42,7 @@ python manage.py runserver                   # .env: DEBUG=True, DATABASE_URL=sq
 - `plugins/` (package root): the app registry and contribution machinery (`registry.py`, `contributions.py`, `chrome_urls.py` / `storefront_urls.py`), plus code several apps share (`feed_mapping.py`, `dropshipping/`, `partner_portal.py`).
 - `plugins/installed/<app>/`: about 100 apps, each with `apps.py`, an `app.py` manifest, `help.md`, `migrations/__init__.py` and tests.
   - The shells are `storefront` and `admin_dashboard`; `admin_dashboard/navigation.py` defines the sidebar.
-- `themes/library/`: `dot_books` (dotbooks.store), `montenegro`, `croatia`, `supernatural_shop`, `irving_survival`. It's one codebase with five stores, all deployed from `main`.
+- `themes/library/`: `dot_books` (dotbooks.store), `montenegro`, `croatia`, `supernatural_shop`, `irving_survival`, `dawnchild` (beta.dawnchildbooks.com). It's one codebase; the five stores on the tetra Coolify deploy from every push to `main`, while Dawnchild runs on its own server's Coolify and is deployed from there.
 - `api/`: GraphQL and REST (`graphql_view.py`, `graphql_permissions.py`, the response cache).
 - `morpheus/`: the SDK entry points (`morpheus.app`, `.core`, `.theme`).
 

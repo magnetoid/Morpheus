@@ -1,0 +1,4 @@
+{% comment %}The imprint's lockup: the store's logo as the mark (Settings → Store →
+Logo) beside its name set as the design's wordmark, first word large and the
+rest small. With no logo the wordmark stands alone; the theme ships no artwork
+of its own.{% endcomment %}{% with words=STORE_NAME|default:"Dawnchild Books" %}<a href="/" class="lockup">{% if STORE_LOGO_URL %}<img src="{{ STORE_LOGO_URL }}" alt="" class="mark" width="40" height="40">{% endif %}<span class="wordmark{% if small %} small{% endif %}">{{ words.split.0 }}{% if words.split|length > 1 %} <small>{{ words.split|slice:"1:"|join:" " }}</small>{% endif %}</span></a>{% endwith %}

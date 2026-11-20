@@ -1,0 +1,31 @@
+{% load morph %}{% load i18n %}{% load seo %}{% load pricing %}
+{% comment %}One book on a home shelf (the design's hs-card): cover, title, author,
+the book's own short description as the hook, the price and the two actions. The
+cover repeats the title's link, so it is hidden from screen readers and the tab order.
+`product` is a GraphQL dict. Everything printed is the catalogue's.{% endcomment %}
+{% storefront_price product as card_price %}
+{% product_card_meta product as bc %}
+<article class="hs-card" data-product-card>
+  <a class="hs-cover" href="/products/{{ product.slug }}/" tabindex="-1" aria-hidden="true">{% if product.primaryImage.url %}{% seo_responsive_image product.primaryImage.url alt="" widths="300,450,600" sizes="(min-width: 900px) 220px, 40vw" %}{% else %}<div class="cover-draft" aria-hidden="true"><span class="draft-title">{{ product.name }}</span>{% if bc.author %}<span class="draft-author">{{ bc.author }}</span>{% endif %}</div>{% endif %}</a>
+  <div class="hs-text">
+    <h3 class="hs-title"><a href="/products/{{ product.slug }}/">{{ product.name }}</a></h3>
+    {% if bc.author %}<p class="hs-by">{{ bc.author }}</p>{% endif %}
+    {% if product.shortDescription %}<p class="hs-hook">{{ product.shortDescription|first_sentence }}</p>{% endif %}
+    {% if bc.genre %}<p class="hs-who">{{ bc.genre }}</p>{% endif %}
+    <div class="hs-foot">
+      {% if card_price %}<p class="hs-price">{% if product.priceStartsFrom %}{% translate "From" %} {% endif %}<span>{{ card_price|money }}</span>{% if bc.formats_line %} · {{ bc.formats_line|lower }}{% endif %}</p>{% endif %}
+      <div class="actions">
+        {% if product.priceStartsFrom %}
+        <a class="btn" href="/products/{{ product.slug }}/">{% translate "Choose a format" %}<span class="sr-only">: {{ product.name }}</span></a>
+        {% else %}
+        <form method="post" action="/cart/add/{{ product.id }}/">
+          {% csrf_token %}
+          <input type="hidden" name="quantity" value="1">
+          <button class="btn" type="submit" data-buy>{% translate "Add to basket" %}<span class="sr-only">: {{ product.name }}</span></button>
+        </form>
+        {% endif %}
+        <a class="btn ghost" href="/products/{{ product.slug }}/">{% translate "The book" %}<span class="sr-only">: {{ product.name }}</span></a>
+      </div>
+    </div>
+  </div>
+</article>

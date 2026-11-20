@@ -17,7 +17,7 @@ from djmoney.money import Money
 from plugins.installed.catalog.models import Product
 from themes.registry import theme_registry
 
-THEMES = ['dot_books', 'supernatural_shop']
+THEMES = ['dot_books', 'supernatural_shop', 'dawnchild']
 if apps.is_installed('plugins.installed.booking_marketplace'):
     THEMES += ['montenegro', 'croatia']
 

@@ -1,0 +1,110 @@
+{% extends "storefront/base.html" %}
+{% load morph %}{% load i18n %}{% load seo %}{% load tracking %}{% load breadcrumbs %}
+{% comment %}
+The shelf, after the "Dawnchild Books - soft" design: a title block, then the
+books grouped under their catalogue categories, two shelves side by side.
+
+The groups are the store's own categories (every active one, in tree order),
+drawn only when they hold a book on this page; books with no category share a
+last shelf. A search, a category or any other filter shows one shelf with what
+matched, each filter as a link that removes it. The design's "In preparation"
+list is not here: a forthcoming title is a catalogue fact, and the catalogue has
+no such state for the theme to read. The suggestion form posts to the store's
+contact form, which answers on its own page.
+{% endcomment %}
+
+{% block extra_head %}
+{% dl_view_item_list products list_id=selected_category|default:'all' list_name=plp_name %}
+{% endblock %}
+
+{% block content %}
+<section class="page is-active" id="page-books" aria-labelledby="books-h">
+  <div class="title-block">
+    {% breadcrumb_trail %}
+    <p class="eyebrow">{% translate "The shelf" %}</p>
+    <h1 id="books-h">
+      {% if selected_author %}{{ selected_author }}
+      {% elif selected_publisher %}{{ selected_publisher }}
+      {% elif selected_category_obj %}{{ selected_category_obj.name }}
+      {% elif selected_tag %}{{ selected_tag_obj.name|default:selected_tag }}
+      {% elif search_query %}{% blocktranslate trimmed %}Results for “{{ search_query }}”{% endblocktranslate %}
+      {% else %}{% translate "Books" %}{% endif %}
+    </h1>
+    {% comment %}The merchant's own words first: a category's description on its
+    own page, else the listing's intro (CMS → Blocks). House copy stands in on
+    the unfiltered shelf only.{% endcomment %}
+    {% if selected_category_obj.description %}<p class="prose lead">{{ selected_category_obj.description|linebreaksbr }}</p>
+    {% elif selected_tag_obj.description %}<p class="prose lead">{{ selected_tag_obj.description|linebreaksbr }}</p>
+    {% elif page_intro %}<p class="prose lead">{{ page_intro|linebreaksbr }}</p>
+    {% elif not search_query and not filter_chips and not selected_category %}<p class="prose lead">{% translate "Books for children and books for the whole family, each set afresh rather than photographed, with every picture and a note on its history." %}</p>{% endif %}
+    {% if filter_chips or search_query %}
+    <p class="dc-chips">
+      {% if search_query %}<a class="btn ghost btn-sm" href="/products/">“{{ search_query }}” <span aria-hidden="true">×</span><span class="sr-only">{% translate "Clear the search" %}</span></a>{% endif %}
+      {% for chip in filter_chips %}<a class="btn ghost btn-sm" href="{{ chip.href }}">{{ chip.label }} <span aria-hidden="true">×</span><span class="sr-only">{% translate "Remove this filter" %}</span></a>{% endfor %}
+    </p>
+    {% endif %}
+  </div>
+
+  {% if not products %}
+  <div class="cartouche">
+    <h2 class="eyebrow">{% translate "Nothing on this shelf" %}</h2>
+    <p class="prose" style="margin-top:8px">{% if search_query or filter_chips or selected_category %}{% translate "No book matches. Try fewer words, or see the whole shelf." %} <a href="/products/">{% translate "All the books" %}</a>{% else %}{% translate "The first books are on their way." %}{% endif %}</p>
+  </div>
+  {% elif search_query or filter_chips or selected_category %}
+  <div class="shelves shelves--one">
+    <div class="shelf-group">
+      <h2 class="eyebrow shelf-head">{% blocktranslate count counter=result_count %}{{ counter }} book{% plural %}{{ counter }} books{% endblocktranslate %}</h2>
+      <div class="shelf">
+        {% for p in products %}{% include "storefront/_shelf_item.html" with product=p %}{% endfor %}
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <div class="shelves">
+    {% for cat in categories %}
+    {% for p in products %}{% if p.category.slug == cat.slug %}{% ifchanged cat.slug %}
+    <div class="shelf-group">
+      <h2 class="eyebrow shelf-head"><a href="/category/{{ cat.slug }}/">{{ cat.name }}</a></h2>
+      <div class="shelf">{% endifchanged %}
+        {% include "storefront/_shelf_item.html" with product=p %}
+    {% endif %}{% endfor %}
+    {% for p in products %}{% if p.category.slug == cat.slug %}{% ifchanged cat.slug %}
+      </div>
+    </div>{% endifchanged %}{% endif %}{% endfor %}
+    {% endfor %}
+    {% for p in products %}{% if not p.category or not p.category.is_active %}{% ifchanged %}
+    <div class="shelf-group">
+      <h2 class="eyebrow shelf-head">{% translate "More books" %}</h2>
+      <div class="shelf">{% endifchanged %}
+        {% include "storefront/_shelf_item.html" with product=p %}
+    {% endif %}{% endfor %}
+    {% for p in products %}{% if not p.category or not p.category.is_active %}{% ifchanged %}
+      </div>
+    </div>{% endifchanged %}{% endif %}{% endfor %}
+  </div>
+  {% endif %}
+
+  {% if page_obj.has_other_pages %}
+  <nav class="dc-pager" aria-label="{% translate 'Pages of books' %}">
+    {% if page_obj.has_previous %}<a class="btn ghost" href="{% page_href page_obj.previous_page_number %}" rel="prev">{% translate "Earlier" %}</a>{% else %}<span></span>{% endif %}
+    <span class="quiet">{% blocktranslate with n=page_obj.number total=page_obj.paginator.num_pages %}Page {{ n }} of {{ total }}{% endblocktranslate %}</span>
+    {% if page_obj.has_next %}<a class="btn ghost" href="{% page_href page_obj.next_page_number %}" rel="next">{% translate "More" %}</a>{% else %}<span></span>{% endif %}
+  </nav>
+  {% endif %}
+
+  <section class="cartouche suggest" aria-label="{% translate 'Suggest a book' %}">
+    <div>
+      <h2 class="eyebrow">{% translate "Remember a book we should bring back?" %}</h2>
+      <p class="prose" style="margin-top:8px">{% translate "If there is an illustrated book for children or the home that you loved and nobody has reprinted properly, tell us. We look for books that are out of print, illustrated in their original edition, free to reprint or licensable, and still good to read today." %}</p>
+    </div>
+    <form class="suggest-form" id="suggest-books" method="post" action="/contact/">
+      {% csrf_token %}
+      <label for="suggest-book">{% translate "The book, and the author or illustrator if you know them" %}</label>
+      <input id="suggest-book" type="text" name="message" maxlength="300" placeholder="{% translate 'Title, author, roughly when' %}" required minlength="3">
+      <label for="suggest-email" style="margin-top:10px">{% translate "Your email, so we can answer" %}</label>
+      <div class="signup"><input id="suggest-email" type="email" name="email" placeholder="you@example.com" autocomplete="email" required maxlength="254"><button class="btn" type="submit">{% translate "Suggest it" %}</button></div>
+      {% bot_check "contact" %}
+    </form>
+  </section>
+</section>
+{% endblock %}

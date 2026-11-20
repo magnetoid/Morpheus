@@ -125,7 +125,7 @@ class PaymentPagePolicyTests(SimpleTestCase):
         self.assertFalse(origin_allowed('notjs.stripe.com.evil.example'))
 
 
-THEMES = ['dot_books', 'supernatural_shop', 'irving_survival']
+THEMES = ['dot_books', 'supernatural_shop', 'irving_survival', 'dawnchild']
 if apps.is_installed('plugins.installed.booking_marketplace'):
     THEMES += ['montenegro', 'croatia']
 

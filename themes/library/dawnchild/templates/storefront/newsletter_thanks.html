@@ -1,0 +1,21 @@
+{% extends "storefront/base.html" %}
+{% load i18n %}
+
+{% block body_class %}reading{% endblock %}
+
+{% block content %}
+<section class="page is-active">
+  <div class="title-block">
+    {% if error %}
+    <p class="eyebrow">{% translate "The letter" %}</p>
+    <h1>{% translate "That did not go through" %}</h1>
+    <p class="prose lead">{{ error }}</p>
+    {% else %}
+    <p class="eyebrow">{% translate "The letter" %}</p>
+    <h1>{% translate "Thank you" %}</h1>
+    <p class="prose lead">{% translate "Look for a message from us and confirm your address from it; the letter starts once you have." %}</p>
+    {% endif %}
+    <p><a class="btn ghost" href="/">{% translate "Back to the books" %}</a></p>
+  </div>
+</section>
+{% endblock %}

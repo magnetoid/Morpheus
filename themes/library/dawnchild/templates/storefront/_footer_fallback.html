@@ -1,0 +1,30 @@
+{% load morph %}{% load i18n %}
+{% comment %}The footer a store sees before it builds its own (CMS → Menus, key
+"footer"). Every link is a route this store answers: an optional app's link is
+shown only while the app is on.{% endcomment %}
+{% plugin_enabled "book_product" as ff_books_on %}{% plugin_enabled "cms" as ff_cms_on %}
+<div class="foot-group" role="group" aria-labelledby="footer-explore">
+  <h2 id="footer-explore">{% translate "Explore" %}</h2>
+  <ul>
+    <li><a href="/products/">{% translate "Books" %}</a></li>
+    {% if ff_books_on %}<li><a href="/authors/">{% translate "Authors" %}</a></li>{% endif %}
+    {% if ff_cms_on %}<li><a href="/journal/">{% translate "Notes" %}</a></li>{% endif %}
+    <li><a href="/about/">{% translate "About" %}</a></li>
+  </ul>
+</div>
+<div class="foot-group" role="group" aria-labelledby="footer-readers">
+  <h2 id="footer-readers">{% translate "Readers" %}</h2>
+  <ul>
+    <li><a href="/account/">{% translate "Your account" %}</a></li>
+    <li><a href="/account/orders/">{% translate "Your orders" %}</a></li>
+    <li><a href="/search/">{% translate "Search" %}</a></li>
+  </ul>
+</div>
+<div class="foot-group" role="group" aria-labelledby="footer-help">
+  <h2 id="footer-help">{% translate "Help" %}</h2>
+  <ul>
+    <li><a href="/shipping/">{% translate "Shipping" %}</a></li>
+    <li><a href="/returns/">{% translate "Returns" %}</a></li>
+    <li><a href="/contact/">{% translate "Contact" %}</a></li>
+  </ul>
+</div>

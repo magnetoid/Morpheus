@@ -34,6 +34,7 @@ class ReturnClaimsTests(SimpleTestCase):
             'dot_books': ('Supernatural', 'Irving Survival', 'Montenegro'),
             'supernatural_shop': ('dot books', 'dotbooks', 'Irving Survival'),
             'irving_survival': ('Supernatural', 'dot books', 'dotbooks'),
+            'dawnchild': ('Supernatural', 'Irving Survival', 'dot books', 'dotbooks'),
         }
         found = []
         for theme, others in names.items():

@@ -42,7 +42,7 @@ class CategoryLongDescriptionThemeTests(TestCase):
         return resp.content.decode()
 
     def test_every_theme_shows_it_below_the_products(self):
-        for theme in ('irving_survival', 'dot_books', 'supernatural_shop'):
+        for theme in ('irving_survival', 'dot_books', 'supernatural_shop', 'dawnchild'):
             with self.subTest(theme=theme):
                 html = self._page(theme, 'water')
                 self.assertIn('<h2>How much water to keep</h2>', html)

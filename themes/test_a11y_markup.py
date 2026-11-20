@@ -329,3 +329,7 @@ class IrvingA11yMarkupTests(_ThemeA11yTests, TestCase):
         body = self._body('/')
         self.assertIn('class="statusbar"', body, 'status bar did not render — fixture drift')
         self.assertRegex(body, r'<aside class="statusbar" aria-label="[^"]+"')
+
+
+class DawnchildA11yMarkupTests(_ThemeA11yTests, TestCase):
+    theme = 'dawnchild'

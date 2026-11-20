@@ -1,0 +1,25 @@
+{% extends "storefront/base.html" %}
+{% load morph %}{% load seo %}{% load i18n %}
+{% comment %}
+Shipping, when the store has not written its own page (a CMS page with the slug
+"shipping" replaces this one). The only delivery facts here are the shipping
+app's own rates, through its slot; the theme promises no price, carrier or
+delivery time of its own.
+{% endcomment %}
+
+{% block body_class %}reading{% endblock %}
+
+
+{% block content %}
+<section class="page is-active" id="page-shipping" aria-labelledby="shipping-h">
+  <div class="title-block">
+    <p class="eyebrow">{% translate "How it gets to you" %}</p>
+    <h1 id="shipping-h">{% translate "Shipping" %}</h1>
+    <p class="prose lead">{% translate "The delivery choices for your address, and what each costs, are shown in the basket before you pay." %}</p>
+  </div>
+  {% storefront_blocks "shipping_rates" %}
+  <div class="prose">
+    <p>{% blocktranslate trimmed %}A question about delivery to your country, or about an order already on its way? <a href="/contact/">Write to us</a>.{% endblocktranslate %}</p>
+  </div>
+</section>
+{% endblock %}

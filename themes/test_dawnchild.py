@@ -1,0 +1,557 @@
+"""The Dawnchild theme renders the store's own data, and only that.
+
+The theme was built from six page designs that carry one imprint's four books,
+their prices and its trade terms as placeholder content. A theme that shipped
+those would sell books no store holds at prices no checkout charges, so the
+tests here render every designed page against a real (test) catalogue and CMS
+and assert both directions: what the store has appears, and what only the
+design had does not.
+
+Also here, because the shared theme suites name their themes in a list this
+change must not edit: the head contract, the global slots, nonce-only scripts,
+and the shop pages the design does not draw (product, basket, checkout,
+account) answering under this theme.
+"""
+
+from __future__ import annotations
+
+import re
+from decimal import Decimal
+from pathlib import Path
+from unittest.mock import patch
+from uuid import uuid4
+
+from django.conf import settings
+from django.contrib.auth import get_user_model
+from django.core.cache import cache
+from django.template.loader import get_template
+from django.test import Client, SimpleTestCase, TestCase
+from djmoney.money import Money
+
+from themes.registry import theme_registry
+from themes.test_head_contract import _activate_theme
+
+THEME = 'dawnchild'
+ROOT = Path(settings.BASE_DIR) / 'themes' / 'library' / THEME
+TEMPLATES = ROOT / 'templates'
+
+# Placeholder content of the design files. None of it may reach a page: the
+# books and prices are the catalogue's, the terms are the merchant's.
+DESIGN_ONLY = (
+    'Daffy Goes to Sea',
+    'The Family Week-End Book',
+    'Good Food',
+    '£18.00',
+    '£12.00',
+    '£39.00',
+    '979-8-',
+    '35%',
+    'Thirty days',
+    'thirty days',
+    'at most five a year',
+    'Vivian French',
+    'hello@dawnchild.com',
+    'trade@dawnchild.com',
+    'Focal Point International',
+    'data-cur="GBP"',
+)
+
+# Templates written for this theme (the designed pages and its chrome); the rest
+# are the shared shop pages, carried over unchanged.
+OWN_TEMPLATES = {
+    'cms/_menu.html',
+    'cms/page.html',
+    'storefront/_footer_fallback.html',
+    'storefront/_footer_nav.html',
+    'storefront/_home_card.html',
+    'storefront/_lockup.html',
+    'storefront/_product_card.html',
+    'storefront/_shelf_item.html',
+    'storefront/about.html',
+    'storefront/base.html',
+    'storefront/coming_soon.html',
+    'storefront/contact.html',
+    'storefront/home.html',
+    'storefront/journal_index.html',
+    'storefront/newsletter_thanks.html',
+    'storefront/product_list.html',
+    'storefront/returns.html',
+    'storefront/sections/_stock_list.html',
+    'storefront/shipping.html',
+    'storefront/taxonomy_root.html',
+}
+PAYMENT_PAGE = re.compile(
+    r'storefront/(cart|checkout\w*|account_payment_methods|_cart_drawer)\.html$'
+)
+
+_COMMENTS = re.compile(r'{%\s*comment\s*%}.*?{%\s*endcomment\s*%}|{#.*?#}', re.S)
+
+
+def _sources() -> dict[str, str]:
+    return {
+        str(p.relative_to(TEMPLATES)): _COMMENTS.sub('', p.read_text(encoding='utf-8'))
+        for p in sorted(TEMPLATES.rglob('*.html'))
+    }
+
+
+def _gql_product(name: str, slug: str, category: tuple[str, str] | None, amount: str) -> dict:
+    return {
+        'id': str(uuid4()),
+        'name': name,
+        'slug': slug,
+        'productType': 'simple',
+        'shortDescription': f'<p>{name} opens with a knock at the door. Then more.</p>',
+        'category': {'name': category[0], 'slug': category[1]} if category else None,
+        'price': {'amount': amount, 'currency': 'GBP'},
+        'priceStartsFrom': False,
+        'primaryImage': {'url': f'https://example.com/{slug}.jpg', 'altText': f'{name}, cover'},
+        'isOnSale': False,
+        'discountPercentage': 0,
+    }
+
+
+class DawnchildFilesTests(SimpleTestCase):
+    """What can be read off the disk, with no page rendered."""
+
+    def test_the_theme_is_registered_and_is_nobodys_default(self):
+        theme = theme_registry.get(THEME)
+        self.assertIsNotNone(theme, 'themes/library/dawnchild was not discovered')
+        self.assertEqual(theme.head_contract, 1)
+        # Adding a theme changes no store: the default stays what it was.
+        self.assertNotEqual(settings.MORPHEUS_ACTIVE_THEME, THEME)
+
+    def test_every_template_compiles(self):
+        _activate_theme(self, THEME)
+        for name in _sources():
+            with self.subTest(template=name):
+                get_template(name)
+
+    def test_no_template_carries_the_designs_placeholder_content(self):
+        found = [
+            f'{name}: {needle!r}'
+            for name, text in _sources().items()
+            for needle in DESIGN_ONLY
+            if needle in text
+        ]
+        self.assertEqual(found, [])
+
+    def test_the_head_is_one_storefront_head_call_and_all_four_slots(self):
+        base = _sources()['storefront/base.html']
+        self.assertEqual(len(re.findall(r'{%\s*storefront_head\b', base)), 1)
+        for tag in ('<title', 'rel="canonical"', 'property="og:', 'application/ld+json'):
+            self.assertNotIn(tag, base)
+        for slot in ('global_head', 'global_below_body', 'footer_legal', 'footer_extra'):
+            self.assertRegex(base, r'storefront_blocks\s+"' + slot + '"')
+
+    def test_scripts_carry_the_nonce_and_nothing_is_an_inline_handler(self):
+        """The basket and the checkout run under a nonce-only CSP.
+
+        Checked for every template this theme wrote and for the payment pages.
+        The other shop pages are the shared ones, unchanged, and run under the
+        report-only policy like every theme's.
+        """
+        for name, text in _sources().items():
+            if name not in OWN_TEMPLATES and not PAYMENT_PAGE.match(name):
+                continue
+            with self.subTest(template=name):
+                for tag in re.findall(r'<script\b[^>]*>', text):
+                    self.assertIn('nonce="{{ csp_nonce }}"', tag, tag)
+                self.assertIsNone(re.search(r'\son[a-z]+\s*=\s*["\']', text), name)
+
+    def test_public_forms_ask_the_bot_check(self):
+        for name, text in _sources().items():
+            for form in re.findall(r'<form\b.*?</form>', text, re.S):
+                action = re.search(r'action="([^"]*)"', form)
+                target = action.group(1) if action else ''
+                if target.startswith('/newsletter/subscribe/'):
+                    self.assertIn('{% bot_check "newsletter" %}', form, name)
+                elif target == '/contact/':
+                    self.assertIn('{% bot_check "contact" %}', form, name)
+
+    def test_the_signup_script_prints_only_what_the_server_answered(self):
+        """No success line of the theme's own: the newsletter app's words, or none."""
+        js = (ROOT / 'static' / THEME / 'dawnchild.js').read_text(encoding='utf-8')
+        self.assertIn('res.data.message', js)
+        for name, text in _sources().items():
+            for form in re.findall(r'<form\b[^>]*data-dc-signup[^>]*>', text):
+                self.assertNotIn('data-ok=', form, name)
+
+    def test_the_stylesheets_have_no_comment_that_ends_early(self):
+        for css in (ROOT / 'static' / THEME).glob('*.css'):
+            text = css.read_text(encoding='utf-8')
+            self.assertEqual(text.count('/*'), text.count('*/'), css.name)
+            self.assertNotIn('display:none!important}\n.memory-form', text)
+
+    def test_theme_settings_all_have_a_reader(self):
+        schema = theme_registry.get(THEME).get_config_schema()['properties']
+        everything = '\n'.join(_sources().values())
+        for key in schema:
+            self.assertIn(f'theme_config.{key}', everything, f'{key} is read by no template')
+
+
+class _Dawnchild(TestCase):
+    def setUp(self):
+        _activate_theme(self, THEME)
+        self.addCleanup(cache.clear)
+
+    def _get(self, path: str, client: Client | None = None, status: int = 200) -> str:
+        response = (client or self.client).get(path)
+        self.assertEqual(response.status_code, status, path)
+        return response.content.decode()
+
+    def assertNoDesignContent(self, body: str) -> None:
+        for needle in DESIGN_ONLY:
+            self.assertNotIn(needle, body)
+
+
+class DawnchildHomeTests(_Dawnchild):
+    def _home(self, products: list[dict]) -> str:
+        data = {'featuredProducts': products, 'collections': [], 'categories': []}
+        with (
+            patch(
+                'plugins.installed.personalisation.services.rank_for_visitor',
+                side_effect=lambda request, products, surface: products,
+            ),
+            patch('plugins.installed.storefront.views.home.internal_graphql', return_value=data),
+        ):
+            return self._get('/')
+
+    def test_the_shelves_are_the_stores_featured_books_under_their_categories(self):
+        children = ('For children', 'for-children')
+        family = ('For the whole family', 'family')
+        owl = _gql_product('The Owl Lantern', 'owl-lantern', children, '14.50')
+        tide = _gql_product('Tide Tables', 'tide-tables', children, '9.00')
+        jam = _gql_product('A Year of Jam', 'year-of-jam', family, '21.00')
+        body = self._home([owl, tide, jam])
+
+        self.assertEqual(body.count('class="home-shelf '), 2)
+        self.assertEqual(body.count('<article class="hs-card"'), 3)
+        shelves = body.split('id="home-shelves"', 1)[1]
+        first, second = shelves.split('class="home-shelf ')[1:3]
+        self.assertIn('/category/for-children/', first)
+        self.assertIn('/products/owl-lantern/', first)
+        self.assertIn('/products/tide-tables/', first)
+        self.assertIn('/products/year-of-jam/', second)
+        # The catalogue's price, through the store's money format.
+        self.assertIn('14.50', first)
+        self.assertIn('21.00', second)
+        # A real add-to-basket: the store's cart route for that product.
+        self.assertIn(f'action="/cart/add/{owl["id"]}/"', first)
+        # The banner leads with the first featured book, in its own words.
+        banner = body.split('id="home-banner"', 1)[1].split('id="home-why"', 1)[0]
+        self.assertIn('https://example.com/owl-lantern.jpg', banner)
+        self.assertIn('The Owl Lantern opens with a knock at the door.', banner)
+        self.assertNotIn('&lt;p&gt;', body)
+        self.assertNoDesignContent(body)
+
+    def test_a_book_with_no_category_still_gets_a_shelf(self):
+        body = self._home([_gql_product('Loose Leaf', 'loose-leaf', None, '5.00')])
+        self.assertEqual(body.count('<article class="hs-card"'), 1)
+        self.assertIn('More books', body)
+
+    def test_a_store_with_nothing_featured_shows_no_invented_book(self):
+        body = self._home([])
+        self.assertNotIn('hs-card', body)
+        self.assertNotIn('/cart/add/', body.split('id="cart-drawer', 1)[0])
+        self.assertIn('Some books disappear. We go and fetch them back.', body)
+        self.assertIn('href="/products/"', body)
+        self.assertNoDesignContent(body)
+
+    def test_one_title_and_the_page_is_the_designs_home(self):
+        body = self._home([])
+        self.assertEqual(len(re.findall(r'<title\b', body)), 1)
+        self.assertIn('id="page-home"', body)
+        self.assertIn('class="site-head"', body)
+        self.assertIn('class="site-foot"', body)
+        self.assertIn('dawnchild/dawnchild.css', body)
+
+    def test_the_letter_form_posts_to_the_newsletter_app(self):
+        body = self._home([])
+        form = re.search(r'<form[^>]*id="signup-home".*?</form>', body, re.S).group(0)
+        self.assertIn('action="/newsletter/subscribe/"', form)
+        self.assertIn('name="email"', form)
+        # The status line starts empty; only the server's answer fills it.
+        self.assertRegex(form, r'data-signup-msg role="status">\s*</p>')
+
+
+class DawnchildShelfTests(_Dawnchild):
+    @classmethod
+    def setUpTestData(cls):
+        from plugins.installed.catalog.models import Category, Product, ProductVariant
+
+        children = Category.objects.create(name='For children', slug='for-children')
+        family = Category.objects.create(name='For the whole family', slug='family')
+        cls.owl = Product.objects.create(
+            name='The Owl Lantern',
+            slug='owl-lantern',
+            sku='OWL-1',
+            price=Money(Decimal('14.50'), 'USD'),
+            status='active',
+            category=children,
+        )
+        ProductVariant.objects.create(
+            product=cls.owl, name='Paperback', sku='978-1-TEST-PB', price=Money('14.50', 'USD')
+        )
+        ProductVariant.objects.create(
+            product=cls.owl, name='Hardback', sku='978-1-TEST-HB', price=Money('31.25', 'USD')
+        )
+        Product.objects.create(
+            name='A Year of Jam',
+            slug='year-of-jam',
+            sku='JAM-1',
+            price=Money(Decimal('21.00'), 'USD'),
+            status='active',
+            category=family,
+        )
+        Product.objects.create(
+            name='Loose Leaf',
+            slug='loose-leaf',
+            sku='LEAF-1',
+            price=Money(Decimal('5.00'), 'USD'),
+            status='active',
+        )
+        Product.objects.create(
+            name='Not Yet',
+            slug='not-yet',
+            sku='DRAFT-1',
+            price=Money(Decimal('99.00'), 'USD'),
+            status='draft',
+            category=family,
+        )
+
+    def test_books_sit_under_their_own_categories(self):
+        body = self._get('/products/')
+        page = body.split('id="page-books"', 1)[1].split('class="cartouche suggest"', 1)[0]
+        groups = page.split('<div class="shelf-group">')[1:]
+        self.assertEqual(len(groups), 3, 'two categories and the uncategorised shelf')
+        by_heading = {re.search(r'shelf-head">(?:<a[^>]*>)?([^<]+)', g).group(1): g for g in groups}
+        self.assertIn('/products/owl-lantern/', by_heading['For children'])
+        self.assertIn('/products/year-of-jam/', by_heading['For the whole family'])
+        self.assertIn('/products/loose-leaf/', by_heading['More books'])
+        self.assertNotIn('year-of-jam', by_heading['For children'])
+        self.assertIn('21.00', by_heading['For the whole family'])
+        # Each book once, and a draft never.
+        self.assertEqual(page.count('class="shelf-item"'), 3)
+        self.assertNotIn('not-yet', body)
+        self.assertNoDesignContent(body)
+
+    def test_a_category_filter_shows_one_shelf_of_what_matched(self):
+        body = self._get('/products/?category=family')
+        page = body.split('id="page-books"', 1)[1].split('class="cartouche suggest"', 1)[0]
+        self.assertEqual(page.count('<div class="shelf-group">'), 1)
+        self.assertIn('year-of-jam', page)
+        self.assertNotIn('owl-lantern', page)
+
+    def test_a_search_with_no_match_says_so_and_lists_nothing(self):
+        body = self._get('/products/?q=zzzzqqqq')
+        page = body.split('id="page-books"', 1)[1].split('class="cartouche suggest"', 1)[0]
+        self.assertNotIn('class="shelf-item"', page)
+        self.assertIn('No book matches', page)
+
+    def test_the_suggestion_form_is_the_stores_contact_form(self):
+        body = self._get('/products/')
+        form = re.search(r'<form[^>]*id="suggest-books".*?</form>', body, re.S).group(0)
+        self.assertIn('action="/contact/"', form)
+        self.assertIn('name="message"', form)
+        self.assertIn('name="email"', form)
+        self.assertIn('csrfmiddlewaretoken', form)
+
+    def test_the_product_page_answers_and_can_be_bought_from(self):
+        body = self._get('/products/owl-lantern/')
+        self.assertIn('The Owl Lantern', body)
+        self.assertIn('class="site-head"', body)
+        self.assertIn('/cart/add/', body)
+        self.assertEqual(len(re.findall(r'<title\b', body)), 1)
+
+    def test_category_search_and_basket_pages_answer(self):
+        for path in ('/category/for-children/', '/search/?q=owl', '/cart/', '/categories/'):
+            with self.subTest(path=path):
+                response = self.client.get(path, follow=True)
+                self.assertEqual(response.status_code, 200)
+                self.assertIn('class="site-head"', response.content.decode())
+
+    def test_the_trade_page_lists_the_catalogues_editions(self):
+        # CMS loads the section bundle of the theme the process started with;
+        # here that is another theme, so load Dawnchild's and put the registry
+        # back as it was afterwards.
+        import importlib
+
+        from plugins.installed.cms.models import Page, PageSection
+        from themes.sections import section_registry
+
+        previous = dict(section_registry._by_id)
+        self.addCleanup(setattr, section_registry, '_by_id', previous)
+        importlib.reload(importlib.import_module('themes.library.dawnchild.sections'))
+        self.assertIn('stock_list', section_registry)
+        self.assertIn('hero', section_registry)
+
+        page = Page.objects.create(
+            title='Books for your shop',
+            slug='trade',
+            excerpt='Order direct from the imprint.',
+            body='<p>Our terms, in our own words.</p>',
+            state='published',
+        )
+        PageSection.objects.create(
+            page=page, section_id='stock_list', settings={'heading': 'Stock list'}, sort_order=0
+        )
+        body = self._get('/p/trade/')
+        self.assertIn('id="page-trade"', body)
+        self.assertIn('Books for your shop', body)
+        self.assertIn('Our terms, in our own words.', body)
+        stock = body.split('id="trade-stock"', 1)[1].split('</table>', 1)[0]
+        # One row per edition, with its own code and its own price.
+        self.assertIn('978-1-TEST-PB', stock)
+        self.assertIn('978-1-TEST-HB', stock)
+        self.assertIn('31.25', stock)
+        self.assertIn('rowspan="2"', stock)
+        # A book sold in one form lists once, under its own SKU.
+        self.assertIn('JAM-1', stock)
+        self.assertNotIn('DRAFT-1', stock)
+        self.assertNoDesignContent(body)
+
+
+class DawnchildContentTests(_Dawnchild):
+    def test_the_header_and_footer_are_the_cms_menus(self):
+        from plugins.installed.cms.models import Menu, MenuItem
+
+        header = Menu.objects.create(key='header', label='Header')
+        books = MenuItem.objects.create(menu=header, label='Our shelf', url='/products/', order=0)
+        MenuItem.objects.create(
+            menu=header, parent=books, label='Picture books', url='/category/picture/', order=0
+        )
+        MenuItem.objects.create(menu=header, label='Letters home', url='/journal/', order=1)
+        footer = Menu.objects.create(key='footer', label='Footer')
+        help_group = MenuItem.objects.create(menu=footer, label='Help desk', url='', order=0)
+        MenuItem.objects.create(
+            menu=footer, parent=help_group, label='Postage', url='/shipping/', order=0
+        )
+        MenuItem.objects.create(menu=footer, label='Press room', url='/p/press/', order=1)
+        cache.clear()
+
+        body = self._get('/about/')
+        nav = body.split('<nav class="nav"', 1)[1].split('</nav>', 1)[0]
+        self.assertIn('Our shelf', nav)
+        self.assertIn('Letters home', nav)
+        # An entry with children gets the design's titles panel.
+        self.assertIn('nav-item has-menu', nav)
+        self.assertIn('href="/category/picture/"', nav)
+        # The theme's own fallback links are gone once the store has a menu.
+        self.assertNotIn('>Trade<', nav)
+        self.assertNotIn('>Authors<', nav)
+
+        foot = body.split('<footer class="site-foot"', 1)[1].split('</footer>', 1)[0]
+        self.assertIn('Help desk', foot)
+        self.assertIn('href="/shipping/"', foot)
+        self.assertIn('Press room', foot)
+        self.assertNotIn('footer-explore', foot)
+        self.assertEqual(foot.count('<ul>'), foot.count('</ul>'))
+        self.assertEqual(foot.count('<div'), foot.count('</div>'))
+
+    def test_without_menus_the_fallback_links_all_answer(self):
+        body = self._get('/about/')
+        nav = body.split('<nav class="nav"', 1)[1].split('</nav>', 1)[0]
+        foot = body.split('<footer class="site-foot"', 1)[1].split('</footer>', 1)[0]
+        links = set(re.findall(r'href="(/[^"#]*)"', nav + foot))
+        self.assertIn('/products/', links)
+        self.assertIn('/journal/', links)
+        for href in sorted(links - {'/p/trade/', '/account/', '/account/orders/'}):
+            with self.subTest(href=href):
+                self.assertEqual(self.client.get(href, follow=True).status_code, 200)
+        # Account links send a visitor to sign in rather than failing.
+        self.assertIn(self.client.get('/account/').status_code, (301, 302))
+
+    def test_about_is_the_designs_page_on_cream_paper(self):
+        body = self._get('/about/')
+        self.assertIn('<body class="reading">', body)
+        self.assertIn('id="page-about"', body)
+        self.assertIn('Some books disappear. We go and fetch them back.', body)
+        self.assertEqual(len(re.findall(r'<title\b', body)), 1)
+        self.assertNoDesignContent(body)
+
+    def test_the_notes_are_the_stores_journal_posts(self):
+        from plugins.installed.cms.models import Page
+
+        Page.objects.create(
+            slug='how-the-owl-came-back',
+            title='How the owl came back',
+            excerpt='A typescript in a biscuit tin.',
+            body='<p>It began in an attic.</p><img src="/media/owl-plate.jpg">',
+            state='published',
+            metadata={'category': 'journal'},
+        )
+        Page.objects.create(
+            slug='unwritten',
+            title='Unwritten',
+            body='<p>Later.</p>',
+            state='draft',
+            metadata={'category': 'journal'},
+        )
+        body = self._get('/journal/')
+        self.assertIn('id="page-notes"', body)
+        self.assertEqual(body.count('<article class="nn-row'), 1)
+        self.assertIn('href="/journal/how-the-owl-came-back/"', body)
+        self.assertIn('A typescript in a biscuit tin.', body)
+        self.assertIn('owl-plate.jpg', body)
+        self.assertNotIn('Unwritten', body)
+        self.assertNoDesignContent(body)
+        post = self._get('/journal/how-the-owl-came-back/')
+        self.assertIn('It began in an attic.', post)
+
+    def test_an_empty_journal_shows_no_invented_note(self):
+        body = self._get('/journal/')
+        self.assertNotIn('<article class="nn-row', body)
+        self.assertIn('The first notes are being written.', body)
+
+    def test_the_authors_page_lists_the_book_apps_authors(self):
+        from plugins.registry import app_registry
+
+        if not app_registry.is_active('book_product'):
+            self.skipTest('the book app is off in this process')
+        body = self._get('/authors/')
+        self.assertIn('id="page-authors"', body)
+        self.assertIn('class="aa-hook"', body)
+        self.assertNotIn('<article class="aa-row', body)  # no authors in this store
+        self.assertNoDesignContent(body)
+
+    def test_shipping_returns_and_contact_promise_nothing_of_their_own(self):
+        for path in ('/shipping/', '/returns/', '/contact/'):
+            with self.subTest(path=path):
+                body = self._get(path)
+                self.assertNoDesignContent(body)
+                main = body.split('<main id="main"', 1)[1].split('</main>', 1)[0]
+                self.assertIsNone(re.search(r'[$£€]\s*\d', main), 'a price in house copy')
+                self.assertIsNone(re.search(r'\b\d+\s+(business |working )?days?\b', main))
+
+    def test_a_plain_cms_page_renders_its_body(self):
+        from plugins.installed.cms.models import Page
+
+        Page.objects.create(
+            title='Colophon',
+            slug='colophon',
+            body='<p>How the books are made.</p>',
+            state='published',
+        )
+        body = self._get('/p/colophon/')
+        self.assertIn('<body class="reading">', body)
+        self.assertIn('How the books are made.', body)
+
+    def test_the_account_pages_answer_for_a_signed_in_shopper(self):
+        shopper = get_user_model().objects.create_user(
+            username='dc-shopper', email='dc.shopper@example.com', password='x'
+        )
+        client = Client()
+        client.force_login(shopper)
+        for path in ('/account/', '/account/orders/', '/account/addresses/', '/account/profile/'):
+            with self.subTest(path=path):
+                body = self._get(path, client)
+                self.assertIn('class="site-head"', body)
+                self.assertIn('href="/auth/logout/"', body)
+        # The menu names links, never the shopper: a cached page carries nothing personal.
+        head = self._get('/about/', client).split('class="site-head"', 1)[1].split('</header>')[0]
+        self.assertNotIn('dc.shopper@example.com', head)
+
+    def test_the_checkout_answers_under_this_theme(self):
+        response = self.client.get('/checkout/', follow=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('class="site-head"', response.content.decode())

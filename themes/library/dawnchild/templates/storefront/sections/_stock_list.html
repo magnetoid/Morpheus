@@ -1,0 +1,29 @@
+{% load morph %}{% load i18n %}{% load seo %}
+{% comment %}The trade page's stock list (design: "Dawnchild Trade - soft"): one
+block of rows per book, a row per edition. Every cell is the catalogue's: the
+edition's name, its SKU (an ISBN where the merchant entered one) and its price.
+The design's "Extent" and "Status" columns are left out: the catalogue holds
+neither a page count nor a publication state for an edition.{% endcomment %}
+<div id="trade-stock">
+  {% if settings.heading %}<h2 class="eyebrow" style="margin-bottom:12px">{{ settings.heading }}</h2>{% endif %}
+  {% if settings.intro %}<p class="td-h">{{ settings.intro }}</p>{% endif %}
+  {% if stock %}
+  <div class="table-wrap">
+    <table class="spec stock">
+      <thead><tr><th>{% translate "Title" %}</th><th>{% translate "Format" %}</th><th>{% translate "ISBN / SKU" %}</th><th>{% translate "Price" %}</th></tr></thead>
+      <tbody>
+        {% for book in stock %}{% for ed in book.editions %}
+        <tr class="{% if forloop.first %}td-first{% else %}td-more{% endif %}{% if forloop.last %} td-last{% endif %}">
+          {% if forloop.first %}<td class="td-book" rowspan="{{ book.editions|length }}"><div class="td-bk"><a href="/products/{{ book.slug }}/" tabindex="-1" aria-hidden="true">{% if book.image %}{% seo_responsive_image book.image alt="" widths="120,240" sizes="56px" %}{% else %}<span class="cover-draft"><span class="draft-title">{{ book.name|truncatechars:24 }}</span></span>{% endif %}</a><div><a class="td-name" href="/products/{{ book.slug }}/">{{ book.name }}</a>{% if book.author %}<span class="td-by">{{ book.author }}</span>{% endif %}</div></div></td>{% endif %}
+          <td class="c-format">{{ ed.name }}</td>
+          <td class="isbn c-isbn">{{ ed.sku|default:"—" }}</td>
+          <td class="num c-rrp">{% if ed.price %}{{ ed.price|money }}{% else %}—{% endif %}</td>
+        </tr>
+        {% endfor %}{% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="quiet">{% translate "No book is on sale yet." %}</p>
+  {% endif %}
+</div>

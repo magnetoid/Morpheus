@@ -13,7 +13,7 @@ from django.test import override_settings
 
 from plugins.installed.digital_products.tests.test_library import LibraryTestCase
 
-THEMES = ['dot_books', 'supernatural_shop', 'irving_survival']
+THEMES = ['dot_books', 'supernatural_shop', 'irving_survival', 'dawnchild']
 if apps.is_installed('plugins.installed.booking_marketplace'):
     THEMES += ['montenegro', 'croatia']
 
