@@ -1,0 +1,65 @@
+{% extends "storefront/base.html" %}
+{% load morph %}{% load i18n %}
+{% comment %}
+The notes, after the "Dawnchild Notes - soft" design: a headline, then one row
+per note, picture and text changing sides. The notes are the store's journal
+posts (CMS → Journal): a post's first picture, its title and its excerpt. The
+design's pull quote and caption are not fields a post has, so a row leaves them
+out. The intro under the headline is the merchant's (CMS → Blocks, key
+journal_intro).
+{% endcomment %}
+
+{% block body_class %}reading{% endblock %}
+
+{% block content %}
+{% plugin_enabled "newsletter" as notes_letter_on %}
+<section class="page is-active" id="page-notes" aria-labelledby="notes-h">
+  <div class="nn">
+    <div class="nn-top">
+      <p class="nn-kicker">{% translate "Notes on the books" %}</p>
+      <h1 class="nn-hook" id="notes-h">{% translate "Behind every book here is a story as good as the one inside it." %}</h1>
+      {% if page_intro %}<p class="nn-lead">{{ page_intro|linebreaksbr }}</p>{% endif %}
+    </div>
+    {% for entry in entries %}
+    <article class="nn-row{% cycle '' ' nn-rev' %}{% if not entry.image %} nn-row--plain{% endif %}">
+      {% if entry.image %}<a class="nn-pic" href="/journal/{{ entry.slug }}/" tabindex="-1" aria-hidden="true"><img src="{{ entry.image }}" alt="" loading="lazy" decoding="async"></a>{% endif %}
+      <div>
+        <p class="nn-kicker">{% blocktranslate with n=forloop.counter0|add:page_obj.start_index %}Note {{ n }}{% endblocktranslate %}{% if entry.published_at %} · <time datetime="{{ entry.published_at|date:'c' }}">{{ entry.date_label }}</time>{% endif %}</p>
+        <h2 class="nn-title"><a href="/journal/{{ entry.slug }}/">{{ entry.title }}</a></h2>
+        {% if entry.excerpt %}<p class="nn-text">{{ entry.excerpt }}</p>{% endif %}
+        <p class="nn-go"><a class="btn" href="/journal/{{ entry.slug }}/" aria-label="{% blocktranslate with title=entry.title %}Read the note: {{ title }}{% endblocktranslate %}">{% translate "Read the note" %}</a></p>
+      </div>
+    </article>
+    {% empty %}
+    <p class="nn-lead" style="margin-top:32px">{% translate "The first notes are being written." %} <a href="/products/">{% translate "See the books" %}</a></p>
+    {% endfor %}
+    {% if page_obj.has_other_pages %}
+    <nav class="dc-pager" style="margin-top:56px" aria-label="{% translate 'Pages of notes' %}">
+      {% if page_obj.has_previous %}<a class="btn ghost" href="{% page_href page_obj.previous_page_number %}" rel="prev">{% translate "Newer" %}</a>{% else %}<span></span>{% endif %}
+      <span class="quiet">{% blocktranslate with n=page_obj.number total=page_obj.paginator.num_pages %}Page {{ n }} of {{ total }}{% endblocktranslate %}</span>
+      {% if page_obj.has_next %}<a class="btn ghost" href="{% page_href page_obj.next_page_number %}" rel="next">{% translate "Older" %}</a>{% else %}<span></span>{% endif %}
+    </nav>
+    {% endif %}
+    <div class="nn-next">
+      <div>
+        <p class="nn-kicker">{% translate "The books themselves" %}</p>
+        <h2 class="nn-title">{% translate "Every note belongs to a book" %}</h2>
+        <p class="nn-text">{% translate "Each of our editions carries a short note on who made it, how, and why it nearly vanished." %}</p>
+        <p class="nn-go"><a class="btn ghost" href="/products/">{% translate "See the books" %}</a></p>
+      </div>
+      {% if notes_letter_on %}
+      <div>
+        <p class="nn-text">{% translate "Books, pictures and first word of new editions." %}</p>
+        <form class="signup-form" method="post" action="/newsletter/subscribe/" data-dc-signup data-fail="{% translate 'That did not work. Please check the address.' %}">
+          {% csrf_token %}
+          <input type="hidden" name="source" value="notes">
+          <div class="signup"><input type="email" name="email" placeholder="you@example.com" autocomplete="email" required maxlength="254" aria-label="{% translate 'Email address' %}"><button class="btn ghost" type="submit">{% translate "Receive the letter" %}</button></div>
+          <p class="quiet" style="font-size:.9rem;margin-top:8px" data-signup-msg role="status"></p>
+          {% bot_check "newsletter" %}
+        </form>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,24 @@
+{% extends "storefront/base.html" %}
+{% load morph %}{% load seo %}{% load i18n %}
+{% comment %}
+Returns, when the store has not written its own page (a CMS page with the slug
+"returns" replaces this one). A return window or a refund term is the
+merchant's promise to make, so this page states none: it says where a return is
+started and who to ask.
+{% endcomment %}
+
+{% block body_class %}reading{% endblock %}
+
+
+{% block content %}
+<section class="page is-active" id="page-returns" aria-labelledby="returns-h">
+  <div class="title-block">
+    <p class="eyebrow">{% translate "If a book is not right" %}</p>
+    <h1 id="returns-h">{% translate "Returns" %}</h1>
+    <p class="prose lead">{% translate "If a book arrived damaged, misprinted or simply was not what you hoped, tell us and we will put it right." %}</p>
+  </div>
+  <div class="prose">
+    <p>{% blocktranslate trimmed %}With an account, open <a href="/account/orders/">your orders</a>, choose the order and ask for a return from there. Without one, <a href="/contact/">write to us</a> with your order number.{% endblocktranslate %}</p>
+  </div>
+</section>
+{% endblock %}

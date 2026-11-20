@@ -1,0 +1,39 @@
+{% extends "storefront/base.html" %}
+{% load morph %}{% load seo %}{% load i18n %}
+{% comment %}
+About, after the "Dawnchild About - soft" design. The words are the imprint's
+own account of itself. The design's paragraph on "our first four books" and its
+"next" line name particular titles, which is the catalogue's to say, so the page
+points to the shelf instead. The design's drawing beside the opening is not
+shipped with the theme; the emblem note shows only when the store has a logo.
+{% endcomment %}
+
+{% block body_class %}reading{% endblock %}
+
+{% block content %}
+{% plugin_enabled "book_product" as about_books_on %}{% plugin_enabled "newsletter" as about_letter_on %}{% plugin_enabled "cms" as about_cms_on %}
+<section class="page is-active" id="page-about" aria-labelledby="about-h">
+<div class="ab ab-b">
+  <div class="ab-b-top ab-b-top--plain">
+    <div>
+      <p class="ab-kicker">{% blocktranslate with name=STORE_NAME|default:"Dawnchild Books" %}About {{ name }}{% endblocktranslate %}</p>
+      <h1 class="ab-hook" id="about-h">{% translate "Some books disappear. We go and fetch them back." %}</h1>
+      <p class="ab-lead">{% if STORE_DESCRIPTION %}{{ STORE_DESCRIPTION }}{% else %}{% translate "Illustrated books for children and the whole family that have been out of print for too long, returned with their pictures where they belong." %}{% endif %}</p>
+      <p class="ab-body">{% translate "Dawnchild began with a family connection. Adam Irving is bringing the books of his great-grandmother, Beryl Irving, back into print for families to read and use again. Her 1926 fairy adventure, The Dawnchild, gave the imprint its name." %}</p>
+      <p class="ab-go"><a class="btn" href="/products/">{% translate "See the books" %}</a>{% if about_books_on %} <a class="btn ghost" href="/authors/">{% translate "Meet the authors" %}</a>{% endif %}</p>
+    </div>
+  </div>
+  <div class="ab-cols">
+    <div><h3 class="ab-kicker">{% translate "What we choose" %}</h3><p>{% translate "We publish books from the great age of illustration, roughly the 1870s to the 1940s, made for children or for family life at home. We look for a story a child today will follow to the end, or a household book a family would still keep on the kitchen table, with pictures that were made for it. We set the text from an early printing, usually the first." %}</p></div>
+    <div><h3 class="ab-kicker">{% translate "How we make them" %}</h3><p>{% translate "The text is set afresh in clean type, never photographed from an old copy. Every plate and drawing is kept and placed where the first printing has it. Cream paper and a generous page, so the books sit well together on a shelf. Each book carries a short note on who wrote it, who drew it and why it disappeared. Each copy is printed to order." %}</p></div>
+    <div><h3 class="ab-kicker">{% translate "Who we are" %}</h3><p>{% translate "We are a small independent imprint." %}{% if theme_config.imprint_line %} {{ theme_config.imprint_line }}{% endif %} {% if about_cms_on %}{% blocktranslate trimmed %}Booksellers and librarians will find what they need on the <a href="/p/trade/">trade page</a>.{% endblocktranslate %}{% endif %} {% blocktranslate trimmed %}We answer our own post: <a href="/contact/">write to us</a>.{% endblocktranslate %}</p></div>
+  </div>
+  <div class="ab-first">
+    <h3 class="ab-kicker">{% translate "Our books" %}</h3>
+    <p>{% blocktranslate trimmed %}Every book we have brought back is on <a href="/products/">the shelf</a>, with its price and its formats.{% endblocktranslate %}{% if about_cms_on %} {% blocktranslate trimmed %}The story behind each one is in <a href="/journal/">the notes</a>.{% endblocktranslate %}{% endif %}</p>
+    {% if about_letter_on %}<p class="ab-next">{% translate "For first word when a book is ready, join the letter at the foot of this page." %}</p>{% endif %}
+  </div>
+  {% if STORE_LOGO_URL %}<p class="ab-emblem-note"><img src="{{ STORE_LOGO_URL }}" width="40" height="80" alt="">{% translate "Our emblem is Beryl Irving’s own drawing from the title page of The Dawnchild: a child on tiptoe, hair blown back, one hand reaching ahead. It stands on the spine of every book we publish." %}</p>{% endif %}
+</div>
+</section>
+{% endblock %}

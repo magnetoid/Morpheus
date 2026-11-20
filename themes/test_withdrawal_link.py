@@ -14,7 +14,7 @@ from plugins.installed.orders.models import Order
 from plugins.testing import set_app_settings
 from themes.registry import theme_registry
 
-THEMES = ['dot_books', 'supernatural_shop', 'irving_survival']
+THEMES = ['dot_books', 'supernatural_shop', 'irving_survival', 'dawnchild']
 if apps.is_installed('plugins.installed.booking_marketplace'):
     THEMES += ['montenegro', 'croatia']
 

@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.183.0 — 2026-11-20
+
+**A storefront theme for Dawnchild Books**
+
+- New theme, Dawnchild (dawnchild), after the owner's six page designs for Dawnchild Books: Libre Caslon type, parchment and deep maroon, the shelves set out as cards with the book's cover, author, hook, price and an Add to basket button. Home, Books, Authors, Notes, About and Trade each follow their design.
+- Everything a shopper reads about a book comes from the store: books, prices and covers from the catalogue, authors from the book app, notes from the journal, and the About and Trade pages from the CMS. The header and footer read the store's menus; until the store builds them, they show the design's links.
+- A store switches to it with MORPHEUS_ACTIVE_THEME=dawnchild or the theme picker; no other store changes.
+
 ## v0.182.0 — 2026-11-20
 
 **Every staff action names Linda's tool, and CI checks it**

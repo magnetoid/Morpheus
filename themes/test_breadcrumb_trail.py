@@ -191,3 +191,7 @@ class SupernaturalTrailTests(_CatalogueTrailTests, TestCase):
 
 class IrvingTrailTests(_CatalogueTrailTests, TestCase):
     theme = 'irving_survival'
+
+
+class DawnchildTrailTests(_CatalogueTrailTests, TestCase):
+    theme = 'dawnchild'

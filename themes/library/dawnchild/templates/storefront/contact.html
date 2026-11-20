@@ -1,0 +1,32 @@
+{% extends "storefront/base.html" %}
+{% load morph %}{% load seo %}{% load i18n %}
+
+{% block body_class %}reading{% endblock %}
+
+
+{% block content %}
+<section class="page is-active" id="page-contact" aria-labelledby="contact-h">
+  <div class="title-block">
+    <p class="eyebrow">{% translate "Write to us" %}</p>
+    <h1 id="contact-h">{% translate "Contact" %}</h1>
+    <p class="prose lead">{% translate "A question about a book or an order, a book we should bring back, or a memory of one of these books: we read every message." %}</p>
+  </div>
+  {% if sent %}
+  <div class="cartouche" role="status">
+    <p>{% translate "Thank you. Your message has reached us and we will reply by email." %}</p>
+  </div>
+  {% else %}
+  <form class="memory-form" method="post" action="/contact/" style="max-width:62ch">
+    {% csrf_token %}
+    <div class="memory-row">
+      <div><label for="contact-name">{% translate "Your name" %}</label><input id="contact-name" type="text" name="name" autocomplete="name" required maxlength="120"></div>
+      <div><label for="contact-email">{% translate "Your email" %}</label><input id="contact-email" type="email" name="email" autocomplete="email" required maxlength="254"></div>
+    </div>
+    <div><label for="contact-message">{% translate "Your message" %}</label><textarea id="contact-message" name="message" required rows="6"></textarea></div>
+    {% if bot_check_error %}<p role="alert">{{ bot_check_error }}</p>{% endif %}
+    {% bot_check "contact" %}
+    <div><button type="submit" class="btn">{% translate "Send" %}</button></div>
+  </form>
+  {% endif %}
+</section>
+{% endblock %}

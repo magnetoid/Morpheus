@@ -1,0 +1,12 @@
+{% comment %}A CMS menu in the Dawnchild footer's shape: an entry with children is
+a headed group, and entries without children share one unheaded list. (The
+header menu is rendered by base.html from `header_menu`, not through this.){% endcomment %}
+{% for item in menu.items %}{% if item.children %}
+<div class="foot-group" role="group" aria-labelledby="menu-{{ menu.key }}-{{ forloop.counter }}">
+  <h2 id="menu-{{ menu.key }}-{{ forloop.counter }}">{% if item.url %}<a href="{{ item.url }}">{{ item.label }}</a>{% else %}{{ item.label }}{% endif %}</h2>
+  <ul>
+    {% for c in item.children %}<li><a href="{{ c.url }}"{% if c.target == '_blank' %} target="_blank" rel="noopener"{% endif %}>{{ c.label }}</a></li>{% endfor %}
+  </ul>
+</div>
+{% endif %}{% endfor %}
+{% for item in menu.items %}{% if not item.children %}{% ifchanged item.children %}<div class="foot-group" role="group" aria-label="{{ menu.label }}"><ul>{% endifchanged %}{% endif %}{% endfor %}{% for item in menu.items %}{% if not item.children %}<li><a href="{{ item.url }}"{% if item.target == '_blank' %} target="_blank" rel="noopener"{% endif %}>{{ item.label }}</a></li>{% endif %}{% endfor %}{% for item in menu.items %}{% if not item.children %}{% ifchanged item.children %}</ul></div>{% endifchanged %}{% endif %}{% endfor %}

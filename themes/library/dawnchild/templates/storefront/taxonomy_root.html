@@ -1,0 +1,36 @@
+{% extends "storefront/base.html" %}
+{% load i18n %}
+{% comment %}
+The book app's index pages (/authors/, /genres/, /topics/, /publishers/,
+/series/, /imprints/), after the "Dawnchild Authors - soft" design: a kicker and
+a headline, then one row per name, picture and text changing sides.
+
+The design writes a paragraph about each of its two authors. The index is given
+a name, a picture and a count for each term and nothing else, so a row says only
+that; the author's own page carries the rest. The headline is the page's own
+title (Books → Taxonomies → the root page), not a line about particular people.
+{% endcomment %}
+
+{% block content %}
+<section class="page is-active" id="page-authors" aria-labelledby="authors-h">
+  <div class="aa">
+    <div class="aa-top">
+      <p class="aa-kicker">{% if root_label == 'Authors' %}{% translate "The people behind the books" %}{% else %}<a href="/products/">{% translate "The shelf" %}</a> · {{ root_label }}{% endif %}</p>
+      <h1 class="aa-hook" id="authors-h">{{ root.meta_title|default:root_label }}</h1>
+      {% if root.description %}<div class="aa-text" style="margin-top:14px">{{ root.description|linebreaks }}</div>{% endif %}
+    </div>
+    {% for t in terms %}
+    <article class="aa-row{% cycle '' ' aa-rev' %}{% if not t.image %} aa-row--plain{% endif %}">
+      {% if t.image %}<a class="aa-pic aa-photo" href="{{ t.url }}" tabindex="-1" aria-hidden="true"><img class="photo" src="{{ t.image.url }}" alt="" loading="lazy" decoding="async"></a>{% endif %}
+      <div>
+        <p class="aa-kicker">{% blocktranslate count counter=t.count %}{{ counter }} book{% plural %}{{ counter }} books{% endblocktranslate %}</p>
+        <h2 class="aa-name"><a href="{{ t.url }}">{{ t.name }}</a></h2>
+        <p class="aa-go"><a class="btn" href="{{ t.url }}">{% translate "The books" %}<span class="sr-only">: {{ t.name }}</span></a></p>
+      </div>
+    </article>
+    {% empty %}
+    <p class="aa-next">{% translate "Nothing is listed here yet." %} <a href="/products/">{% translate "See all the books" %}</a></p>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,19 @@
+<section style="padding: 4rem 0;">
+  <div class="wrap" style="max-width: 720px;">
+    {% if settings.heading %}
+    <h2 class="display display-l" style="margin: 0 0 2rem;">{{ settings.heading }}<span class="text-accent">.</span></h2>
+    {% endif %}
+    {% if settings.items %}
+    <div style="display: grid; gap: 1rem;">
+      {% for item in settings.items %}
+      <details style="border: 1px solid var(--rule); border-radius: 6px; padding: 1.1rem 1.5rem;">
+        <summary style="cursor: pointer; font-family: var(--serif); font-size: 1.1rem; line-height: 1.4;">
+          {{ item.q }}
+        </summary>
+        <div style="margin-top: .85rem; color: var(--ink-2); line-height: 1.6;">{{ item.a|safe }}</div>
+      </details>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+</section>

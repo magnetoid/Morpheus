@@ -1,0 +1,260 @@
+/* Dawnchild — the shop pages.
+   The six designed pages are styled by dawnchild.css alone. The pages the
+   design does not draw (product, cart, checkout, account, search, legal) are
+   the shared storefront templates, which style themselves with the token names
+   below. This file gives those tokens the Dawnchild palette and type, and the
+   handful of utility classes those templates expect. It loads BEFORE
+   dawnchild.css, so the design wins wherever both speak. */
+
+:root {
+  --surface: var(--parchment-light);
+  --surface2: var(--parchment);
+  --surface-2: var(--parchment);
+  --ink2: var(--quiet);
+  --ink-2: var(--quiet);
+  --muted: var(--quiet);
+  --line: rgba(11, 14, 6, .32);
+  --line-strong: var(--ink);
+  --accent: var(--russet);
+  --accentText: var(--russet-deep);
+  --accent-ink: var(--russet-deep);
+  --ok: #2f5a1e;
+  --inv: var(--parchment-light);
+  --paper: var(--panel-light);
+  --paper-2: var(--parchment);
+  --sans: var(--text);
+  --serif: var(--display);
+  --mono: var(--text);
+  --r-sm: 0px;
+  --r-md: 0px;
+  --r-lg: 0px;
+  --max: 1200px;
+  --gutter: clamp(16px, 4vw, 40px);
+  --pdp-hero-offset: 150px;
+  --motion-fast: 140ms;
+  --motion-med: 240ms;
+  --motion-slow: 420ms;
+  --ease-out: cubic-bezier(.2, .7, .2, 1);
+  --spring: cubic-bezier(.2, .7, .2, 1);
+  --head-h: 64px;
+}
+
+/* Cream paper for reading pages: the design puts the class on <html> as well;
+   the theme sets it on <body> only, so the root follows it here. */
+html:has(body.reading) { --bg: #efe6cf; --panel-light: #f7f1e2; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+
+/* The page column. The designed pages bring their own .page section; a shop
+   page gets the same top spacing and the same quiet rhythm between blocks. */
+#main > section, #main > article, #main > div { padding-block: 40px 0; }
+#main > section.page { padding-block: 40px 0; }
+#main section section { padding-block: 0; }
+#main .wrap { padding-inline: 0; max-width: none; }
+.wrap-narrow { max-width: 760px; margin-inline: auto; }
+section.tight { padding-block: 24px 0; }
+.center { text-align: center; }
+.stack-3 > * + * { margin-top: .75rem; }
+.stack-6 > * + * { margin-top: 1.5rem; }
+.tabular-nums { font-variant-numeric: tabular-nums; }
+
+/* Type the shared templates ask for. */
+.display { font-family: var(--display); font-weight: 400; line-height: 1.1; margin: 0; text-wrap: balance; }
+.display-xl { font-size: clamp(2.2rem, 5vw, 3.6rem); }
+.display-l { font-size: clamp(2rem, 4.6vw, 3.3rem); }
+.display-m { font-size: clamp(1.5rem, 2.8vw, 2.1rem); }
+.display-s { font-size: 1.25rem; }
+.text-accent { color: inherit; }
+.lede { font-size: 1.15rem; line-height: 1.5; color: var(--ink); max-width: 62ch; margin: 0; }
+.meta, .text-meta { font-size: .92rem; color: var(--quiet); }
+.text-xs { font-size: .82rem; }
+.label { font-size: .74rem; letter-spacing: .16em; text-transform: uppercase; color: var(--quiet); margin: 0; }
+.breadcrumb { font-size: .92rem; color: var(--quiet); }
+.breadcrumb a { color: inherit; }
+
+/* Buttons: the design has one button and a ghost. The shared templates name
+   theirs differently, so those names map onto the same two. */
+.btn-primary { background: var(--russet); color: var(--btn-fg); border-color: var(--russet-deep); }
+.btn-primary:hover { background: var(--russet-deep); color: var(--btn-fg); }
+.btn-ghost, .btn-secondary { background: transparent; color: var(--ink); }
+.btn-ghost:hover, .btn-secondary:hover { background: var(--ink); color: var(--parchment-light); }
+.btn-sm { font-size: .92rem; padding: .5em .9em; }
+.btn-link { display: inline-flex; align-items: center; gap: .35rem; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+.btn[disabled], .btn:disabled { opacity: .55; cursor: not-allowed; }
+.btn.is-added, .btn.is-added:hover { background: var(--ok); border-color: var(--ok); color: var(--parchment-light); }
+button { font-family: inherit; }
+
+/* Form controls on the shop pages: parchment fields with an ink rule, as the
+   design's own signup and memory forms have them. */
+#main input[type=text], #main input[type=email], #main input[type=tel], #main input[type=password],
+#main input[type=number], #main input[type=search], #main input[type=url], #main input[type=date],
+#main select, #main textarea, .input {
+  font: inherit; color: var(--ink); background: var(--parchment-light);
+  border: 1px solid var(--ink); border-radius: 0; padding: .6em .8em; max-width: 100%;
+}
+#main textarea { min-height: 7.5em; resize: vertical; }
+#main label { font-size: .95rem; }
+
+.card, .tile, .card-padded { background: var(--panel-light); border: 1px solid var(--ink); }
+.card-padded, .tile { padding: clamp(18px, 3vw, 32px); }
+
+/* Product cards outside the designed shelves (search, categories, related). */
+.grid-books { display: grid; gap: 32px 20px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (min-width: 700px) { .grid-books { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 1041px) { .grid-books { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.book-rail-wrap { position: relative; }
+.grid-books--rail { display: flex; gap: 20px; overflow-x: auto; scroll-snap-type: x proximity; padding-bottom: 12px; }
+.grid-books--rail > * { flex: 0 0 auto; width: 62vw; max-width: 250px; scroll-snap-align: start; }
+.book-rail-nav { display: none; }
+.dc-card { display: grid; gap: 10px; align-content: start; min-width: 0; }
+.dc-card .shelf-item .meta strong { display: block; font-family: var(--display); font-weight: 400; font-size: 1.2rem; line-height: 1.2; color: var(--ink); }
+.dc-card .shelf-item .meta .shelf-price { color: var(--ink); margin-top: 4px; }
+.dc-card .shelf-item .meta .shelf-price span { display: inline; color: inherit; }
+.dc-card__add { margin: 0; }
+.dc-card__add .btn { width: 100%; justify-content: center; }
+.cover-wrap { position: relative; }
+.placeholder {
+  width: 100%; height: 100%; min-height: 6rem; display: grid; place-items: center; padding: 14px;
+  text-align: center; font-family: var(--display); font-size: 1.1rem; line-height: 1.15;
+  background: var(--parchment-light); color: var(--ink);
+}
+.ribbon { font-size: .7rem; letter-spacing: .16em; text-transform: uppercase; color: var(--russet-deep); }
+.empty-shelf { text-align: center; padding: 48px 16px; max-width: 38rem; margin: 0 auto; }
+.empty-shelf .glyph { display: none; }
+.empty-shelf p { margin: 0 auto 1.25rem; max-width: 30rem; }
+.empty-shelf .actions { justify-content: center; }
+
+/* Long-form text a merchant writes (CMS pages, journal posts, legal). */
+.journal-prose, .page-prose { max-width: 62ch; }
+.journal-prose > * + *, .page-prose > * + * { margin-top: .9em; }
+.journal-prose h2, .page-prose h2 { margin-top: 1.6em; }
+.journal-prose h3, .page-prose h3 { margin-top: 1.3em; font-size: 1.25rem; }
+.journal-prose ul, .journal-prose ol, .page-prose ul, .page-prose ol { padding-left: 1.3em; }
+.journal-prose img, .page-prose img { border: 1px solid var(--ink); }
+.journal-prose blockquote, .page-prose blockquote, blockquote.editorial {
+  margin: 1.2em 0; padding-left: 1.1em; border-left: 2px solid var(--russet); font-style: italic;
+}
+
+/* Header tools the design does not draw: search and the account menu sit as
+   two quiet words beside the basket. */
+.head-tools { display: inline-flex; align-items: center; gap: 14px; }
+.head-tool { font: inherit; font-size: .92rem; background: none; border: 0; padding: 4px 0; color: var(--ink); cursor: pointer; text-decoration: none; border-bottom: 1px solid transparent; }
+.head-tool:hover { border-bottom-color: var(--ink); color: var(--ink); }
+.acct { position: relative; display: inline-flex; }
+.acct__menu {
+  position: absolute; top: calc(100% + 13px); right: 0; z-index: 60; width: max-content; min-width: 14rem;
+  max-width: calc(100vw - 2rem); display: grid; gap: 2px; padding: 12px 16px 14px;
+  background: var(--parchment-light); border: 1px solid var(--ink); box-shadow: 0 14px 34px rgba(11, 14, 6, .28); font-size: 1rem;
+}
+.acct__menu[hidden] { display: none; }
+.acct__menu a { display: block; padding: 4px 0; color: var(--ink); text-decoration: none; }
+.acct__menu a:hover, .acct__menu a:focus-visible { text-decoration: underline; text-underline-offset: 3px; }
+.acct__label { margin: 8px 0 2px; font-size: .74rem; letter-spacing: .16em; text-transform: uppercase; color: var(--quiet); }
+.acct__sep { border: 0; border-top: 1px solid var(--ink); margin: 8px 0 4px; }
+a.basket-btn { text-decoration: none; }
+a.basket-btn:hover { color: var(--ink); background: var(--parchment-light); }
+.basket-btn .basket-count[hidden] { display: none; }
+@media (max-width: 1040px) {
+  .head-tools { gap: 10px; }
+  .head-tool { min-height: 44px; display: inline-flex; align-items: center; }
+}
+
+/* Notices after a redirect (added to basket, code applied). */
+.sf-toast { position: fixed; left: 50%; bottom: 1.25rem; transform: translateX(-50%); z-index: 1200; display: flex; flex-direction: column; gap: .5rem; width: min(92vw, 30rem); pointer-events: none; }
+.sf-toast:empty { display: none; }
+.sf-toast__msg { pointer-events: auto; background: var(--dark); color: var(--parchment-light); border: 1px solid var(--ink); padding: .8rem 1.1rem; font-size: .95rem; line-height: 1.4; transition: opacity .3s ease; }
+.sf-toast__msg--error, .sf-toast__msg--danger, .sf-toast__msg--warning { background: var(--russet-deep); }
+.fly-cart-clone { position: fixed; z-index: 1000; pointer-events: none; will-change: transform, opacity; }
+
+/* Search panel. */
+.quicksearch { position: fixed; inset: 0; z-index: 90; display: flex; align-items: flex-start; justify-content: center; padding: 4rem 1rem 1rem; }
+.quicksearch[hidden] { display: none; }
+.quicksearch__backdrop { position: absolute; inset: 0; width: 100%; height: 100%; background: rgba(11, 14, 6, .55); border: 0; padding: 0; cursor: pointer; }
+.quicksearch__panel { position: relative; z-index: 1; width: 100%; max-width: 600px; background: var(--parchment-light); border: 1px solid var(--ink); box-shadow: 0 14px 34px rgba(11, 14, 6, .28); overflow: hidden; }
+.quicksearch__head { display: flex; align-items: center; gap: .65rem; padding: 1rem 1.25rem; border-bottom: 1px solid var(--ink); }
+.quicksearch__icon { color: var(--quiet); flex-shrink: 0; }
+#quicksearch-input { flex: 1; min-width: 0; background: transparent; border: 0; outline: 0; font: inherit; font-size: 1.15rem; color: var(--ink); }
+.quicksearch__close { background: transparent; border: 0; padding: .25rem; cursor: pointer; color: var(--quiet); }
+.quicksearch__close:hover { color: var(--ink); }
+.quicksearch__results { max-height: 60vh; overflow-y: auto; }
+.quicksearch__hit { display: flex; gap: .75rem; align-items: center; padding: .75rem 1.25rem; border-bottom: 1px solid var(--line); color: inherit; text-decoration: none; }
+.quicksearch__hit:hover, .quicksearch__hit.is-focused { background: var(--parchment); color: var(--ink); }
+.quicksearch__hit-cover { width: 40px; height: 56px; flex-shrink: 0; object-fit: cover; border: 1px solid var(--ink); background: var(--parchment); }
+.quicksearch__hit-meta { flex: 1; min-width: 0; }
+.quicksearch__hit-name { font-family: var(--display); font-size: 1.05rem; line-height: 1.25; margin: 0 0 .15rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.quicksearch__hit-price { font-size: .85rem; color: var(--quiet); margin: 0; font-variant-numeric: tabular-nums; }
+.quicksearch__group-label { margin: 0; padding: .75rem 1.25rem .3rem; font-size: .74rem; letter-spacing: .16em; text-transform: uppercase; color: var(--quiet); }
+.quicksearch__group:last-child .quicksearch__hit--page { justify-content: space-between; padding-block: .6rem; }
+.quicksearch__hit--page .quicksearch__hit-name { flex: 1; min-width: 0; margin: 0; }
+.quicksearch__hit--page .quicksearch__hit-price { flex-shrink: 0; }
+.quicksearch__empty { padding: 2rem 1.25rem; text-align: center; color: var(--quiet); font-size: .95rem; }
+.quicksearch__foot { padding: .65rem 1.25rem; background: var(--parchment); border-top: 1px solid var(--ink); }
+.quicksearch__foot kbd { font: inherit; font-size: .8rem; padding: .1rem .35rem; background: var(--parchment-light); border: 1px solid var(--ink); }
+
+/* Lazy images fade in; scroll reveals for the shared templates. */
+img.ko-fade-img { opacity: 0; transition: opacity 400ms var(--ease-out); }
+img.ko-fade-img.is-loaded { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { img.ko-fade-img { opacity: 1; } }
+@media (prefers-reduced-motion: no-preference) {
+  html.has-motion .will-reveal { opacity: 0; transform: translateY(14px); transition: opacity 520ms var(--ease-out), transform 520ms var(--ease-out); transition-delay: var(--reveal-delay, 0ms); }
+  html.has-motion .will-reveal.is-in { opacity: 1; transform: none; }
+}
+
+/* Product page: the gallery app sizes itself from these. */
+.pdp-hero__slide { position: relative; aspect-ratio: var(--img-ratio, 3 / 4) !important; max-width: 100%; }
+.pdp-hero__thumbs img, .pdp-hero__thumb { aspect-ratio: var(--img-ratio, 3 / 4) !important; }
+
+/* Footer: the rows the design does not draw (newsletter, legal links). */
+.site-foot .foot-letter { margin-top: 18px; max-width: 30rem; }
+.site-foot .foot-letter label { display: block; font-size: .92rem; color: var(--parchment); }
+.site-foot .foot-letter .signup input { border-color: var(--parchment-light); }
+.site-foot .foot-letter .btn { background: var(--parchment-light); color: var(--ink); border-color: var(--parchment-light); }
+.site-foot .foot-letter .btn:hover { background: #fff; color: var(--ink); }
+.site-foot .foot-letter [role=status] { color: var(--parchment); font-size: .9rem; margin-top: 8px; min-height: 1.4em; }
+.site-foot .foot-signoff { border-top: 1px solid rgba(233, 221, 192, .35); padding-block: 16px 22px; display: flex; flex-wrap: wrap; gap: 6px 20px; justify-content: space-between; font-size: .85rem; color: var(--parchment); }
+.site-foot .foot-signoff a { color: var(--parchment-light); }
+.site-foot .foot-legal { display: flex; flex-wrap: wrap; gap: 4px 18px; }
+.site-foot .foot-legal:empty { display: none; }
+
+/* Pagination on the shelf and the notes. */
+.dc-pager { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; border-top: 1px solid var(--rule); padding-top: 20px; }
+
+@media print { .quicksearch, .sf-toast, .no-print { display: none !important; } }
+
+/* Where a designed page has no picture to show. The designs pair most blocks
+   with a drawing from the books; the theme ships no artwork, so a block whose
+   picture the store has not supplied closes up to one column instead of
+   leaving the picture's half empty. (Id-scoped: these must outrank the design's
+   own grid rules, which load later.) */
+#page-home .home-banner--plain { grid-template-columns: minmax(0, 1fr); min-height: 0; }
+#page-home .home-banner--plain .home-banner-text { max-width: 860px; margin-inline: auto; }
+#page-home .home-story--plain { grid-template-columns: minmax(0, 1fr); }
+#page-home .home-banner-art a { position: absolute; inset: 0; display: block; }
+#page-home .hs-cover .cover-draft { width: 100%; height: auto; }
+#page-home .hs-card form { display: contents; }
+#page-home .hs-h a { color: inherit; text-decoration: none; }
+#page-home .hs-h a:hover { text-decoration: underline; }
+#page-about .ab-b-top--plain { grid-template-columns: minmax(0, 1fr); max-width: 820px; }
+#page-authors .aa-row--plain, #page-notes .nn-row--plain { grid-template-columns: minmax(0, 1fr); max-width: 760px; }
+#page-books .shelves--one { grid-template-columns: minmax(0, 1fr); }
+#page-books .shelves--one .shelf { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 900px) { #page-books .shelves--one .shelf { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+#page-books .shelf-head a { color: inherit; text-decoration: none; }
+#page-books .shelf-head a:hover { text-decoration: underline; }
+#page-books .dc-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+#page-trade .title-block--plain { grid-template-columns: minmax(0, 1fr); }
+#page-trade .stock .td-bk .cover-draft { width: 56px; height: auto; padding: 4px; }
+#page-trade .trade-body { max-width: 62ch; }
+@media (max-width: 1040px) { .site-head .head-tools { grid-area: currency; } }

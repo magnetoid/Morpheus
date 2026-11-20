@@ -1,0 +1,44 @@
+{% load morph %}{% load caching %}{% load i18n %}{% load seo %}{% load pricing %}
+{% comment %}
+The shared product card, in the design's shelf shape: the cover mounted on a
+parchment panel, then the title, the author, and the price. One link wraps the
+cover and the text; add-to-basket sits outside it so the cart-drawer script can
+intercept /cart/add/<id>/.
+
+Shape-agnostic: works for ORM products (primary_image / price_starts_from) and
+GraphQL dicts (primaryImage / priceStartsFrom). The price goes through
+storefront_price, so a shelf never quotes a different number than the product
+page and the basket. A book with no cover gets the design's title card, never a
+stand-in picture.
+{% endcomment %}
+{% firstof product.primary_image.image.url product.primaryImage.url as img %}
+{% storefront_price product as card_price %}
+{% product_card_meta product as bc %}
+<div class="dc-card" data-product-card>
+  <a class="shelf-item" href="/products/{{ product.slug }}/">
+    <div class="cover cover-wrap{% if not img %} planned{% endif %}">
+      {% if product.primary_image.image %}
+        {% seo_responsive_image product.primary_image.image alt="" widths="300,450,600" sizes="(min-width: 1041px) 270px, (min-width: 700px) 30vw, 46vw" %}
+      {% elif img %}
+        {% seo_responsive_image img alt="" widths="300,450,600" sizes="(min-width: 1041px) 270px, (min-width: 700px) 30vw, 46vw" %}
+      {% else %}
+        <div class="cover-draft" aria-hidden="true"><span class="draft-title">{{ product.name }}</span>{% if bc.author %}<span class="draft-author">{{ bc.author }}</span>{% endif %}</div>
+      {% endif %}
+    </div>
+    <div class="meta">
+      <strong>{{ product.name }}</strong>
+      {% if bc.author %}<span>{{ bc.author }}</span>{% elif product.category.name %}<span>{{ product.category.name }}</span>{% endif %}
+      {% if card_price %}<span class="shelf-price">{% if product.price_starts_from or product.priceStartsFrom %}{% translate "From" %} {% endif %}<span>{{ card_price|money }}</span>{% if bc.formats_line %} · {{ bc.formats_line|lower }}{% endif %}</span>{% endif %}
+      {% if product.is_on_sale or product.isOnSale %}<span class="ribbon">{% translate "Reduced" %}</span>{% endif %}
+    </div>
+  </a>
+  {% if product.price_starts_from or product.priceStartsFrom %}
+  <a class="btn ghost btn-sm" href="/products/{{ product.slug }}/">{% translate "Choose a format" %}<span class="sr-only">: {{ product.name }}</span></a>
+  {% else %}
+  <form method="post" action="/cart/add/{{ product.id }}/" class="dc-card__add">
+    {% csrf_token %}
+    <input type="hidden" name="quantity" value="1">
+    <button type="submit" class="btn btn-sm" data-buy>{% translate "Add to basket" %}<span class="sr-only">: {{ product.name }}</span></button>
+  </form>
+  {% endif %}
+</div>

@@ -1,0 +1,1 @@
+{% load cms %}{% cms_menu "footer" as footer_nav %}{% if footer_nav %}{{ footer_nav }}{% else %}{% include "storefront/_footer_fallback.html" %}{% endif %}

@@ -1,0 +1,51 @@
+{% extends "storefront/base.html" %}
+{% load cms %}{% load i18n %}
+
+{% comment %}
+CMS pages in the Dawnchild style, on cream paper.
+
+The page with the slug "trade" gets the "Dawnchild Trade - soft" design: the
+title block (the page's own title and excerpt, the trade address from the theme
+settings), then whatever the merchant put on the page. The stock list is the
+"Stock list" section (Pages → Sections), which reads the catalogue; the terms a
+bookseller orders on are the merchant's own words in the page, never the
+theme's. Any other page renders its sections, or its body as prose.
+{% endcomment %}
+
+{% block body_class %}{% if page.slug != 'trade' %}reading{% endif %}{% endblock %}
+
+{% block content %}
+{% render_page_sections page as sections_html %}
+{% if page.slug == 'trade' %}
+<section class="page is-active" id="page-trade" aria-labelledby="trade-h">
+  <div class="title-block title-block--plain">
+    <p class="eyebrow">{% translate "For booksellers, librarians and press" %}</p>
+    <h1 id="trade-h">{{ page.title }}</h1>
+    {% if page.excerpt %}<p class="lead prose">{{ page.excerpt }}</p>{% endif %}
+    <p class="td-go">{% if theme_config.trade_email %}<a class="btn" href="mailto:{{ theme_config.trade_email }}">{% translate "Email a trade order" %}</a> {% else %}<a class="btn" href="/contact/">{% translate "Write to us about a trade order" %}</a> {% endif %}{% if sections_html %}<a class="btn ghost" href="#trade-stock">{% translate "See the stock list" %}</a>{% endif %}</p>
+  </div>
+  {% if sections_html %}{{ sections_html }}{% endif %}
+  {% if page.body %}<div class="prose trade-body">{{ page.body|safe }}</div>{% endif %}
+  {% if theme_config.trade_email %}
+  <div class="two">
+    <div class="cartouche addr">
+      <h2 class="eyebrow">{% translate "Trade contact" %}</h2>
+      <div class="copy-row" style="margin-top:8px"><code><a href="mailto:{{ theme_config.trade_email }}">{{ theme_config.trade_email }}</a></code><button type="button" data-copy="{{ theme_config.trade_email }}">{% translate "Copy" %}</button></div>
+      {% if theme_config.imprint_line %}<h2 class="eyebrow" style="margin-top:18px">{% translate "Publisher of record" %}</h2>
+      <address style="margin-top:6px">{{ STORE_NAME }}<br>{{ theme_config.imprint_line }}</address>{% endif %}
+    </div>
+  </div>
+  {% endif %}
+</section>
+{% elif sections_html %}
+<div class="page is-active">{{ sections_html }}</div>
+{% else %}
+<article class="page is-active">
+  <div class="title-block">
+    <h1>{{ page.title }}</h1>
+    {% if page.excerpt %}<p class="lead prose">{{ page.excerpt }}</p>{% endif %}
+  </div>
+  <div class="prose page-prose">{{ page.body|safe }}</div>
+</article>
+{% endif %}
+{% endblock %}
