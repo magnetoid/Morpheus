@@ -475,6 +475,18 @@ class Product(models.Model):
         active = self._active_variants()
         return bool(active) and all(v.is_free for v in active)
 
+    @property
+    def is_for_sale(self) -> bool:
+        """The basket takes something of it: an active edition for sale
+        (``ProductVariant.is_for_sale``), or, with no edition, a price above 0 of
+        its own. A product nothing prices yet (price 0, no edition given away) is
+        not: a card shows it with no price and no add-to-basket button."""
+        active = self._active_variants()
+        if active:
+            return any(v.is_for_sale for v in active)
+        price = self.price
+        return price is not None and price.amount > 0
+
     def _active_variants(self) -> list:
         # Filtered in Python, like primary_image below: a .filter() bypasses
         # prefetch_related('variants'), and a listing card read both properties, so
@@ -820,6 +832,16 @@ class ProductVariant(models.Model):
         if self.price:
             return self.price
         return self.product.price
+
+    @property
+    def is_for_sale(self) -> bool:
+        """The basket takes it: a copy given away, or one priced above 0 (its own
+        price, else the product's). An edition nothing prices is refused as "not
+        available to buy yet", so a product page offers no button for it."""
+        if self.is_free:
+            return True
+        price = self.effective_price
+        return price is not None and price.amount > 0
 
 
 def give_away_print() -> bool:

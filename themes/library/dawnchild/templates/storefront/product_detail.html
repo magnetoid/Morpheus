@@ -1,5 +1,5 @@
 {% extends "storefront/base.html" %}
-{% load morph %}{% load seo %}{% load tracking %}{% load cache %}{% load caching %}{% load i18n %}{% load breadcrumbs %}{% load book_extras %}
+{% load morph %}{% load seo %}{% load tracking %}{% load cache %}{% load caching %}{% load i18n %}{% load breadcrumbs %}{% load book_extras %}{% load pricing %}
 
 {% block extra_head %}
 {# No <link rel=preload> of the raw original: the hero renders the proxied AVIF/WebP, so that was a 1.7 MB high-priority download nothing displayed. The first slide is eager + fetchpriority=high instead. #}
@@ -302,7 +302,7 @@ stays discoverable via its own embed block + the sitemap.{% endcomment %}
         <p class="lede" style="margin-bottom: 1.5rem;">{{ product.shortDescription|default:""|safe }}</p>
 
         <div style="display:flex; align-items:baseline; gap: 0.6rem; margin: 1.5rem 0 0.5rem;">
-          <span data-pdp-price style="display:inline-block; font-family: var(--serif); font-size: 1.75rem; font-weight: 600;">{% if product.priceStartsFrom %}<span style="font-family: var(--sans); font-size: .85rem; font-weight: 400; color: var(--muted);">{% translate "From" %} </span>{% endif %}{% if product.isFree %}{% translate "Free" %}{% else %}{{ product.price|money }}{% endif %}</span>
+          <span data-pdp-price style="display:inline-block; font-family: var(--serif); font-size: 1.75rem; font-weight: 600;">{% if product.priceStartsFrom %}<span style="font-family: var(--sans); font-size: .85rem; font-weight: 400; color: var(--muted);">{% translate "From" %} </span>{% endif %}{% if product.isFree %}{% translate "Free" %}{% elif product.price|priced %}{{ product.price|money }}{% else %}{% for v in product.variants %}{% if v.id == product.defaultVariantId and v.isFree %}{% translate "Free" %}{% endif %}{% endfor %}{% endif %}</span>
           <span data-pdp-compare class="meta" style="text-decoration: line-through;{% if not product.isOnSale %} display:none;{% endif %}">{% if product.isOnSale %}{{ product.compareAtPrice|money }}{% endif %}</span>
         </div>
         {% if last_reviewed %}<p class="meta" style="margin: 0 0 1rem; color: var(--muted); font-size: .75rem;">Last reviewed <time datetime="{{ last_reviewed|date:'c' }}">{{ last_reviewed|date:"M j, Y" }}</time></p>{% endif %}
@@ -325,6 +325,7 @@ stays discoverable via its own embed block + the sitemap.{% endcomment %}
                     data-variant-id="{{ v.id }}"
                     data-variant-type="{{ v.variantType|default:'physical' }}"
                     data-variant-price="{% if v.isFree %}{% translate "Free" %}{% elif v.price %}{{ v.price|money }}{% endif %}"
+                    data-variant-for-sale="{% if v.isForSale %}1{% else %}0{% endif %}"
                     data-variant-compare="{% if v.isOnSale and v.compareAtPrice %}{{ v.compareAtPrice|money }}{% endif %}"
                     data-variant-on-sale="{% if v.isOnSale %}1{% else %}0{% endif %}"
                     data-variant-image="{{ v.imageUrl|default:'' }}"
@@ -363,7 +364,9 @@ stays discoverable via its own embed block + the sitemap.{% endcomment %}
           <input id="pdp-qty" type="number" name="quantity" value="1" min="1" max="20" toolparamdescription="Number of units to add (1-20)"
                  inputmode="numeric" autocomplete="off"
                  style="width: 80px; height: 48px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 999px; background: var(--paper); font-family: var(--sans);">
-          <button type="submit" class="btn btn-primary" style="height: 48px;" data-pdp-cta>Add to cart</button>
+          {% comment %}An edition nothing prices yet is refused by the basket ("not available
+             to buy yet"), so its button says so and sends nothing (isForSale).{% endcomment %}
+          <button type="submit" class="btn btn-primary" style="height: 48px;" data-pdp-cta data-unavailable-label="{% translate "Not available yet" %}"{% if not product.isForSale %} disabled{% endif %}>{% if product.isForSale %}Add to cart{% else %}{% translate "Not available yet" %}{% endif %}</button>
         </form>
 
         {% if out_of_stock %}
@@ -564,8 +567,16 @@ stays discoverable via its own embed block + the sitemap.{% endcomment %}
         priceCompare.style.display = 'none';
       }
     }
-    if (ctaButton && card.dataset.variantType) {
-      ctaButton.textContent = ctaLabel[card.dataset.variantType] || 'Add to cart';
+    // An edition nothing prices yet: no price, and a button that sends nothing.
+    var forSale = card.dataset.variantForSale !== '0';
+    if (!p && !forSale && priceMain) priceMain.textContent = '';
+    if (ctaButton) {
+      ctaButton.disabled = !forSale;
+      if (!forSale) {
+        ctaButton.textContent = ctaButton.dataset.unavailableLabel || 'Not available yet';
+      } else if (card.dataset.variantType) {
+        ctaButton.textContent = ctaLabel[card.dataset.variantType] || 'Add to cart';
+      }
     }
     // Persist the selection in the URL hash so reloads + back/forward
     // restore the same variant, and a URL like
@@ -788,9 +799,9 @@ stays discoverable via its own embed block + the sitemap.{% endcomment %}
 <div class="pdp-sticky-cart" data-pdp-sticky aria-hidden="false">
   <span class="pdp-sticky-cart__price">
     {% if product.priceStartsFrom %}<span class="pdp-sticky-cart__starts">{% load i18n %}{% translate "From" %}</span>{% endif %}
-    <span data-pdp-sticky-price>{{ product.price|money }}</span>
+    <span data-pdp-sticky-price>{% if product.isFree %}{% translate "Free" %}{% elif product.price|priced %}{{ product.price|money }}{% else %}{% for v in product.variants %}{% if v.id == product.defaultVariantId and v.isFree %}{% translate "Free" %}{% endif %}{% endfor %}{% endif %}</span>
   </span>
-  <button type="button" class="btn btn-primary pdp-sticky-cart__btn" data-pdp-sticky-cta>Add to cart</button>
+  <button type="button" class="btn btn-primary pdp-sticky-cart__btn" data-pdp-sticky-cta{% if not product.isForSale %} disabled{% endif %}>{% if product.isForSale %}Add to cart{% else %}{% translate "Not available yet" %}{% endif %}</button>
 </div>
 
 <script>
@@ -808,7 +819,10 @@ stays discoverable via its own embed block + the sitemap.{% endcomment %}
 
   function syncFromInline() {
     if (priceMain && priceSticky) priceSticky.textContent = priceMain.textContent;
-    if (ctaInline && ctaSticky)   ctaSticky.textContent   = ctaInline.textContent;
+    if (ctaInline && ctaSticky) {
+      ctaSticky.textContent = ctaInline.textContent;
+      ctaSticky.disabled = ctaInline.disabled;
+    }
   }
   syncFromInline();
 
@@ -816,7 +830,7 @@ stays discoverable via its own embed block + the sitemap.{% endcomment %}
   // The variant-picker handler (above) already mutates data-pdp-price /
   // data-pdp-cta in place, so MutationObserver is the cleanest path.
   if (priceMain) new MutationObserver(syncFromInline).observe(priceMain, { childList: true, characterData: true, subtree: true });
-  if (ctaInline) new MutationObserver(syncFromInline).observe(ctaInline, { childList: true, characterData: true, subtree: true });
+  if (ctaInline) new MutationObserver(syncFromInline).observe(ctaInline, { childList: true, characterData: true, subtree: true, attributes: true, attributeFilter: ['disabled'] });
 
   ctaSticky.addEventListener('click', function () {
     // Trigger the inline form's submit so server-side flow is identical.

@@ -182,6 +182,12 @@ class ProductVariantType:
         return bool(self.is_free)
 
     @strawberry.field(
+        description='True when the basket takes this edition: it is given away (isFree), or priced above 0 (its own price, else the product price). An edition nothing prices yet is refused, so a storefront offers no button for it.'
+    )
+    def is_for_sale(self) -> bool:
+        return bool(self.is_for_sale)
+
+    @strawberry.field(
         description='Compare-at (was-price) for the variant. Falls back to Product.compare_at_price when blank, so the strikethrough renders on per-product sales even if the variant has no override.'
     )
     def compare_at_price(self) -> MoneyType | None:
@@ -439,11 +445,22 @@ class ProductType:
         return bool(self.is_free)
 
     @strawberry.field(
-        description='The edition a product page selects first: the first active one that costs something, else the first active one. Null without variants.'
+        description='True when the basket takes something of it (Product.is_for_sale): an active edition for sale, or, with no edition, a price above 0. A product nothing prices yet shows no price and no add-to-cart button.'
+    )
+    def is_for_sale(self) -> bool:
+        return bool(self.is_for_sale)
+
+    @strawberry.field(
+        description='The edition a product page selects first: the first active one that costs something, else the first one given away, else the first active one. Null without variants.'
     )
     def default_variant_id(self) -> strawberry.ID | None:
         active = [v for v in self.variants.all() if v.is_active]
-        chosen = next((v for v in active if not v.is_free), None) or (active[0] if active else None)
+        # An edition nothing prices is not selected first while one can be bought.
+        chosen = (
+            next((v for v in active if v.is_for_sale and not v.is_free), None)
+            or next((v for v in active if v.is_free), None)
+            or (active[0] if active else None)
+        )
         return strawberry.ID(str(chosen.pk)) if chosen is not None else None
 
     @strawberry.field(

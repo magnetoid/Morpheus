@@ -1,6 +1,7 @@
 {% load morph %}{% load i18n %}{% load seo %}{% load pricing %}
 {% comment %}One book on the shelf (the design's shelf-item): the whole card is one
-link to the book. `product` is an ORM product or a GraphQL dict.{% endcomment %}
+link to the book. `product` is an ORM product or a GraphQL dict. A price shows
+only above 0 (`|priced`).{% endcomment %}
 {% firstof product.primary_image.image.url product.primaryImage.url as img %}
 {% storefront_price product as card_price %}
 {% product_card_meta product as bc %}
@@ -14,7 +15,7 @@ link to the book. `product` is an ORM product or a GraphQL dict.{% endcomment %}
     <strong>{{ product.name }}</strong>
     {% if bc.author %}<span>{{ bc.author }}</span>{% endif %}
     {% if bc.genre %}<span>{{ bc.genre }}</span>{% endif %}
-    {% if product.is_free or product.isFree %}<span class="shelf-price"><span>{% translate "Free" %}</span></span>{% elif card_price %}<span class="shelf-price">{% if product.price_starts_from or product.priceStartsFrom %}{% translate "From" %} {% endif %}<span>{{ card_price|money }}</span>{% if bc.formats_line %} · {{ bc.formats_line|lower }}{% endif %}</span>{% endif %}
+    {% if product.is_free or product.isFree %}<span class="shelf-price"><span>{% translate "Free" %}</span></span>{% elif card_price|priced %}<span class="shelf-price">{% if product.price_starts_from or product.priceStartsFrom %}{% translate "From" %} {% endif %}<span>{{ card_price|money }}</span>{% if bc.formats_line %} · {{ bc.formats_line|lower }}{% endif %}</span>{% endif %}
     {% if product.is_on_sale or product.isOnSale %}<span class="chip">{% translate "Reduced" %}</span>{% endif %}
   </div>
 </a>
