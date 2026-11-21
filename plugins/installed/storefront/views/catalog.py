@@ -1374,7 +1374,8 @@ def category_detail(request, slug):
         Product.objects.shoppable()
         .filter(in_categories([category]))
         .select_related('category')
-        .prefetch_related('images')  # primary_image hits this — avoid an N+1 per card
+        # A card's primary_image and is_free read these: no query per card.
+        .prefetch_related('images', 'variants')
         .distinct()
         .order_by(*order)
     )
@@ -1479,7 +1480,7 @@ def collection_detail(request, slug):
         Product.objects.shoppable()
         .filter(collections=collection)
         .select_related('category')
-        .prefetch_related('images')
+        .prefetch_related('images', 'variants')
         .order_by(*sort_map.get(sort, sort_map['for_you']))
     )
     page_obj = _paginate(qs, 24, request)
@@ -1569,7 +1570,7 @@ def author_detail(request, slug):
     bibliography = list(
         Product.objects.filter(id__in=product_ids_for('author', match), status='active')
         .order_by('-is_featured', '-created_at')
-        .prefetch_related('images')
+        .prefetch_related('images', 'variants')
     )
 
     # Per-visitor merchandising: surface the books this visitor is most likely
@@ -1664,7 +1665,7 @@ def staff_picks(request):
             Product.objects.shoppable()
             .filter(collections=collection)
             .order_by('-is_featured', '-created_at')
-            .prefetch_related('images')[:30]
+            .prefetch_related('images', 'variants')[:30]
         )
     description = (
         collection.description

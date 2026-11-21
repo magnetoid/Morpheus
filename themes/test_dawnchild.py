@@ -518,12 +518,14 @@ class DawnchildShelfTests(_Dawnchild):
     def test_a_free_book_says_free_and_an_unpriced_edition_shows_no_price(self):
         from plugins.installed.catalog.models import Category, Product, ProductVariant
 
+        # Built as the live store's books are (2026-11-21): a digital product
+        # priced 0 with one free PDF, and a simple product priced 0.
         free = Product.objects.create(
             name='Free Rabbit',
             slug='free-rabbit',
             sku='RAB-1',
-            price=Money(Decimal('2.99'), 'USD'),
-            product_type='variable',
+            price=Money(0, 'USD'),
+            product_type='digital',
             status='active',
             category=Category.objects.get(slug='for-children'),
         )
@@ -541,7 +543,7 @@ class DawnchildShelfTests(_Dawnchild):
             slug='unpriced-bird',
             sku='BIRD-1',
             price=Money(0, 'USD'),
-            product_type='variable',
+            product_type='simple',
             status='active',
         )
         ProductVariant.objects.create(product=unpriced, name='Paperback', sku='BIRD-PB')
@@ -565,7 +567,6 @@ class DawnchildShelfTests(_Dawnchild):
             for c in rail.split('<li class="hs-card"')[1:]
         }
         self.assertIn('<p class="hs-price"><span>Free</span></p>', cards['free-rabbit'])
-        self.assertNotIn('2.99', cards['free-rabbit'])
         # A free book leads to its page to pick a copy; the basket would ask which.
         self.assertIn('Get it free<span class="sr-only">: Free Rabbit</span>', cards['free-rabbit'])
         self.assertNotIn('/cart/add/', cards['free-rabbit'])

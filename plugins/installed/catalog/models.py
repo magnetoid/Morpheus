@@ -462,9 +462,16 @@ class Product(models.Model):
         download, or a printed copy where the store gives print away.
 
         Such a product is shown as Free and listed in no shopping feed; one with
-        a paid edition is shown at that edition's price."""
+        a paid edition is shown at that edition's price.
+
+        A product of another type (simple, digital) is sold at its own price, so
+        it is free only when that price is 0 as well: Dawnchild's books are digital
+        and simple products priced 0 (2026-11-21), and a $20 book with a free
+        sample edition stays $20."""
         if self.product_type != 'variable':
-            return False
+            own = self.price
+            if own is None or own.amount:
+                return False
         active = self._active_variants()
         return bool(active) and all(v.is_free for v in active)
 
