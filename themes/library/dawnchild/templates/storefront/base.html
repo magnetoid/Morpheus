@@ -119,9 +119,10 @@ the theme's own defaults.
   </nav>
   {% comment %}The design shows a pound/dollar switch here. A currency choice is the
   markets app's, so the theme draws none of its own; search and the account menu,
-  which the design leaves out and a shop needs, take the place.{% endcomment %}
+  which the design leaves out and a shop needs, take the place. Search, the account
+  menu and the basket are one row of line icons, each named for screen readers.{% endcomment %}
   <div class="head-tools">
-    <button type="button" id="quicksearch-toggle" class="head-tool" aria-expanded="false" aria-controls="quicksearch-panel">{% translate "Search" %}</button>
+    <button type="button" id="quicksearch-toggle" class="head-tool head-tool--icon" aria-expanded="false" aria-controls="quicksearch-panel"><svg class="head-icon" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg><span class="sr-only">{% translate "Search" %}</span></button>
     {% plugin_enabled "marketplace" as marketplace_on %}{% plugin_enabled "affiliates" as affiliates_on %}
     <div class="acct">
       <a href="/account/" class="head-tool head-tool--icon" aria-expanded="false" aria-controls="acct-menu" data-acct-toggle><svg class="head-icon" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg><span class="sr-only">{% translate "Account" %}</span></a>
@@ -144,8 +145,8 @@ the theme's own defaults.
         {% endif %}
       </div>
     </div>
+    <a href="/cart/" class="basket-btn cart-icon" id="cart-icon-link"><svg class="head-icon" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><path d="M3 9h18l-2 11H5L3 9Z"/><path d="M8 9a4 4 0 0 1 8 0"/></svg><span class="sr-only">{% translate "Basket" %}</span> <span class="basket-count cart-badge" id="cart-badge"{% if not cart_item_count %} hidden{% endif %}>{% if cart_item_count > 99 %}99+{% elif cart_item_count %}{{ cart_item_count }}{% endif %}</span></a>
   </div>
-  <a href="/cart/" class="basket-btn cart-icon" id="cart-icon-link"><svg class="head-icon" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><path d="M3 9h18l-2 11H5L3 9Z"/><path d="M8 9a4 4 0 0 1 8 0"/></svg><span class="sr-only">{% translate "Basket" %}</span> <span class="basket-count cart-badge" id="cart-badge"{% if not cart_item_count %} hidden{% endif %}>{% if cart_item_count > 99 %}99+{% elif cart_item_count %}{{ cart_item_count }}{% endif %}</span></a>
 </div>
 </header>
 {% if theme_config.notice_text %}<div class="notice" role="region" aria-label="{% translate 'Shop notice' %}"><div class="wrap"><span>{{ theme_config.notice_text }}</span></div></div>{% endif %}

@@ -302,7 +302,7 @@ stays discoverable via its own embed block + the sitemap.{% endcomment %}
         <p class="lede" style="margin-bottom: 1.5rem;">{{ product.shortDescription|default:""|safe }}</p>
 
         <div style="display:flex; align-items:baseline; gap: 0.6rem; margin: 1.5rem 0 0.5rem;">
-          <span data-pdp-price style="display:inline-block; font-family: var(--serif); font-size: 1.75rem; font-weight: 600;">{% if product.priceStartsFrom %}<span style="font-family: var(--sans); font-size: .85rem; font-weight: 400; color: var(--muted);">{% translate "From" %} </span>{% endif %}{{ product.price|money }}</span>
+          <span data-pdp-price style="display:inline-block; font-family: var(--serif); font-size: 1.75rem; font-weight: 600;">{% if product.priceStartsFrom %}<span style="font-family: var(--sans); font-size: .85rem; font-weight: 400; color: var(--muted);">{% translate "From" %} </span>{% endif %}{% if product.isFree %}{% translate "Free" %}{% else %}{{ product.price|money }}{% endif %}</span>
           <span data-pdp-compare class="meta" style="text-decoration: line-through;{% if not product.isOnSale %} display:none;{% endif %}">{% if product.isOnSale %}{{ product.compareAtPrice|money }}{% endif %}</span>
         </div>
         {% if last_reviewed %}<p class="meta" style="margin: 0 0 1rem; color: var(--muted); font-size: .75rem;">Last reviewed <time datetime="{{ last_reviewed|date:'c' }}">{{ last_reviewed|date:"M j, Y" }}</time></p>{% endif %}

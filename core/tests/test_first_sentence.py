@@ -32,6 +32,24 @@ class FirstSentenceTests(SimpleTestCase):
     def test_takes_the_first_sentence(self):
         self.assertEqual(first_sentence('One. Two. Three.'), 'One.')
 
+    def test_initials_do_not_end_the_sentence(self):
+        # Good Food's card on the Dawnchild store read "P." alone.
+        raw = 'P. C. B. Newington’s 1947 cookbook of remembered recipes. Twelve chapters.'
+        self.assertEqual(
+            first_sentence(raw), 'P. C. B. Newington’s 1947 cookbook of remembered recipes.'
+        )
+        self.assertEqual(
+            first_sentence('L. Frank Baum’s original novel. Illustrated.'),
+            'L. Frank Baum’s original novel.',
+        )
+        self.assertEqual(
+            first_sentence('Short words, e.g. these ones. More.'), 'Short words, e.g. these ones.'
+        )
+
+    def test_a_number_still_ends_a_sentence(self):
+        self.assertEqual(first_sentence('Printed in 1947. Reissued.'), 'Printed in 1947.')
+        self.assertEqual(first_sentence('Book 2. Then more.'), 'Book 2.')
+
     def test_no_sentence_break_falls_back_to_capped_string(self):
         long = 'word ' * 60  # 300 chars, no . ! ?
         self.assertLessEqual(len(first_sentence(long)), 180)

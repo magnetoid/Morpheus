@@ -13,9 +13,9 @@ import contextlib
 
 CACHE_TTL = 600
 _LABELS = {'print': 'Print', 'digital': 'PDF', 'audiobook': 'Audiobook'}
-# A format the store gives away says so on the card, beside the price the book
-# costs in print (ProductVariant.is_free: price 0 and nothing ships).
-_FREE_LABELS = {'digital': 'Free PDF', 'audiobook': 'Free audiobook'}
+# A format the store gives away says so on the card (ProductVariant.is_free: a
+# download priced 0, or a printed copy where the store gives print away).
+_FREE_LABELS = {'print': 'Free print', 'digital': 'Free PDF', 'audiobook': 'Free audiobook'}
 
 
 def _formats(variants) -> list[str]:

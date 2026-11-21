@@ -14,7 +14,7 @@ link to the book. `product` is an ORM product or a GraphQL dict.{% endcomment %}
     <strong>{{ product.name }}</strong>
     {% if bc.author %}<span>{{ bc.author }}</span>{% endif %}
     {% if bc.genre %}<span>{{ bc.genre }}</span>{% endif %}
-    {% if card_price %}<span class="shelf-price">{% if product.price_starts_from or product.priceStartsFrom %}{% translate "From" %} {% endif %}<span>{{ card_price|money }}</span>{% if bc.formats_line %} · {{ bc.formats_line|lower }}{% endif %}</span>{% endif %}
+    {% if product.is_free or product.isFree %}<span class="shelf-price"><span>{% translate "Free" %}</span></span>{% elif card_price %}<span class="shelf-price">{% if product.price_starts_from or product.priceStartsFrom %}{% translate "From" %} {% endif %}<span>{{ card_price|money }}</span>{% if bc.formats_line %} · {{ bc.formats_line|lower }}{% endif %}</span>{% endif %}
     {% if product.is_on_sale or product.isOnSale %}<span class="chip">{% translate "Reduced" %}</span>{% endif %}
   </div>
 </a>

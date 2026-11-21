@@ -40,6 +40,7 @@ def _serialize_product(p) -> dict:
             'currency': price.currency.code if price else 'USD',
         },
         'priceStartsFrom': False,
+        'isFree': bool(getattr(p, 'is_free', False)),
         'primaryImage': (
             {'url': img.image.url, 'altText': getattr(img, 'alt_text', '') or p.name}
             if img and getattr(img, 'image', None)
@@ -114,7 +115,7 @@ def home(request):
           featuredProducts: products(first: 8, featured: true) {
             id name slug productType shortDescription
             category { name slug }
-            price { amount currency } priceStartsFrom
+            price { amount currency } priceStartsFrom isFree
             primaryImage { url altText }
             isOnSale discountPercentage
           }

@@ -147,15 +147,17 @@ button { font-family: inherit; }
   margin: 1.2em 0; padding-left: 1.1em; border-left: 2px solid var(--russet); font-style: italic;
 }
 
-/* Header tools the design does not draw: search as a quiet word, the account
-   menu and the basket as line icons (owner, 2026-11-21), each named for screen
-   readers and given a 44px target. */
-.head-tools { display: inline-flex; align-items: center; gap: 14px; }
-.head-tool { font: inherit; font-size: .92rem; background: none; border: 0; padding: 4px 0; color: var(--ink); cursor: pointer; text-decoration: none; border-bottom: 1px solid transparent; }
-.head-tool:hover { border-bottom-color: var(--ink); color: var(--ink); }
-.acct { position: relative; display: inline-flex; }
+/* Header tools the design does not draw: search, the account menu and the basket,
+   as one row of line icons (owner, 2026-11-21). Each is a 44px target named for
+   screen readers, 4px from the next, the row set a little apart from the menu and
+   pulled out by the icon's own inset so the basket lines up with the page edge, as
+   the wordmark does on the left. The account menu is flush with the basket; on a
+   wide screen it and the main menu's panels hang from the header's lower edge. */
+.head-tools { position: relative; display: inline-flex; align-items: center; gap: 4px; margin-left: clamp(4px, 1vw, 12px); margin-right: -11px; }
+.head-tool { font: inherit; background: none; border: 0; color: var(--ink); cursor: pointer; text-decoration: none; }
+.acct { display: inline-flex; }
 .acct__menu {
-  position: absolute; top: calc(100% + 13px); right: 0; z-index: 60; width: max-content; min-width: 14rem;
+  position: absolute; top: calc(100% + 13px); right: 11px; z-index: 60; width: max-content; min-width: 14rem;
   max-width: calc(100vw - 2rem); display: grid; gap: 2px; padding: 12px 16px 14px;
   background: var(--parchment-light); border: 1px solid var(--ink); box-shadow: 0 14px 34px rgba(11, 14, 6, .28); font-size: 1rem;
 }
@@ -165,18 +167,23 @@ button { font-family: inherit; }
 .acct__label { margin: 8px 0 2px; font-size: .74rem; letter-spacing: .16em; text-transform: uppercase; color: var(--quiet); }
 .acct__sep { border: 0; border-top: 1px solid var(--ink); margin: 8px 0 4px; }
 a.basket-btn { text-decoration: none; }
-a.basket-btn:hover { color: var(--ink); background: var(--parchment-light); }
 .basket-btn .basket-count[hidden] { display: none; }
 .head-icon { display: block; width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 .head-tool--icon, .site-head .basket-btn {
   position: relative; display: inline-flex; align-items: center; justify-content: center;
-  min-width: 44px; min-height: 44px; padding: 0; border: 0; background: none; box-shadow: none; transform: none;
+  min-width: 44px; min-height: 44px; padding: 0; border: 0; border-radius: 50%; background: none; box-shadow: none; transform: none; color: var(--ink);
 }
-.head-tool--icon:hover, .site-head .basket-btn:hover { background: var(--parchment-light); box-shadow: none; transform: none; }
-.site-head .basket-btn .basket-count { position: absolute; top: 3px; right: 1px; min-width: 1.45em; padding: 0 .3em; font-size: .7rem; line-height: 1.45em; }
+.head-tool--icon:hover, .site-head .basket-btn:hover, .head-tool--icon[aria-expanded="true"] { background: var(--parchment-light); color: var(--ink); box-shadow: none; transform: none; }
+.site-head .basket-btn .basket-count { position: absolute; top: 4px; right: 2px; min-width: 1.45em; padding: 0 .3em; border-radius: .73em; font-size: .7rem; line-height: 1.45em; }
+@media (min-width: 1041px) {
+  /* The menu's links are 10px shorter than the 44px row they sit in. Prefixed, as
+     the design's own rule comes later. */
+  .site-head .nav .menu { margin-top: 18px; }
+  .site-head .nav-item::after { height: 18px; }
+}
 @media (max-width: 1040px) {
-  .head-tools { gap: 10px; }
-  .head-tool { min-height: 44px; display: inline-flex; align-items: center; }
+  .site-head .head-inner { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "lockup tools" "nav nav"; }
+  .site-head .head-tools { grid-area: tools; margin-left: 0; }
 }
 
 /* Notices after a redirect (added to basket, code applied). */
@@ -288,13 +295,17 @@ img.ko-fade-img.is-loaded { opacity: 1; }
 .hs-rail-btn:hover:not(:disabled), .hs-rail-btn:focus-visible { background: #4f150f; border-color: #4f150f; color: #f8f1df; }
 .hs-rail-btn:focus-visible { outline: 2px solid #0b0e06; outline-offset: 2px; }
 .hs-rail-btn:disabled { opacity: .35; cursor: default; }
+/* position: relative, so the row clips the hidden names (sr-only, absolutely placed)
+   of the cards past its edge; without it they widened the page. */
 .hs-rail {
-  list-style: none; margin: 0; padding: 0; display: grid; grid-auto-flow: column; grid-auto-columns: calc(100% / 3);
+  position: relative; list-style: none; margin: 0; padding: 0; display: grid; grid-auto-flow: column; grid-auto-columns: calc(100% / 3);
   overflow-x: auto; scroll-snap-type: x mandatory; overscroll-behavior-x: contain; scrollbar-width: thin;
 }
 .hs-rail > .hs-card { scroll-snap-align: start; }
 .hs-rail .hs-hook { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .hs-rail .hs-foot .actions { grid-template-columns: 1fr; }
+/* A free book has one button ("Get it free"); it takes the whole row. */
+.hs-foot .actions > :only-child { grid-column: 1 / -1; }
 @media (max-width: 1099px) { .hs-rail { grid-auto-columns: 50%; } }
 @media (max-width: 699px) { .hs-rail { grid-auto-columns: 86%; } }
 #page-home .hs-card form { display: contents; }
@@ -311,4 +322,3 @@ img.ko-fade-img.is-loaded { opacity: 1; }
 #page-trade .title-block--plain { grid-template-columns: minmax(0, 1fr); }
 #page-trade .stock .td-bk .cover-draft { width: 56px; height: auto; padding: 4px; }
 #page-trade .trade-body { max-width: 62ch; }
-@media (max-width: 1040px) { .site-head .head-tools { grid-area: currency; } }

@@ -164,8 +164,9 @@ class ProductVariantType:
         # move the variant picker too, or the shopper is quoted one price on the
         # PDP headline and another in the variant selector (displayed≠charged).
         parent = getattr(self, 'product', None)
-        own = self.price
-        if own or self.is_free:
+        free = self.is_free
+        own = self.effective_price if free else self.price
+        if own or free:
             adj = apply_price_filter(own, product=parent)
             return MoneyType(amount=str(adj.amount), currency=str(adj.currency))
         parent_price = getattr(parent, 'price', None) if parent else None
@@ -175,7 +176,7 @@ class ProductVariantType:
         return None
 
     @strawberry.field(
-        description='True for a download given away: its own price is 0 and nothing ships. A variant that ships is never free; 0 there means it takes the product price.'
+        description="True for a copy given away: a download whose own price is 0, or, where the store gives print away (catalog's give_away_print), a printed copy with no price above 0 of a product priced 0. On any other variant that ships, 0 means it takes the product price."
     )
     def is_free(self) -> bool:
         return bool(self.is_free)
@@ -430,6 +431,12 @@ class ProductType:
         # Count in Python over the prefetched variants (see .price above); a
         # free download is not a price the book starts from.
         return sum(1 for v in self.variants.all() if v.is_active and not v.is_free) > 1
+
+    @strawberry.field(
+        description='True when every active edition is a free download (Product.is_free): a storefront shows the product as Free rather than a price of 0. False for a product that is not variable.'
+    )
+    def is_free(self) -> bool:
+        return bool(self.is_free)
 
     @strawberry.field(
         description='The edition a product page selects first: the first active one that costs something, else the first active one. Null without variants.'
