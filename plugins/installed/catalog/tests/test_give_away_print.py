@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
+from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.test import TestCase
 from djmoney.money import Money
@@ -228,3 +229,33 @@ class SimpleAndDigitalBookTests(TestCase):
         self.assertFalse(internal_graphql(_Q, {'slug': 'atlas'})['product']['isFree'])
         # Added without an edition, the line is the $20 book, as before.
         self.assertEqual(self._add(book).unit_price, Money(Decimal('20.00'), 'USD'))
+
+
+class SettingsCardTests(TestCase):
+    """The switch is on a card a merchant can find (owner, 2026-11-21).
+
+    The card was called "Images", so the owner, told "Settings → Catalog", found
+    no such place. It carries the app's name now.
+    """
+
+    def setUp(self):
+        staff = get_user_model().objects.create_user(
+            username='catalog-staff', email='catalog-staff@x.test', password='pw', is_staff=True
+        )
+        self.client.force_login(staff)
+
+    def test_the_storefront_settings_show_a_catalog_card_with_the_switch(self):
+        resp = self.client.get('/dashboard/settings/storefront/')
+        self.assertEqual(resp.status_code, 200)
+        html = resp.content.decode()
+        self.assertIn('<h2 class="font-semibold">Catalog</h2>', html)
+        self.assertNotIn('<h2 class="font-semibold">Images</h2>', html)
+        self.assertIn('name="give_away_print"', html)
+
+    def test_the_catalog_settings_page_opens_on_its_own(self):
+        resp = self.client.get('/dashboard/settings/catalog/')
+        self.assertEqual(resp.status_code, 200)
+        html = resp.content.decode()
+        self.assertIn('<h1 class="text-xl font-semibold tracking-tight">Catalog</h1>', html)
+        self.assertIn('Give away printed copies priced 0', html)
+        self.assertIn('name="give_away_print"', html)
