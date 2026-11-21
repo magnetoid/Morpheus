@@ -215,6 +215,41 @@ class DawnchildFilesTests(SimpleTestCase):
             'width: auto; max-width: 100%; max-height: 60svh; margin-inline: auto;', phone
         )
 
+    def test_the_product_page_shows_the_cover_whole_and_large(self):
+        # Owner, 2026-11-21: no frame round the cover, and the cover as large as one
+        # screen allows. The store's image shape (square on Dawnchild) framed every
+        # portrait cover in a square with tan bands beside it.
+        compat = (ROOT / 'static' / THEME / 'compat.css').read_text(encoding='utf-8')
+        slide = re.search(
+            r'\.pdp-grid \.pdp-hero__slide:not\(\.pdp-hero__slide--video\) \{([^}]*)\}', compat
+        ).group(1)
+        for rule in ('aspect-ratio: auto', 'background: none', 'box-shadow: none'):
+            self.assertIn(rule, slide)
+        img = re.search(r'\.pdp-grid \.pdp-hero__slide img \{([^}]*)\}', compat).group(1)
+        for rule in ('width: 100%', 'height: auto'):
+            self.assertIn(rule, img)
+        self.assertIn('.pdp-grid .pdp-hero__track { background: none;', compat)
+        # A 2:3 cover fits the screen under the header; 560px at most.
+        self.assertIn(
+            '.pdp-grid .pdp-hero { max-width: min(560px, '
+            'calc((100svh - var(--pdp-hero-offset, 150px) - 60px) / 1.5)); }',
+            compat,
+        )
+        # The frame rule that forced the store's shape on the slide is gone.
+        self.assertNotIn('.pdp-hero__slide { position: relative; aspect-ratio:', compat)
+        page = (ROOT / 'templates' / 'storefront' / 'product_detail.html').read_text(
+            encoding='utf-8'
+        )
+        self.assertIn(
+            '.pdp-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;', page
+        )
+        # The details half is narrower than it was: an edition card keeps at least
+        # 290px, or its name ("Digital PDF") broke beside the format badge.
+        self.assertIn(
+            '.pdp-variants { grid-template-columns: repeat(auto-fill, minmax(min(100%, 290px), 1fr)); }',
+            page,
+        )
+
     def test_the_home_banner_meets_the_header(self):
         # compat's "#main > section.page" pads every page by 40px and outranks the
         # design's own "#page-home{padding-top:0}", so the home needs an id pair.

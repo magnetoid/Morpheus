@@ -227,8 +227,16 @@ img.ko-fade-img.is-loaded { opacity: 1; }
   html.has-motion .will-reveal.is-in { opacity: 1; transform: none; }
 }
 
-/* Product page: the gallery app sizes itself from these. */
-.pdp-hero__slide { position: relative; aspect-ratio: var(--img-ratio, 3 / 4) !important; max-width: 100%; }
+/* Product page: the cover in its own shape, as large as one screen allows (owner,
+   2026-11-21). The store's image shape frames the cards; on the product page it put
+   each portrait cover in a square with tan bands beside it. A 2:3 cover fits the
+   screen under the header (--pdp-hero-offset); the thumbnails may start below it.
+   The .pdp-grid prefix outranks the gallery app's own rules, which follow this file. */
+.pdp-grid .pdp-hero { max-width: min(560px, calc((100svh - var(--pdp-hero-offset, 150px) - 60px) / 1.5)); }
+.pdp-grid .pdp-hero__track { background: none; border-radius: 0; padding-bottom: 26px; }
+.pdp-grid .pdp-hero__slide:not(.pdp-hero__slide--video) { position: relative; aspect-ratio: auto; max-width: 100%; background: none; box-shadow: none; border-radius: 0; overflow: visible; }
+.pdp-grid .pdp-hero__slide picture { display: block; width: 100%; height: auto; }
+.pdp-grid .pdp-hero__slide img { width: 100%; height: auto; box-shadow: 0 22px 40px -20px rgba(14, 14, 14, .5); }
 .pdp-hero__thumbs img, .pdp-hero__thumb { aspect-ratio: var(--img-ratio, 3 / 4) !important; }
 
 /* Footer: the rows the design does not draw (newsletter, legal links). */
