@@ -4,13 +4,19 @@
 Home, after the "Dawnchild Home - soft" design: the banner, the four reasons,
 the shelves, the readers' line, one note, buying, and the letter.
 
-What the design fills with its own four books this page fills from the store:
-the banner leads with the first featured book (its cover, its own short
-description, its author on the plaque); the shelves are the featured books
-under their catalogue categories; the note is the newest journal post. A
-store with nothing featured gets the imprint's statement and a way to the shelf,
-never an invented book. The design's two rows of plates are not here: the home
-query carries one image per book, so there is nothing real to hang in them.
+The banner is the design's own, word for word: chapter one of The Dawnchild
+and Beryl Irving's plaque (owner, 2026-11-21). Its picture is the illustration
+the store names in the theme setting hero_image_url, shown whole (never
+cropped, no fade over its edges, so the artist's signature stays); without one
+the banner closes up to its words. Its links lead to the path on this store
+that hero_link_url names, else to the shelf, so the button never sends anyone
+to a page the store does not have.
+
+What the design fills below with its own four books this page fills from the
+store: the shelves are the featured books under their catalogue categories;
+the note is the newest journal post. The design's two rows of plates are not
+here: the home query carries one image per book, so there is nothing real to
+hang in them.
 {% endcomment %}
 
 {% block seo %}{% trans "Dawnchild Books — illustrated books for children and the whole family" as home_title %}{% trans "Illustrated books for children and the whole family, back in print with every picture." as home_description %}{% storefront_head title=home_title description=home_description %}{% endblock %}
@@ -20,43 +26,31 @@ query carries one image per book, so there is nothing real to hang in them.
 {% endblock %}
 
 {% block content %}
-{% with lead=hero_products.0 %}
+{% with hero_art=theme_config.hero_image_url link=theme_config.hero_link_url|default:"" %}
+{% if link|slice:":1" == "/" and link|slice:":2" != "//" %}{% firstof link as book_url %}{% else %}{% firstof "/products/" as book_url %}{% endif %}
 <section class="page is-active" id="page-home" aria-labelledby="home-h">
-  <div class="home-banner{% if not lead.primaryImage.url %} home-banner--plain{% endif %}" id="home-banner">
-    {% if lead.primaryImage.url %}
-    <figure class="home-banner-art">
-      <a href="/products/{{ lead.slug }}/"><picture><img fetchpriority="high" decoding="async" src="{{ lead.primaryImage.url }}" alt="{{ lead.primaryImage.altText|default:lead.name }}"></picture></a>
+  <div class="home-banner{% if not hero_art %} home-banner--plain{% endif %}" id="home-banner">
+    {% if hero_art %}
+    <figure class="home-banner-art home-banner-art--full">
+      {% seo_responsive_image hero_art alt=theme_config.hero_image_alt widths="400,600,800,1200" sizes="(min-width: 900px) 45vw, (min-width: 600px) 46vw, 100vw" priority=True %}
     </figure>
     {% endif %}
     <div class="home-banner-text">
-      {% if lead %}
-      {% product_card_meta lead as lead_meta %}
-      <p class="eyebrow">{{ lead.name }}</p>
-      <h1 id="home-h">{% if lead.shortDescription %}{{ lead.shortDescription|first_sentence }}{% else %}{{ lead.name }}{% endif %}</h1>
-      {% if STORE_DESCRIPTION %}<p class="lead">{{ STORE_DESCRIPTION }}</p>{% endif %}
+      <p class="eyebrow">{% translate "The Dawnchild · Chapter One" %}</p>
+      <h1 id="home-h">{% translate "“Something tapped at the window and called her name.”" %}</h1>
+      <p class="lead">{% translate "Mig creeps out of bed, past the snoring Cousin Belinda, and pushes the blind aside. In the apple tree sits an extraordinary old bird: the Prime Minister of the King of Dawnland. What does he want with Mig?" %}</p>
       <div class="actions">
-        <a class="btn" href="/products/{{ lead.slug }}/">{% translate "See the book" %}</a>
-        <a class="btn ghost" href="/products/">{% translate "All the books" %}</a>
+        <a class="btn" href="{{ book_url }}">{% translate "Read the first chapter" %}</a>
       </div>
-      {% if lead_meta.author %}
       <div class="hb-author home-why" role="group" aria-labelledby="home-author-h">
         <h2 class="hw-plaque" id="home-author-h">
           <svg class="hw-plaque-frame" viewBox="0 0 1000 100" preserveAspectRatio="none" aria-hidden="true" focusable="false"><path d="M30 3H970Q976 3 976 9V38Q976 46 990 50Q976 54 976 62V91Q976 97 970 97H30Q24 97 24 91V62Q24 54 10 50Q24 46 24 38V9Q24 3 30 3Z" fill="#bcb474" stroke="#241404" stroke-width="4" vector-effect="non-scaling-stroke"/><path d="M46 14Q37 30 37 40Q37 47 29 50Q37 53 37 60Q37 70 46 86M954 14Q963 30 963 40Q963 47 971 50Q963 53 963 60Q963 70 954 86" fill="none" stroke="#241404" stroke-width="1" vector-effect="non-scaling-stroke"/></svg>
           <span class="hw-plaque-top">{% translate "The books of" %}</span>
-          <span class="hw-plaque-name">{{ lead_meta.author }}</span>
+          <span class="hw-plaque-name">Beryl Irving</span>
           <span class="hw-plaque-sub">{% translate "back in print with every picture" %}</span>
         </h2>
+        <p class="hw-lead">{% blocktranslate trimmed %}Four books she wrote or drew between 1926 and 1947, set afresh by her great-grandson and printed to order. Begin with <a href="{{ book_url }}"><em>The Dawnchild</em></a>, her fairy adventure, back for its centenary: 1926–2026.{% endblocktranslate %}</p>
       </div>
-      {% endif %}
-      {% else %}
-      <p class="eyebrow">{{ STORE_NAME|default:"Dawnchild Books" }}</p>
-      <h1 id="home-h">{% translate "Some books disappear. We go and fetch them back." %}</h1>
-      <p class="lead">{% if STORE_DESCRIPTION %}{{ STORE_DESCRIPTION }}{% else %}{% translate "Illustrated books for children and the whole family that have been out of print for too long, returned with their pictures where they belong." %}{% endif %}</p>
-      <div class="actions">
-        <a class="btn" href="/products/">{% translate "See the books" %}</a>
-        <a class="btn ghost" href="/about/">{% translate "About the imprint" %}</a>
-      </div>
-      {% endif %}
     </div>
   </div>
 

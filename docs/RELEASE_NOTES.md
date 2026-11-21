@@ -15,6 +15,15 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.183.1 — 2026-11-21
+
+**Dawnchild's home banner is the design's own, with the store's illustration**
+
+- The home banner is the design's fixed opening of *The Dawnchild* (chapter one, Beryl Irving's plaque), whatever the store features; the featured books stay on their shelves below.
+- Two Dawnchild theme settings, hero_image_url and hero_image_alt, name an image from the media library for it. It is shown whole on the left, beside the words (above them on a phone). Without one the banner is its words alone.
+- A third, hero_link_url, names the page on this store that "Read the first chapter" leads to; empty, or anything but a path on the store, leads to the shelf. Only the Dawnchild theme changes.
+- The home banner now meets the header: a 40px band (2px more on phones, where the page was padded by a fixed 101px under a 99px header) sat between them.
+
 ## v0.183.0 — 2026-11-20
 
 **A storefront theme for Dawnchild Books**

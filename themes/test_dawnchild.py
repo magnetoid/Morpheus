@@ -84,6 +84,19 @@ PAYMENT_PAGE = re.compile(
     r'storefront/(cart|checkout\w*|account_payment_methods|_cart_drawer)\.html$'
 )
 
+HERO_REL = 'media/e8/15/e815f76677af4afd89f967416d4b578e/dawnchild-hero-beryl-irving.jpg'
+HERO = f'/media/{HERO_REL}'
+HERO_ALT = 'Illustration of a large bird beside a child, signed Beryl Irving.'
+# The design's own banner words, which the owner chose to keep (2026-11-21).
+HERO_WORDS = (
+    'The Dawnchild · Chapter One',
+    '“Something tapped at the window and called her name.”',
+    'Mig creeps out of bed, past the snoring Cousin Belinda',
+    'Read the first chapter',
+    'Beryl Irving',
+    'back for its centenary: 1926–2026.',
+)
+
 _COMMENTS = re.compile(r'{%\s*comment\s*%}.*?{%\s*endcomment\s*%}|{#.*?#}', re.S)
 
 
@@ -182,6 +195,24 @@ class DawnchildFilesTests(SimpleTestCase):
             self.assertEqual(text.count('/*'), text.count('*/'), css.name)
             self.assertNotIn('display:none!important}\n.memory-form', text)
 
+    def test_the_stores_illustration_is_never_cropped_or_faded(self):
+        compat = (ROOT / 'static' / THEME / 'compat.css').read_text(encoding='utf-8')
+        img = re.search(r'#page-home \.home-banner-art--full img \{([^}]*)\}', compat).group(1)
+        for rule in ('width: 100%', 'height: auto', 'object-fit: contain'):
+            self.assertIn(rule, img)
+        self.assertIn('#page-home .home-banner-art--full::after { content: none; }', compat)
+
+    def test_the_home_banner_meets_the_header(self):
+        # compat's "#main > section.page" pads every page by 40px and outranks the
+        # design's own "#page-home{padding-top:0}", so the home needs an id pair.
+        compat = (ROOT / 'static' / THEME / 'compat.css').read_text(encoding='utf-8')
+        self.assertIn('#main > #page-home { padding-top: 0; }', compat)
+        # Under 700px the page is padded by the header's measured height
+        # (dawnchild.js sets --head-h); a fixed 101px left a band under a 99px header.
+        design = (ROOT / 'static' / THEME / 'dawnchild.css').read_text(encoding='utf-8')
+        self.assertNotIn('body{padding-top:101px!important}', design)
+        self.assertIn('body{padding-top:var(--head-h,101px)!important}', design)
+
     def test_theme_settings_all_have_a_reader(self):
         schema = theme_registry.get(THEME).get_config_schema()['properties']
         everything = '\n'.join(_sources().values())
@@ -237,10 +268,10 @@ class DawnchildHomeTests(_Dawnchild):
         self.assertIn('21.00', second)
         # A real add-to-basket: the store's cart route for that product.
         self.assertIn(f'action="/cart/add/{owl["id"]}/"', first)
-        # The banner leads with the first featured book, in its own words.
+        # The banner is the design's own; the featured books stay on their shelves.
         banner = body.split('id="home-banner"', 1)[1].split('id="home-why"', 1)[0]
-        self.assertIn('https://example.com/owl-lantern.jpg', banner)
-        self.assertIn('The Owl Lantern opens with a knock at the door.', banner)
+        self.assertNotIn('owl-lantern', banner)
+        self.assertNotIn('Owl Lantern', banner)
         self.assertNotIn('&lt;p&gt;', body)
         self.assertNoDesignContent(body)
 
@@ -253,9 +284,75 @@ class DawnchildHomeTests(_Dawnchild):
         body = self._home([])
         self.assertNotIn('hs-card', body)
         self.assertNotIn('/cart/add/', body.split('id="cart-drawer', 1)[0])
-        self.assertIn('Some books disappear. We go and fetch them back.', body)
-        self.assertIn('href="/products/"', body)
+        banner = self._banner(body)
+        for words in HERO_WORDS:
+            self.assertIn(words, banner)
+        # With no page named, both of the banner's links lead to the shelf.
+        self.assertEqual(banner.count('href="/products/"'), 2)
         self.assertNoDesignContent(body)
+
+    def _illustration(self, url: str = HERO, alt: str = HERO_ALT, **more: str) -> None:
+        """The store names its banner illustration (and link) in the theme's settings."""
+        from themes.models import ThemeConfig
+
+        config = {'hero_image_url': url, 'hero_image_alt': alt, **more}
+        ThemeConfig.objects.update_or_create(theme_name=THEME, defaults={'config': config})
+        theme = theme_registry.get(THEME)
+        theme.invalidate_config_cache()
+        self.addCleanup(theme.invalidate_config_cache)
+
+    def _banner(self, body: str) -> str:
+        return body.split('id="home-banner"', 1)[1].split('id="home-why"', 1)[0]
+
+    def test_the_stores_illustration_shows_with_nothing_featured(self):
+        self._illustration()
+        body = self._home([])
+        self.assertIn('class="home-banner" id="home-banner"', body)
+        banner = self._banner(body)
+        self.assertIn('home-banner-art--full', banner)
+        self.assertIn(f'/img/webp/1200/{HERO_REL}', banner)
+        self.assertIn(f'alt="{HERO_ALT}"', banner)
+        self.assertIn('fetchpriority="high"', banner)
+        # The picture first (left, or above on a phone), then the words.
+        self.assertLess(banner.index('home-banner-art--full'), banner.index('home-banner-text'))
+        self.assertIn(HERO_WORDS[1], banner)
+
+    def test_the_banner_never_shows_a_featured_book(self):
+        self._illustration()
+        owl = _gql_product('The Owl Lantern', 'owl-lantern', ('For children', 'kids'), '14.50')
+        body = self._home([owl])
+        banner = self._banner(body)
+        self.assertIn(f'/img/webp/1200/{HERO_REL}', banner)
+        for words in HERO_WORDS:
+            self.assertIn(words, banner)
+        self.assertNotIn('owl-lantern', banner)
+        self.assertNotIn('Owl Lantern', banner)
+        # The book's cover stays on its shelf.
+        self.assertIn('owl-lantern.jpg', body.split('id="home-shelves"', 1)[1])
+
+    def test_without_an_illustration_the_banner_is_its_words_alone(self):
+        owl = _gql_product('The Owl Lantern', 'owl-lantern', ('For children', 'kids'), '14.50')
+        body = self._home([owl])
+        self.assertIn('class="home-banner home-banner--plain" id="home-banner"', body)
+        banner = self._banner(body)
+        self.assertNotIn('<figure', banner)
+        self.assertNotIn('owl-lantern.jpg', banner)
+        self.assertIn(HERO_WORDS[1], banner)
+
+    def test_the_banner_links_to_the_page_the_store_names(self):
+        self._illustration(hero_link_url='/products/the-dawnchild/')
+        banner = self._banner(self._home([]))
+        self.assertEqual(banner.count('href="/products/the-dawnchild/"'), 2)
+        self.assertNotIn('href="/products/"', banner)
+
+    def test_the_banner_link_is_only_ever_a_page_on_this_store(self):
+        for unsafe in ('javascript:alert(1)', '//elsewhere.example/', 'https://elsewhere.example/'):
+            with self.subTest(unsafe):
+                self._illustration(hero_link_url=unsafe)
+                banner = self._banner(self._home([]))
+                self.assertEqual(banner.count('href="/products/"'), 2)
+                self.assertNotIn('elsewhere', banner)
+                self.assertNotIn('javascript', banner)
 
     def test_one_title_and_the_page_is_the_designs_home(self):
         body = self._home([])
