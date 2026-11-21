@@ -52,6 +52,8 @@ def get_default_tools() -> list:
         plugins_toggle_tool,
         settings_set_tool,
         theme_activate_tool,
+        theme_describe_tool,
+        theme_set_tool,
         updates_apply_tool,
         updates_status_tool,
     )
@@ -105,6 +107,8 @@ def get_default_tools() -> list:
         settings_set_tool,
         plugins_toggle_tool,
         theme_activate_tool,
+        theme_describe_tool,
+        theme_set_tool,
         # Delegate — fan out N parallel Workers, then collect their results.
         # spawn_workers_tool is the primary path; invoke_agent_tool is a
         # back-compat shim that wraps spawn + wait_for.
