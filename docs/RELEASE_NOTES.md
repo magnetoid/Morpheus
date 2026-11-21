@@ -15,6 +15,13 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.183.1 — 2026-11-21
+
+**Dawnchild's home banner can show the store's own illustration**
+
+- Two Dawnchild theme settings, hero_image_url and hero_image_alt, name an image from the media library for the home banner. It is shown whole on the left, beside the headline and buttons (above them on a phone), even when no book is featured.
+- Without it the banner keeps the first featured book's cover, as before. Only the Dawnchild theme changes.
+
 ## v0.183.0 — 2026-11-20
 
 **A storefront theme for Dawnchild Books**
