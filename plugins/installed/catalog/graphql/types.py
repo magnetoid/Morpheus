@@ -433,7 +433,7 @@ class ProductType:
         return sum(1 for v in self.variants.all() if v.is_active and not v.is_free) > 1
 
     @strawberry.field(
-        description='True when every active edition is a free download (Product.is_free): a storefront shows the product as Free rather than a price of 0. False for a product that is not variable.'
+        description='True when every active edition is given away (Product.is_free): a storefront shows the product as Free rather than a price of 0. A simple or digital product also needs a price of 0 of its own.'
     )
     def is_free(self) -> bool:
         return bool(self.is_free)

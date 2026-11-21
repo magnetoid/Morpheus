@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.184.1 — 2026-11-21
+
+**Dawnchild's free books say Free**
+
+- A simple or digital product priced 0 whose every edition is given away is free (Product.is_free, catalog). v0.184.0 counted variable products only, and every Dawnchild book is a digital or simple product, so the live store still showed $0.00 and no card said Free.
+- A product of another type keeps its own price when it has one: a $20 book with a free sample edition stays $20 on its card, in the shopping feeds and in the basket.
+- The category, collection, author and staff-picks pages load their cards' editions with the list, so the check costs no query per card.
+
 ## v0.184.0 — 2026-11-21
 
 **A store can give printed copies away**

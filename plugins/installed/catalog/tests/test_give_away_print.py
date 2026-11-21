@@ -32,15 +32,15 @@ query Free($slug: String!) {
 """
 
 
-def _book(slug, *, price='0', paperback_price=None):
+def _book(slug, *, price='0', paperback_price=None, product_type='variable'):
     """A book with a printed paperback (no price, or ``paperback_price``) and a
-    free audiobook, like The Dawnchild on the live store."""
+    free audiobook, like The Dawnchild on the live store (a simple product)."""
     book = Product.objects.create(
         name=slug.title(),
         slug=slug,
         sku=slug.upper(),
         price=Money(Decimal(price), 'USD'),
-        product_type='variable',
+        product_type=product_type,
         status='active',
     )
     paperback = ProductVariant.objects.create(
@@ -159,3 +159,72 @@ class GiveAwayPrintTests(TestCase):
         from plugins.registry import app_registry
 
         self.assertEqual(app_registry.get('catalog').config_fresh_s, 10.0)
+
+
+class SimpleAndDigitalBookTests(TestCase):
+    """The live Dawnchild books are not variable products (read 2026-11-21): Alice,
+    Peter Rabbit and Oz are digital products priced 0 with one free PDF; The
+    Dawnchild and Good Food are simple products priced 0 with an unpriced printed
+    copy beside a free audiobook. v0.184.0 counted variable products only, so none
+    of them said Free."""
+
+    def setUp(self):
+        cache.clear()
+
+    def _add(self, product, variant=None):
+        cart = Cart.objects.create(session_key=f'simple-{Cart.objects.count()}')
+        return CartService.add_item(cart, str(product.id), 1, str(variant.id) if variant else None)
+
+    def test_a_digital_book_priced_0_with_a_free_pdf_is_free(self):
+        book = Product.objects.create(
+            name='Alice',
+            slug='alice',
+            sku='ALICE',
+            price=Money(0, 'USD'),
+            product_type='digital',
+            status='active',
+        )
+        pdf = ProductVariant.objects.create(
+            product=book,
+            name='Digital PDF',
+            sku='alice-pdf',
+            price=Money(0, 'USD'),
+            variant_type='digital',
+            requires_shipping=False,
+        )
+        self.assertTrue(book.is_free)
+        self.assertTrue(internal_graphql(_Q, {'slug': 'alice'})['product']['isFree'])
+        # Added from a card, the line names the PDF, so the Library delivers it.
+        self.assertEqual(self._add(book).variant_id, pdf.id)
+
+    def test_a_simple_book_is_free_once_the_store_gives_print_away(self):
+        book, paperback, _audio = _book('dawn', product_type='simple')
+        self.assertFalse(book.is_free)
+        self.assertFalse(internal_graphql(_Q, {'slug': 'dawn'})['product']['isFree'])
+        set_app_settings(self, 'catalog', give_away_print=True)
+        self.assertTrue(book.is_free)
+        self.assertTrue(internal_graphql(_Q, {'slug': 'dawn'})['product']['isFree'])
+        self.assertEqual(self._add(book, paperback).unit_price, Money(0, 'USD'))
+
+    def test_a_priced_simple_book_with_a_free_sample_keeps_its_price(self):
+        book = Product.objects.create(
+            name='Atlas',
+            slug='atlas',
+            sku='ATLAS',
+            price=Money(Decimal('20.00'), 'USD'),
+            product_type='simple',
+            status='active',
+        )
+        sample = ProductVariant.objects.create(
+            product=book,
+            name='Sample PDF',
+            sku='atlas-pdf',
+            price=Money(0, 'USD'),
+            variant_type='digital',
+            requires_shipping=False,
+        )
+        self.assertTrue(sample.is_free)
+        self.assertFalse(book.is_free)
+        self.assertFalse(internal_graphql(_Q, {'slug': 'atlas'})['product']['isFree'])
+        # Added without an edition, the line is the $20 book, as before.
+        self.assertEqual(self._add(book).unit_price, Money(Decimal('20.00'), 'USD'))
