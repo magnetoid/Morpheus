@@ -460,6 +460,25 @@ class DawnchildShelfTests(_Dawnchild):
         self.assertIn('/cart/add/', body)
         self.assertEqual(len(re.findall(r'<title\b', body)), 1)
 
+    def test_account_and_basket_are_named_icons_and_the_basket_counts(self):
+        from plugins.installed.catalog.models import Product
+
+        def tools(body: str) -> str:
+            return body.split('<div class="head-tools">', 1)[1].split('</header>', 1)[0]
+
+        empty = tools(self._get('/'))
+        self.assertEqual(empty.count('<svg class="head-icon"'), 2)
+        self.assertIn('<span class="sr-only">Account</span>', empty)
+        self.assertIn('<span class="sr-only">Basket</span>', empty)
+        # Only the hidden names carry the words; the icons stand alone on screen.
+        self.assertEqual(re.findall(r'>(Account|Basket)\b', empty), ['Account', 'Basket'])
+        self.assertIn('id="cart-badge" hidden></span>', empty)
+
+        jam = Product.objects.get(slug='year-of-jam')
+        self.client.post(f'/cart/add/{jam.id}/', {'quantity': 2})
+        full = tools(self._get('/'))
+        self.assertIn('id="cart-badge">2</span>', full)
+
     def test_category_search_and_basket_pages_answer(self):
         for path in ('/category/for-children/', '/search/?q=owl', '/cart/', '/categories/'):
             with self.subTest(path=path):

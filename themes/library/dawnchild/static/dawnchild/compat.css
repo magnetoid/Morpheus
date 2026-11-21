@@ -147,8 +147,9 @@ button { font-family: inherit; }
   margin: 1.2em 0; padding-left: 1.1em; border-left: 2px solid var(--russet); font-style: italic;
 }
 
-/* Header tools the design does not draw: search and the account menu sit as
-   two quiet words beside the basket. */
+/* Header tools the design does not draw: search as a quiet word, the account
+   menu and the basket as line icons (owner, 2026-11-21), each named for screen
+   readers and given a 44px target. */
 .head-tools { display: inline-flex; align-items: center; gap: 14px; }
 .head-tool { font: inherit; font-size: .92rem; background: none; border: 0; padding: 4px 0; color: var(--ink); cursor: pointer; text-decoration: none; border-bottom: 1px solid transparent; }
 .head-tool:hover { border-bottom-color: var(--ink); color: var(--ink); }
@@ -166,6 +167,13 @@ button { font-family: inherit; }
 a.basket-btn { text-decoration: none; }
 a.basket-btn:hover { color: var(--ink); background: var(--parchment-light); }
 .basket-btn .basket-count[hidden] { display: none; }
+.head-icon { display: block; width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.head-tool--icon, .site-head .basket-btn {
+  position: relative; display: inline-flex; align-items: center; justify-content: center;
+  min-width: 44px; min-height: 44px; padding: 0; border: 0; background: none; box-shadow: none; transform: none;
+}
+.head-tool--icon:hover, .site-head .basket-btn:hover { background: var(--parchment-light); box-shadow: none; transform: none; }
+.site-head .basket-btn .basket-count { position: absolute; top: 3px; right: 1px; min-width: 1.45em; padding: 0 .3em; font-size: .7rem; line-height: 1.45em; }
 @media (max-width: 1040px) {
   .head-tools { gap: 10px; }
   .head-tool { min-height: 44px; display: inline-flex; align-items: center; }

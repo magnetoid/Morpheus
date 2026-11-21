@@ -15,6 +15,13 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.183.2 — 2026-11-21
+
+**Dawnchild's header shows Account and Basket as icons**
+
+- On the Dawnchild theme, Account and Basket in the header are line icons. Each keeps its name for screen readers and a 44px target, and Search stays a word. Only the Dawnchild theme changes.
+- The basket's count shows from the first page load whenever the basket holds something. Before, it appeared only after adding a book on the same page.
+
 ## v0.183.1 — 2026-11-21
 
 **Dawnchild's home banner is the design's own, with the store's illustration**
