@@ -1,0 +1,51 @@
+{% load i18n %}{% comment %}
+The advanced_ecommerce app's "Recently viewed" home block (slot home_below_grid),
+drawn as one of the design's home shelves: a toned head band, then the books in a
+row that slides sideways, each with its cover, title, author, the first sentence
+of its own description and its price (owner, 2026-11-21). The app keeps the list
+(request.session['recently_viewed'], newest first, at most eight); a slug whose
+book has gone renders nothing, and a shelf with no book left stays hidden (CSS).
+The buttons only scroll the row; without JavaScript it scrolls by hand.
+{% endcomment %}{% if request.session.recently_viewed %}
+<section class="home-shelf hs-recent" aria-labelledby="hs-recent-h" data-dc-rail>
+  <header class="hs-head">
+    <div class="hs-name">
+      <p class="hs-kicker">{% translate "Picked back up" %}</p>
+      <h2 class="hs-h" id="hs-recent-h">{% translate "Recently viewed" %}</h2>
+    </div>
+    <div class="hs-rail-nav" hidden data-dc-rail-nav>
+      <button type="button" class="hs-rail-btn" data-dc-rail-prev aria-controls="hs-recent-list"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false"><path d="M15 5l-7 7 7 7"/></svg><span class="sr-only">{% translate "Earlier books" %}</span></button>
+      <button type="button" class="hs-rail-btn" data-dc-rail-next aria-controls="hs-recent-list"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false"><path d="M9 5l7 7-7 7"/></svg><span class="sr-only">{% translate "More books" %}</span></button>
+    </div>
+  </header>
+  <ol class="hs-rail" id="hs-recent-list" data-dc-rail-track>
+    {% for slug in request.session.recently_viewed %}{% include "advanced_ecommerce/blocks/_recently_viewed_card.html" with slug=slug %}{% endfor %}
+  </ol>
+</section>
+<script nonce="{{ csp_nonce }}">
+(function () {
+  document.querySelectorAll('[data-dc-rail]').forEach(function (rail) {
+    var track = rail.querySelector('[data-dc-rail-track]');
+    var nav = rail.querySelector('[data-dc-rail-nav]');
+    var prev = rail.querySelector('[data-dc-rail-prev]');
+    var next = rail.querySelector('[data-dc-rail-next]');
+    if (!track || !nav || !prev || !next) return;
+    function step() {
+      var card = track.querySelector('.hs-card');
+      return card ? card.getBoundingClientRect().width : track.clientWidth;
+    }
+    function sync() {
+      var more = track.scrollWidth > track.clientWidth + 2;
+      nav.hidden = !more;
+      prev.disabled = track.scrollLeft <= 2;
+      next.disabled = track.scrollLeft + track.clientWidth >= track.scrollWidth - 2;
+    }
+    prev.addEventListener('click', function () { track.scrollBy({ left: -step(), behavior: 'smooth' }); });
+    next.addEventListener('click', function () { track.scrollBy({ left: step(), behavior: 'smooth' }); });
+    track.addEventListener('scroll', sync, { passive: true });
+    window.addEventListener('resize', sync);
+    sync();
+  });
+})();
+</script>
+{% endif %}

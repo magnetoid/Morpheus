@@ -1,0 +1,31 @@
+{% load advanced_ecommerce morph i18n seo pricing %}{% comment %}
+One book on the "Recently viewed" shelf, in the home shelves' card (hs-card): the
+cover (it repeats the title's link, so it is hidden from screen readers and the
+tab order), title, author, the first sentence of its own description as plain
+text, the price and the two actions. `product` is the catalogue's own row.
+{% endcomment %}{% recently_viewed_product slug as product %}{% if product %}
+{% storefront_price product as card_price %}{% product_card_meta product as bc %}
+<li class="hs-card" data-product-card>
+  <a class="hs-cover" href="/products/{{ product.slug }}/" tabindex="-1" aria-hidden="true">{% if product.primary_image.image %}{% seo_responsive_image product.primary_image.image alt="" widths="300,450" sizes="132px" %}{% else %}<div class="cover-draft" aria-hidden="true"><span class="draft-title">{{ product.name }}</span>{% if bc.author %}<span class="draft-author">{{ bc.author }}</span>{% endif %}</div>{% endif %}</a>
+  <div class="hs-text">
+    <h3 class="hs-title"><a href="/products/{{ product.slug }}/">{{ product.name }}</a></h3>
+    {% if bc.author %}<p class="hs-by">{{ bc.author }}</p>{% endif %}
+    {% if product.short_description %}<p class="hs-hook">{{ product.short_description|first_sentence }}</p>{% endif %}
+    <div class="hs-foot">
+      {% if card_price %}<p class="hs-price">{% if product.price_starts_from %}{% translate "From" %} {% endif %}<span>{{ card_price|money }}</span>{% if bc.formats_line %} · {{ bc.formats_line|lower }}{% endif %}</p>{% endif %}
+      <div class="actions">
+        {% if product.price_starts_from %}
+        <a class="btn" href="/products/{{ product.slug }}/">{% translate "Choose a format" %}<span class="sr-only">: {{ product.name }}</span></a>
+        {% else %}
+        <form method="post" action="/cart/add/{{ product.id }}/">
+          {% csrf_token %}
+          <input type="hidden" name="quantity" value="1">
+          <button class="btn" type="submit" data-buy>{% translate "Add to basket" %}<span class="sr-only">: {{ product.name }}</span></button>
+        </form>
+        {% endif %}
+        <a class="btn ghost" href="/products/{{ product.slug }}/">{% translate "The book" %}<span class="sr-only">: {{ product.name }}</span></a>
+      </div>
+    </div>
+  </div>
+</li>
+{% endif %}
