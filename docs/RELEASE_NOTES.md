@@ -21,6 +21,7 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 - Two Dawnchild theme settings, hero_image_url and hero_image_alt, name an image from the media library for the home banner. It is shown whole on the left, beside the headline and buttons (above them on a phone), even when no book is featured.
 - Without it the banner keeps the first featured book's cover, as before. Only the Dawnchild theme changes.
+- The home banner now meets the header: a 40px band (2px more on phones, where the page was padded by a fixed 101px under a 99px header) sat between them.
 
 ## v0.183.0 — 2026-11-20
 

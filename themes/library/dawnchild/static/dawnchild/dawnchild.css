@@ -995,7 +995,7 @@ body{overflow-x:clip}
 @media (max-width:350px){.home-banner-art{height:min(134.25vw,43vh)}@supports (height:100svh){.home-banner-art{height:min(134.25vw,43svh)}}}
 
 @media (max-width:699px){
-body{padding-top:101px!important}
+body{padding-top:var(--head-h,101px)!important}
 .site-head .head-inner{padding-top:4px!important;padding-bottom:2px!important}
 .head-slim .site-head .head-inner{row-gap:0!important}
 .head-slim .site-head .nav{display:none!important}

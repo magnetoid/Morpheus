@@ -193,6 +193,17 @@ class DawnchildFilesTests(SimpleTestCase):
             self.assertIn(rule, img)
         self.assertIn('#page-home .home-banner-art--full::after { content: none; }', compat)
 
+    def test_the_home_banner_meets_the_header(self):
+        # compat's "#main > section.page" pads every page by 40px and outranks the
+        # design's own "#page-home{padding-top:0}", so the home needs an id pair.
+        compat = (ROOT / 'static' / THEME / 'compat.css').read_text(encoding='utf-8')
+        self.assertIn('#main > #page-home { padding-top: 0; }', compat)
+        # Under 700px the page is padded by the header's measured height
+        # (dawnchild.js sets --head-h); a fixed 101px left a band under a 99px header.
+        design = (ROOT / 'static' / THEME / 'dawnchild.css').read_text(encoding='utf-8')
+        self.assertNotIn('body{padding-top:101px!important}', design)
+        self.assertIn('body{padding-top:var(--head-h,101px)!important}', design)
+
     def test_theme_settings_all_have_a_reader(self):
         schema = theme_registry.get(THEME).get_config_schema()['properties']
         everything = '\n'.join(_sources().values())

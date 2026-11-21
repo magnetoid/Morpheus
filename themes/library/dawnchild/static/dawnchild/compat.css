@@ -247,6 +247,9 @@ img.ko-fade-img.is-loaded { opacity: 1; }
    (its foot, on a phone) into the banner, which would cut into a drawing and
    hide the artist's signature; here the picture sets its own height, beside
    the words from 600px up and above them below that. */
+/* The banner meets the header, as in the design (its own #page-home rule);
+   "#main > section.page" above outranks that and opened a 40px band. */
+#main > #page-home { padding-top: 0; }
 #page-home .home-banner-art--full { overflow: visible; min-height: 0; aspect-ratio: auto; align-self: center; background: none; }
 #page-home .home-banner-art--full::after { content: none; }
 #page-home .home-banner-art--full picture { position: static; inset: auto; display: block; }
