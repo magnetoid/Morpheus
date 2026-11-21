@@ -10,7 +10,7 @@ PRODUCT_LIST_QUERY = """
 query ProductList($first: Int!, $search: String, $category: String) {
   products(first: $first, search: $search, category: $category) {
     id name slug productType
-    price { amount currency } priceStartsFrom isFree
+    price { amount currency } priceStartsFrom isFree isForSale
     compareAtPrice { amount }
     primaryImage { url altText }
     isOnSale discountPercentage
@@ -23,12 +23,12 @@ PRODUCT_DETAIL_QUERY = """
 query ProductDetail($slug: String!) {
   product(slug: $slug) {
     id name slug description shortDescription productType
-    price { amount currency } priceStartsFrom isFree defaultVariantId hasOnlyDefaultVariant
+    price { amount currency } priceStartsFrom isFree isForSale defaultVariantId hasOnlyDefaultVariant
     compareAtPrice { amount }
     images { url altText isPrimary sortOrder }
     variants {
       id name sku size shortDescription description
-      variantType sortOrder isActive isFree
+      variantType sortOrder isActive isFree isForSale
       price { amount currency }
       compareAtPrice { amount currency }
       isOnSale discountPercentage

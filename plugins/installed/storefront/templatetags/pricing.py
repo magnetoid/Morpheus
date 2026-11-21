@@ -16,6 +16,8 @@ list. This filter is the storefront read layer only.
 
 from __future__ import annotations
 
+from decimal import Decimal, InvalidOperation
+
 from django import template
 
 register = template.Library()
@@ -49,3 +51,18 @@ def storefront_price(context, product):
     request = context.get('request')
     customer = getattr(request, 'user', None) if request is not None else None
     return apply_price_filter(price, product=product, customer=customer)
+
+
+@register.filter
+def priced(price) -> bool:
+    """True for a price above 0, given as ``Money`` or the GraphQL dict
+    (``{amount, currency}``). A price of 0 on a product that is not free means
+    nothing prices it yet: a card shows no price. A GraphQL dict is truthy
+    whatever its amount, so ``{% if card_price %}`` printed $0.00."""
+    amount = price.get('amount') if isinstance(price, dict) else getattr(price, 'amount', None)
+    if amount is None:
+        return False
+    try:
+        return Decimal(str(amount)) > 0
+    except (InvalidOperation, ValueError):
+        return False

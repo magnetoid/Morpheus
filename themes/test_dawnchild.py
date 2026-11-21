@@ -203,6 +203,17 @@ class DawnchildFilesTests(SimpleTestCase):
         for rule in ('width: 100%', 'height: auto', 'object-fit: contain'):
             self.assertIn(rule, img)
         self.assertIn('#page-home .home-banner-art--full::after { content: none; }', compat)
+        # It sits inside the banner, with the banner's colour round it and a soft
+        # shadow under it (owner, 2026-11-21), on a phone too.
+        self.assertIn('#page-home .home-banner-art--full { padding: clamp(', compat)
+        self.assertRegex(
+            compat, r'#page-home \.home-banner-art--full img \{\s*box-shadow: 0 22px 36px -16px'
+        )
+        phone = compat.split('@media (max-width: 599px) {', 1)[1].split('\n}', 1)[0]
+        self.assertIn('padding: 28px clamp(28px, 12vw, 56px) 14px', phone)
+        self.assertIn(
+            'width: auto; max-width: 100%; max-height: 60svh; margin-inline: auto;', phone
+        )
 
     def test_the_home_banner_meets_the_header(self):
         # compat's "#main > section.page" pads every page by 40px and outranks the
@@ -599,6 +610,103 @@ class DawnchildShelfTests(_Dawnchild):
         rail = self._get('/').split('class="home-shelf hs-recent"', 1)[1].split('</section>', 1)[0]
         bird = rail.split('href="/products/unpriced-bird/"', 1)[1].split('</li>', 1)[0]
         self.assertIn('<p class="hs-price"><span>Free</span></p>', bird)
+
+    def test_a_book_nothing_prices_shows_no_price_and_no_dead_button(self):
+        # The live store (2026-11-21): The Dawnchild has an unpriced paperback
+        # beside a free audiobook, and Daffy Goes to Sea has no edition yet, both
+        # on a product priced 0. The basket refuses the paperback and Daffy, yet
+        # the home shelf printed $0.00 with "Add to basket" for them.
+        from plugins.installed.catalog.models import Category, Product, ProductVariant
+
+        children = Category.objects.get(slug='for-children')
+        quiet = Product.objects.create(
+            name='Quiet Bird',
+            slug='quiet-bird',
+            sku='QB-1',
+            price=Money(0, 'USD'),
+            product_type='simple',
+            status='active',
+            category=children,
+            is_featured=True,
+        )
+        paperback = ProductVariant.objects.create(
+            product=quiet, name='Paperback', sku='QB-PB', sort_order=0
+        )
+        audio = ProductVariant.objects.create(
+            product=quiet,
+            name='Audiobook',
+            sku='QB-AB',
+            price=Money(0, 'USD'),
+            variant_type='audiobook',
+            requires_shipping=False,
+            sort_order=1,
+        )
+        bare = Product.objects.create(
+            name='Bare Book',
+            slug='bare-book',
+            sku='BARE-1',
+            price=Money(0, 'USD'),
+            product_type='simple',
+            status='active',
+            category=children,
+            is_featured=True,
+        )
+        self.client = Client(HTTP_USER_AGENT='Mozilla/5.0 (X11; Linux x86_64) Firefox/140.0')
+
+        # The book page selects the free audiobook, never the paperback the basket
+        # refuses, and says Free above it; the paperback would send nothing.
+        page = self._get('/products/quiet-bird/')
+        headline = page.split('<span data-pdp-price', 1)[1].split('</span>', 1)[0]
+        self.assertIn('Free', headline)
+        self.assertNotIn('0.00', headline)
+        self.assertIn(f'name="variant_id" value="{audio.pk}"', page)
+        self.assertRegex(page, rf'data-variant-id="{paperback.pk}"[^>]*data-variant-for-sale="0"')
+        self.assertRegex(page, rf'data-variant-id="{audio.pk}"[^>]*data-variant-for-sale="1"')
+        self.assertIn(
+            'data-pdp-cta data-unavailable-label="Not available yet">Add to cart</button>', page
+        )
+        # A book with nothing for sale yet: no price, and a button that sends nothing.
+        page = self._get('/products/bare-book/')
+        self.assertNotIn('0.00', page.split('<span data-pdp-price', 1)[1].split('</span>', 1)[0])
+        self.assertIn(
+            'data-pdp-cta data-unavailable-label="Not available yet" disabled>Not available yet</button>',
+            page,
+        )
+        self.assertIn('data-pdp-sticky-cta disabled>Not available yet</button>', page)
+        self.assertNotIn('data-pdp-sticky-price>$0.00', page)
+
+        def card(html: str, slug: str, start: str, end: str) -> str:
+            chunk = next(c for c in html.split(start)[1:] if f'href="/products/{slug}/"' in c)
+            return chunk.split(end, 1)[0]
+
+        cache.clear()
+        home = self._get('/')
+        featured, rail = home.split('class="home-shelf hs-recent"', 1)
+        rail = rail.split('</section>', 1)[0]
+        for shelf, start, end in (
+            (featured, '<article class="hs-card"', '</article>'),
+            (rail, '<li class="hs-card"', '</li>'),
+        ):
+            with self.subTest(shelf=start):
+                q, b = card(shelf, 'quiet-bird', start, end), card(shelf, 'bare-book', start, end)
+                for c in (q, b):
+                    self.assertNotIn('hs-price', c)
+                    self.assertNotIn('0.00', c)
+                    self.assertNotIn('/cart/add/', c)
+                    self.assertIn('>The book<', c)
+                # The audiobook can be had, so the card leads to the page to pick it.
+                self.assertIn('Choose a format', q)
+                self.assertNotIn('Choose a format', b)
+        # The shelf on /products/ and the card on the category page say the same.
+        shelf = self._get('/products/')
+        for slug in ('quiet-bird', 'bare-book'):
+            item = shelf.split(f'href="/products/{slug}/"', 1)[1].split('</a>', 1)[0]
+            self.assertNotIn('shelf-price', item)
+        category = self._get('/category/for-children/')
+        self.assertNotIn(f'/cart/add/{quiet.id}/', category)
+        self.assertNotIn(f'/cart/add/{bare.id}/', category)
+        self.assertIn('Choose a format<span class="sr-only">: Quiet Bird</span>', category)
+        self.assertNotIn('Choose a format<span class="sr-only">: Bare Book</span>', category)
 
     def test_category_search_and_basket_pages_answer(self):
         for path in ('/category/for-children/', '/search/?q=owl', '/cart/', '/categories/'):

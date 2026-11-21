@@ -2,7 +2,9 @@
 {% comment %}One book on a home shelf (the design's hs-card): cover, title, author,
 the book's own short description as the hook, the price and the two actions. The
 cover repeats the title's link, so it is hidden from screen readers and the tab order.
-`product` is a GraphQL dict. Everything printed is the catalogue's.{% endcomment %}
+`product` is a GraphQL dict. Everything printed is the catalogue's. A price shows
+only above 0 (`|priced`: a dict is truthy at 0), and the basket button only where
+that price is charged; a book with nothing for sale yet keeps "The book" alone.{% endcomment %}
 {% storefront_price product as card_price %}
 {% product_card_meta product as bc %}
 <article class="hs-card" data-product-card>
@@ -13,12 +15,12 @@ cover repeats the title's link, so it is hidden from screen readers and the tab 
     {% if product.shortDescription %}<p class="hs-hook">{{ product.shortDescription|first_sentence }}</p>{% endif %}
     {% if bc.genre %}<p class="hs-who">{{ bc.genre }}</p>{% endif %}
     <div class="hs-foot">
-      {% if product.isFree %}<p class="hs-price"><span>{% translate "Free" %}</span></p>{% elif card_price %}<p class="hs-price">{% if product.priceStartsFrom %}{% translate "From" %} {% endif %}<span>{{ card_price|money }}</span>{% if bc.formats_line %} · {{ bc.formats_line|lower }}{% endif %}</p>{% endif %}
+      {% if product.isFree %}<p class="hs-price"><span>{% translate "Free" %}</span></p>{% elif card_price|priced %}<p class="hs-price">{% if product.priceStartsFrom %}{% translate "From" %} {% endif %}<span>{{ card_price|money }}</span>{% if bc.formats_line %} · {{ bc.formats_line|lower }}{% endif %}</p>{% endif %}
       <div class="actions">
         {% if product.isFree %}
         <a class="btn" href="/products/{{ product.slug }}/">{% translate "Get it free" %}<span class="sr-only">: {{ product.name }}</span></a>
-        {% elif product.priceStartsFrom %}
-        <a class="btn" href="/products/{{ product.slug }}/">{% translate "Choose a format" %}<span class="sr-only">: {{ product.name }}</span></a>
+        {% elif product.priceStartsFrom or not card_price|priced %}
+        {% if product.isForSale %}<a class="btn" href="/products/{{ product.slug }}/">{% translate "Choose a format" %}<span class="sr-only">: {{ product.name }}</span></a>{% endif %}
         {% else %}
         <form method="post" action="/cart/add/{{ product.id }}/">
           {% csrf_token %}

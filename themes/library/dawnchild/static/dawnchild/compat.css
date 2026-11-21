@@ -269,9 +269,17 @@ img.ko-fade-img.is-loaded { opacity: 1; }
 #page-home .home-banner-art--full::after { content: none; }
 #page-home .home-banner-art--full picture { position: static; inset: auto; display: block; }
 #page-home .home-banner-art--full img { display: block; width: 100%; height: auto; object-fit: contain; }
+/* The picture sits inside the banner, with the banner's colour round it and a
+   soft shadow under it, as a plate laid on the page (owner, 2026-11-21). */
+#page-home .home-banner-art--full { padding: clamp(28px, 4.5vw, 72px); }
+#page-home .home-banner-art--full img {
+  box-shadow: 0 22px 36px -16px rgba(18, 4, 2, .55), 0 6px 14px -8px rgba(18, 4, 2, .35);
+}
 @media (max-width: 599px) {
-  #page-home .home-banner-art--full { justify-self: stretch; width: 100%; max-width: none; height: auto; }
-  #page-home .home-banner-art--full img { max-height: 75svh; }
+  #page-home .home-banner-art--full { justify-self: stretch; width: 100%; max-width: none; height: auto; padding: 28px clamp(28px, 12vw, 56px) 14px; }
+  /* Sized by its height when that is the tighter bound, so the shadow sits on
+     the picture, never on the empty sides of its box. */
+  #page-home .home-banner-art--full img { width: auto; max-width: 100%; max-height: 60svh; margin-inline: auto; }
 }
 #page-home .hs-cover .cover-draft { width: 100%; height: auto; }
 

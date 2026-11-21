@@ -15,6 +15,15 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.184.2 — 2026-11-21
+
+**Dawnchild: no $0.00 or dead buttons on books nothing prices, and a framed hero picture**
+
+- A book nothing prices yet shows no price and no basket button that the basket would refuse. Catalog's new is_for_sale (GraphQL isForSale on products and variants) is the basket's own test: a copy given away, or one priced above 0.
+- Dawnchild's home shelf printed $0.00 with "Add to basket" for The Dawnchild and Good Food: a GraphQL price is a dict, truthy at 0. Cards now show a price only above 0 (the storefront's new |priced filter), lead to the book's page when a free edition is the only thing to have, and keep "The book" alone when nothing is for sale.
+- A book page selects first an edition that can be bought (defaultVariantId), says Free when that edition is free, and an edition nothing prices reads "Not available yet" with its button switched off.
+- The Dawnchild home banner's picture sits inside the banner with the banner's colour round it and a soft shadow under it, still shown whole, on a phone too.
+
 ## v0.184.1 — 2026-11-21
 
 **Dawnchild's free books say Free**
