@@ -25,7 +25,11 @@ tool, only a database write. So the Christmas look needs a theme settings page f
 ## Goals
 
 **Release 1: a settings page for the active theme, in any store.**
-- It sits under Settings → Storefront, as a card named "Theme: <label>", at `/dashboard/settings/theme/`.
+- It sits under Settings → Storefront, as a card named "Theme" (hint "Settings your active theme offers"),
+  at `/dashboard/apps/storefront/theme/`; the page itself is headed "Theme: <label>". (Amended by the
+  plan: `/dashboard/settings/<category>/` is the dashboard shell's own route, so the storefront app owns
+  the page and its URL; and a card label is built once at start-up, so one naming the theme would go
+  stale after `theme.activate`.)
 - Its fields come from the active theme's `get_config_schema()` and render exactly like an app's settings
   card: text, switch and choice list. It saves the same way.
 - It is gated like the other settings pages.

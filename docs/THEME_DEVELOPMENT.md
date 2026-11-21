@@ -421,8 +421,25 @@ Python:
 self.get_config_value("show_announcement_bar", default=True)
 ```
 
-Configuration is persisted in the `themes.ThemeConfig` table; the
-dashboard renders this schema as a form.
+Configuration is persisted in the `themes.ThemeConfig` table (one row per
+theme, created on the first save without activating the theme). Since
+v0.185.0 the merchant edits it on the **Theme** card under Settings →
+Storefront (`/dashboard/apps/storefront/theme/`): the active theme's schema
+renders exactly like an app's settings card (text, switch, choice list) and
+saves the same way, so an unticked switch turns off only when the form showed
+it and a value that does not fit its type keeps what was stored. A theme with
+no schema says so there.
+
+From code, write a value with `self.set_config(key, value)`; it saves the row
+and drops this process's cached copy. Other workers re-read their copy every
+`config_fresh_s` seconds (10 by default), so a save reaches every web and
+background worker within 10 seconds without a restart.
+
+Linda reads and changes the same settings: `theme.describe` lists each setting
+(type, allowed values, default, current value, whether she may change it), and
+`theme.set` changes one, checked against its type, only after the merchant's
+own yes. Mark a setting `"x-agent-writable": false` to keep it for the
+merchant alone.
 
 ---
 
