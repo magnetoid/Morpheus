@@ -67,42 +67,15 @@ def plugin_settings_view(request: HttpRequest, plugin: str) -> HttpResponse:
         raise Http404('Plugin settings panel not found.')
 
     if request.method == 'POST':
-        # Merchant-form save: pull declared keys out of POST, read each as its
-        # schema type (plugins.config_schema) and persist via plugin.set_config.
-        # An unticked box submits nothing, so an absent boolean is saved as off
-        # only when the form rendered it: every AJAX panel form renders all of
-        # its booleans, and a regular post names its boxes in `_booleans` (the
-        # panel templates write one per checkbox). A page that posts only some
-        # keys names none, so it never switches off a box it did not show.
+        # Merchant-form save: each declared key read as its schema type and
+        # stored through plugin.set_config (plugins.config_schema.save_posted
+        # says how an unticked box and a blank secret are treated).
         from django.http import JsonResponse
 
         from plugins import config_schema
 
         is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
-        saved: list[str] = []
-        for key, prop in (panel.schema.get('properties') or {}).items():
-            ptype = prop.get('type')
-            if key not in request.POST:
-                if ptype == 'boolean' and (is_ajax or key in request.POST.getlist('_booleans')):
-                    instance.set_config(key, False)
-                    saved.append(key)
-                continue
-            raw = request.POST[key]
-            # Write-only secret: a blank OR masked ("********") submit means
-            # "leave it unchanged", never wipe the stored secret. The AI
-            # settings page masks a saved key that way and says to leave it.
-            if config_schema.is_secret(key, prop) and (raw or '').strip() in (
-                '',
-                config_schema.PASSWORD_MASK,
-            ):
-                continue
-            # A value the field's type cannot be read as is skipped, as before.
-            try:
-                value: Any = config_schema.coerce(prop, raw)
-            except config_schema.SettingError:
-                continue
-            instance.set_config(key, value)
-            saved.append(key)
+        saved = config_schema.save_posted(instance, panel.schema, request.POST, ajax=is_ajax)
         if is_ajax:
             return JsonResponse({'ok': True, 'saved': saved})
         # Honor `_next` so a custom landing page (e.g. /dashboard/settings/ai/)

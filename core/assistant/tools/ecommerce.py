@@ -82,16 +82,6 @@ def settings_list_tool() -> ToolResult:
     )
 
 
-_DESCRIBED_KEYWORDS = {
-    'enum': 'enum',
-    'minimum': 'minimum',
-    'maximum': 'maximum',
-    'minLength': 'min_length',
-    'maxLength': 'max_length',
-    'items': 'items',
-}
-
-
 @tool(
     name='settings.describe',
     description=(
@@ -123,23 +113,9 @@ def settings_describe_tool(*, plugin: str = '') -> ToolResult:
     instance = app_registry.get(plugin)
     if instance is None:
         raise ToolError(f'no such plugin: {plugin!r}')
-    config = instance.get_config()
-    entries = []
-    for key, prop in config_schema.properties(instance).items():
-        secret = config_schema.is_secret(key, prop)
-        entry = {
-            'key': key,
-            'title': prop.get('title') or key.replace('_', ' ').capitalize(),
-            'description': prop.get('description', ''),
-            'type': prop.get('type', 'string'),
-            'default': config_schema.redact(prop.get('default'), secret),
-            'value': config_schema.redact(config.get(key, prop.get('default')), secret),
-            'stored': key in config,
-            'secret': secret,
-            'agent_writable': config_schema.agent_writable(key, prop),
-        }
-        entry.update({out: prop[kw] for kw, out in _DESCRIBED_KEYWORDS.items() if kw in prop})
-        entries.append(entry)
+    entries = config_schema.describe_settings(
+        config_schema.properties(instance), instance.get_config()
+    )
     return ToolResult(
         output={'plugin': plugin, 'label': instance.label, 'settings': entries},
         display=f'{len(entries)} setting(s) for {instance.label or plugin}',

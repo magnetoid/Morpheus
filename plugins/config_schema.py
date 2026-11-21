@@ -300,3 +300,105 @@ def report(plugin, key: str, value: Any) -> None:
         return
     for problem in problems:
         logger.warning('settings: %s.%s: %s (stored as given)', plugin.name, key, problem)
+
+
+# ── One settings form for any target (v0.185.0) ─────────────────────────────
+# A target is anything with `get_config() -> dict` and `set_config(key, value)`:
+# an app, or a theme. The dashboard's app settings, the theme settings page and
+# Linda's settings tools all read and write through these.
+
+
+def form_fields(target, schema: dict) -> list[dict]:
+    """The fields a settings form renders for `schema`, filled from `target`'s
+    stored settings (the shape `admin_dashboard/plugin_settings.html` reads)."""
+    config = target.get_config()
+    fields = []
+    for key, prop in (schema.get('properties') or {}).items():
+        kind = field_kind(prop)
+        value = config.get(key, prop.get('default', ''))
+        if is_secret(key, prop):
+            # A secret renders write-only: it never echoes the stored value into
+            # page source, and a blank submit keeps it (see `save_posted`). Carry
+            # a boolean so the form can say whether a secret is already stored.
+            value = ''
+        elif kind == 'boolean':
+            value = bool(value)
+        elif kind == 'array' and isinstance(value, list):
+            # A list edits as comma-separated text; the save reads it back.
+            value = list_text(value)
+        fields.append(
+            {
+                'key': key,
+                'title': prop.get('title') or key.replace('_', ' ').title(),
+                'description': prop.get('description', ''),
+                'kind': kind,
+                'enum': prop.get('enum') or [],
+                'value': value,
+                'has_value': bool(config.get(key)),
+            }
+        )
+    return fields
+
+
+def save_posted(target, schema: dict, post, *, ajax: bool) -> list[str]:
+    """Store the settings a posted form carries; return the keys it saved.
+
+    Each declared key is read as its schema type. An unticked box submits
+    nothing, so an absent boolean is saved as off only when the form rendered
+    it: every AJAX panel form renders all of its booleans (`ajax`), and a regular
+    post names its boxes in `_booleans`. A page that posts only some keys names
+    none, so it never switches off a box it did not show. A blank or masked
+    secret means "leave it unchanged", and a value its type cannot be read as is
+    skipped.
+    """
+    saved: list[str] = []
+    shown_booleans = post.getlist('_booleans')
+    for key, prop in (schema.get('properties') or {}).items():
+        if key not in post:
+            if prop.get('type') == 'boolean' and (ajax or key in shown_booleans):
+                target.set_config(key, False)
+                saved.append(key)
+            continue
+        raw = post[key]
+        if is_secret(key, prop) and (raw or '').strip() in ('', PASSWORD_MASK):
+            continue
+        try:
+            value = coerce(prop, raw)
+        except SettingError:
+            continue
+        target.set_config(key, value)
+        saved.append(key)
+    return saved
+
+
+_DESCRIBED_KEYWORDS = {
+    'enum': 'enum',
+    'minimum': 'minimum',
+    'maximum': 'maximum',
+    'minLength': 'min_length',
+    'maxLength': 'max_length',
+    'items': 'items',
+}
+
+
+def describe_settings(props: dict, config: dict) -> list[dict]:
+    """Each setting in `props` as an agent reads it: its type, allowed values,
+    default and current value (secrets redacted), and whether an agent may
+    change it."""
+    entries = []
+    for key, prop in props.items():
+        secret = is_secret(key, prop)
+        entry = {
+            'key': key,
+            'title': prop.get('title') or key.replace('_', ' ').capitalize(),
+            'description': prop.get('description', ''),
+            'type': prop.get('type', 'string'),
+            'default': redact(prop.get('default'), secret),
+            'value': redact(config.get(key, prop.get('default')), secret),
+            'stored': key in config,
+            'secret': secret,
+            'agent_writable': agent_writable(key, prop),
+        }
+        entry.update({out: prop[kw] for kw, out in _DESCRIBED_KEYWORDS.items() if kw in prop})
+        entries.append(entry)
+    return entries

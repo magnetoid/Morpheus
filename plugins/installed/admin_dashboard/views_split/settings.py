@@ -44,34 +44,7 @@ def _build_panel_fields(plugin_instance, schema: dict) -> list[dict]:
     """Schema → list of form-field dicts (matches plugin_settings.html shape)."""
     from plugins import config_schema
 
-    config = plugin_instance.get_config()
-    fields = []
-    for key, prop in (schema.get('properties') or {}).items():
-        kind = config_schema.field_kind(prop)
-        value = config.get(key, prop.get('default', ''))
-        if config_schema.is_secret(key, prop):
-            # A secret renders write-only: it never echoes the stored value
-            # into page source, and a blank submit keeps it (see the POST
-            # handler in admin_dashboard/urls.py:plugin_settings_view). Carry
-            # a boolean so the UI can hint whether a secret is already stored.
-            value = ''
-        elif kind == 'boolean':
-            value = bool(value)
-        elif kind == 'array' and isinstance(value, list):
-            # A list edits as comma-separated text; the save reads it back.
-            value = config_schema.list_text(value)
-        fields.append(
-            {
-                'key': key,
-                'title': prop.get('title') or key.replace('_', ' ').title(),
-                'description': prop.get('description', ''),
-                'kind': kind,
-                'enum': prop.get('enum') or [],
-                'value': value,
-                'has_value': bool(config.get(key)),
-            }
-        )
-    return fields
+    return config_schema.form_fields(plugin_instance, schema)
 
 
 @staff_member_required
