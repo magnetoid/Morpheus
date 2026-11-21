@@ -5,8 +5,11 @@ Home, after the "Dawnchild Home - soft" design: the banner, the four reasons,
 the shelves, the readers' line, one note, buying, and the letter.
 
 What the design fills with its own four books this page fills from the store:
-the banner leads with the first featured book (its cover, its own short
-description, its author on the plaque); the shelves are the featured books
+the banner's picture is the illustration the store names in the theme setting
+hero_image_url (shown whole: never cropped, no fade over its edges, so the
+artist's signature stays), else the first featured book's cover; the banner's
+words lead with the first featured book (its own short description, its author
+on the plaque); the shelves are the featured books
 under their catalogue categories; the note is the newest journal post. A
 store with nothing featured gets the imprint's statement and a way to the shelf,
 never an invented book. The design's two rows of plates are not here: the home
@@ -20,10 +23,14 @@ query carries one image per book, so there is nothing real to hang in them.
 {% endblock %}
 
 {% block content %}
-{% with lead=hero_products.0 %}
+{% with lead=hero_products.0 hero_art=theme_config.hero_image_url %}
 <section class="page is-active" id="page-home" aria-labelledby="home-h">
-  <div class="home-banner{% if not lead.primaryImage.url %} home-banner--plain{% endif %}" id="home-banner">
-    {% if lead.primaryImage.url %}
+  <div class="home-banner{% if not hero_art and not lead.primaryImage.url %} home-banner--plain{% endif %}" id="home-banner">
+    {% if hero_art %}
+    <figure class="home-banner-art home-banner-art--full">
+      {% seo_responsive_image hero_art alt=theme_config.hero_image_alt widths="400,600,800,1200" sizes="(min-width: 900px) 45vw, (min-width: 600px) 46vw, 100vw" priority=True %}
+    </figure>
+    {% elif lead.primaryImage.url %}
     <figure class="home-banner-art">
       <a href="/products/{{ lead.slug }}/"><picture><img fetchpriority="high" decoding="async" src="{{ lead.primaryImage.url }}" alt="{{ lead.primaryImage.altText|default:lead.name }}"></picture></a>
     </figure>

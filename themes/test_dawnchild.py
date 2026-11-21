@@ -84,6 +84,10 @@ PAYMENT_PAGE = re.compile(
     r'storefront/(cart|checkout\w*|account_payment_methods|_cart_drawer)\.html$'
 )
 
+HERO_REL = 'media/e8/15/e815f76677af4afd89f967416d4b578e/dawnchild-hero-beryl-irving.jpg'
+HERO = f'/media/{HERO_REL}'
+HERO_ALT = 'Illustration of a large bird beside a child, signed Beryl Irving.'
+
 _COMMENTS = re.compile(r'{%\s*comment\s*%}.*?{%\s*endcomment\s*%}|{#.*?#}', re.S)
 
 
@@ -182,6 +186,13 @@ class DawnchildFilesTests(SimpleTestCase):
             self.assertEqual(text.count('/*'), text.count('*/'), css.name)
             self.assertNotIn('display:none!important}\n.memory-form', text)
 
+    def test_the_stores_illustration_is_never_cropped_or_faded(self):
+        compat = (ROOT / 'static' / THEME / 'compat.css').read_text(encoding='utf-8')
+        img = re.search(r'#page-home \.home-banner-art--full img \{([^}]*)\}', compat).group(1)
+        for rule in ('width: 100%', 'height: auto', 'object-fit: contain'):
+            self.assertIn(rule, img)
+        self.assertIn('#page-home .home-banner-art--full::after { content: none; }', compat)
+
     def test_theme_settings_all_have_a_reader(self):
         schema = theme_registry.get(THEME).get_config_schema()['properties']
         everything = '\n'.join(_sources().values())
@@ -256,6 +267,52 @@ class DawnchildHomeTests(_Dawnchild):
         self.assertIn('Some books disappear. We go and fetch them back.', body)
         self.assertIn('href="/products/"', body)
         self.assertNoDesignContent(body)
+
+    def _illustration(self, url: str = HERO, alt: str = HERO_ALT) -> None:
+        """The store names its banner illustration in the theme's settings."""
+        from themes.models import ThemeConfig
+
+        ThemeConfig.objects.update_or_create(
+            theme_name=THEME, defaults={'config': {'hero_image_url': url, 'hero_image_alt': alt}}
+        )
+        theme = theme_registry.get(THEME)
+        theme.invalidate_config_cache()
+        self.addCleanup(theme.invalidate_config_cache)
+
+    def _banner(self, body: str) -> str:
+        return body.split('id="home-banner"', 1)[1].split('id="home-why"', 1)[0]
+
+    def test_the_stores_illustration_shows_with_nothing_featured(self):
+        self._illustration()
+        banner = self._banner(self._home([]))
+        self.assertIn('home-banner-art--full', banner)
+        self.assertNotIn('home-banner--plain', banner)
+        self.assertIn(f'/img/webp/1200/{HERO_REL}', banner)
+        self.assertIn(f'alt="{HERO_ALT}"', banner)
+        self.assertIn('fetchpriority="high"', banner)
+        # The picture first (left, or above on a phone), then the words.
+        self.assertLess(banner.index('home-banner-art--full'), banner.index('home-banner-text'))
+        self.assertIn('Some books disappear. We go and fetch them back.', banner)
+
+    def test_the_stores_illustration_wins_over_the_featured_cover(self):
+        self._illustration()
+        owl = _gql_product('The Owl Lantern', 'owl-lantern', ('For children', 'kids'), '14.50')
+        body = self._home([owl])
+        banner = self._banner(body)
+        self.assertIn(f'/img/webp/1200/{HERO_REL}', banner)
+        self.assertNotIn('https://example.com/owl-lantern.jpg', banner)
+        # The words still lead with the book, and its cover stays on its shelf.
+        self.assertIn('The Owl Lantern opens with a knock at the door.', banner)
+        self.assertIn('href="/products/owl-lantern/"', banner)
+        self.assertIn('owl-lantern.jpg', body.split('id="home-shelves"', 1)[1])
+
+    def test_without_an_illustration_the_banner_keeps_the_featured_cover(self):
+        owl = _gql_product('The Owl Lantern', 'owl-lantern', ('For children', 'kids'), '14.50')
+        banner = self._banner(self._home([owl]))
+        self.assertIn('https://example.com/owl-lantern.jpg', banner)
+        self.assertNotIn('home-banner-art--full', banner)
+        # With neither, the banner closes up to its words.
+        self.assertIn('home-banner--plain', self._home([]))
 
     def test_one_title_and_the_page_is_the_designs_home(self):
         body = self._home([])

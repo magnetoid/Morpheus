@@ -19,6 +19,10 @@ Design notes
 - Books, prices and covers come from the catalogue, never from the theme: a
   shelf with no products says so, and a signup form says only what the
   newsletter app answered.
+- The home banner's illustration is the store's own: the ``hero_image_url``
+  setting names an image in its media library, shown whole beside the
+  headline. Without it the banner shows the first featured book's cover, and
+  with neither it closes up to one column.
 - Activate only via instance env (``MORPHEUS_ACTIVE_THEME=dawnchild``) or the
   dashboard's theme picker. Nothing else changes when this theme is present.
 """
@@ -80,6 +84,19 @@ class DawnchildTheme(MorpheusTheme):
                     'type': 'string',
                     'default': '',
                     'title': 'Trade email (shown on the trade page)',
+                },
+                'hero_image_url': {
+                    'type': 'string',
+                    'default': '',
+                    'title': (
+                        'Home banner illustration: address of an image in the media library '
+                        "(empty shows the first featured book's cover)"
+                    ),
+                },
+                'hero_image_alt': {
+                    'type': 'string',
+                    'default': '',
+                    'title': 'Home banner illustration: what it shows, for screen readers',
                 },
             },
         }
