@@ -69,6 +69,24 @@ class StorefrontPlugin(Plugin):
         value.disallow('/*?*facet_panel=')
         return value
 
+    def contribute_dashboard_pages(self) -> list:
+        from plugins.contributions import DashboardPage
+
+        # The active theme's own settings (its get_config_schema), saved like any
+        # settings card. The theme layer is the storefront's, so the card is here.
+        return [
+            DashboardPage(
+                slug='theme',
+                label='Theme',
+                section='storefront',
+                nav='settings',
+                icon='palette',
+                view='plugins.installed.storefront.theme_settings.theme_settings',
+                hint='Settings your active theme offers',
+                order=20,
+            ),
+        ]
+
     def contribute_settings_panel(self):
         from plugins.contributions import SettingsPanel
 
