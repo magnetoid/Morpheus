@@ -330,8 +330,10 @@ class CatalogPlugin(Plugin):
 
     def contribute_settings_panel(self):
         return SettingsPanel(
-            label='Images',
-            description='The shape product images are shown in, how they fill their frame, and the format and quality of the variants generated on upload. One setting drives the dashboard, the storefront and the pipeline together.',
+            # Named after the app, not its first settings: as "Images" the free
+            # print switch (v0.184.0) sat where no merchant looked for it.
+            label='Catalog',
+            description='Whether printed copies priced 0 are given away, the brand product pages name, and the shape, fill, size, format and quality of product images.',
             schema=self.get_config_schema(),
             category='storefront',
         )

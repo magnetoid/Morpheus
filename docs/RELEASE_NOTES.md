@@ -15,6 +15,13 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.184.3 — 2026-11-21
+
+**The free print switch is on a settings card called Catalog**
+
+- Catalog's settings card was called "Images", so the switch that gives away printed copies priced 0 (v0.184.0) sat where no merchant looked for it. The card now carries the app's name: Settings → Storefront → Catalog, or /dashboard/settings/catalog/ directly.
+- Its description now names the free-print switch first, then the brand and the image settings.
+
 ## v0.184.2 — 2026-11-21
 
 **Dawnchild: no $0.00 or dead buttons on books nothing prices, and a framed hero picture**
