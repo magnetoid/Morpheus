@@ -17,10 +17,11 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ## v0.183.2 — 2026-11-21
 
-**Dawnchild's header shows Account and Basket as icons**
+**Dawnchild: header icons and a "Recently viewed" shelf**
 
-- On the Dawnchild theme, Account and Basket in the header are line icons. Each keeps its name for screen readers and a 44px target, and Search stays a word. Only the Dawnchild theme changes.
+- On the Dawnchild theme, Account and Basket in the header are line icons. Each keeps its name for screen readers and a 44px target, and Search stays a word.
 - The basket's count shows from the first page load whenever the basket holds something. Before, it appeared only after adding a book on the same page.
+- The home page's "Recently viewed" row is drawn like the home shelves: a toned band with arrows, then books that slide sideways (three to a view, two on a tablet, one on a phone). Each book shows its cover, title, author, the first sentence of its description, its price and its buttons. Only the Dawnchild theme changes.
 
 ## v0.183.1 — 2026-11-21
 

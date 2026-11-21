@@ -59,6 +59,8 @@ DESIGN_ONLY = (
 # Templates written for this theme (the designed pages and its chrome); the rest
 # are the shared shop pages, carried over unchanged.
 OWN_TEMPLATES = {
+    'advanced_ecommerce/blocks/_recently_viewed_card.html',
+    'advanced_ecommerce/blocks/recently_viewed.html',
     'cms/_menu.html',
     'cms/page.html',
     'storefront/_footer_fallback.html',
@@ -478,6 +480,33 @@ class DawnchildShelfTests(_Dawnchild):
         self.client.post(f'/cart/add/{jam.id}/', {'quantity': 2})
         full = tools(self._get('/'))
         self.assertIn('id="cart-badge">2</span>', full)
+
+    def test_recently_viewed_is_a_shelf_with_titles_descriptions_and_prices(self):
+        from plugins.installed.catalog.models import Product
+
+        Product.objects.filter(slug='year-of-jam').update(
+            short_description='<p>Jam for every month of the year. Then the rest.</p>'
+        )
+        # The app keeps no list for a crawler, and an empty user agent is one.
+        self.client = Client(HTTP_USER_AGENT='Mozilla/5.0 (X11; Linux x86_64) Firefox/140.0')
+        for slug in ('owl-lantern', 'year-of-jam'):
+            self._get(f'/products/{slug}/')
+        body = self._get('/')
+        rail = body.split('class="home-shelf hs-recent"', 1)[1].split('</section>', 1)[0]
+        self.assertIn('id="hs-recent-h">Recently viewed</h2>', rail)
+        self.assertEqual(rail.count('<li class="hs-card"'), 2)
+        # Newest first: the app keeps the list in the order the books were opened.
+        self.assertLess(rail.index('year-of-jam'), rail.index('owl-lantern'))
+        self.assertIn('>A Year of Jam</a></h3>', rail)
+        self.assertIn('<p class="hs-hook">Jam for every month of the year.</p>', rail)
+        self.assertIn('21.00', rail)
+        self.assertIn(f'action="/cart/add/{Product.objects.get(slug="year-of-jam").id}/"', rail)
+        self.assertNotIn('&lt;p&gt;', rail)
+        # The buttons only scroll the row, and their script carries the nonce.
+        self.assertIn('data-dc-rail-next', rail)
+        self.assertRegex(
+            body.split('class="home-shelf hs-recent"', 1)[1], r'<script nonce="[^"]+">'
+        )
 
     def test_category_search_and_basket_pages_answer(self):
         for path in ('/category/for-children/', '/search/?q=owl', '/cart/', '/categories/'):
