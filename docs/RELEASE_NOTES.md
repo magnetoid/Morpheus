@@ -15,6 +15,15 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.183.3 — 2026-11-21
+
+**Dawnchild: free books say Free, the header's three icons line up**
+
+- Dawnchild: a book whose every edition is a free download says Free on its page, on the home shelves, on the shelf and on "Recently viewed", instead of $0.00 or nothing; GraphQL products gain `isFree`.
+- Dawnchild: search is a line icon like the account and the basket; the three sit in one evenly spaced row whose basket meets the page edge, and the account menu and the main menu's panels hang from the header's lower edge.
+- Dawnchild: the "Recently viewed" row no longer makes the page scroll sideways on a wide screen.
+- Every theme: a product card's first sentence no longer stops at an initial, so "P. C. B. Newington's 1947 cookbook…" is no longer cut to "P.".
+
 ## v0.183.2 — 2026-11-21
 
 **Dawnchild: header icons and a "Recently viewed" shelf**

@@ -13,7 +13,7 @@ cover repeats the title's link, so it is hidden from screen readers and the tab 
     {% if product.shortDescription %}<p class="hs-hook">{{ product.shortDescription|first_sentence }}</p>{% endif %}
     {% if bc.genre %}<p class="hs-who">{{ bc.genre }}</p>{% endif %}
     <div class="hs-foot">
-      {% if card_price %}<p class="hs-price">{% if product.priceStartsFrom %}{% translate "From" %} {% endif %}<span>{{ card_price|money }}</span>{% if bc.formats_line %} · {{ bc.formats_line|lower }}{% endif %}</p>{% endif %}
+      {% if product.isFree %}<p class="hs-price"><span>{% translate "Free" %}</span>{% if bc.formats_line %} · {{ bc.formats_line|lower }}{% endif %}</p>{% elif card_price %}<p class="hs-price">{% if product.priceStartsFrom %}{% translate "From" %} {% endif %}<span>{{ card_price|money }}</span>{% if bc.formats_line %} · {{ bc.formats_line|lower }}{% endif %}</p>{% endif %}
       <div class="actions">
         {% if product.priceStartsFrom %}
         <a class="btn" href="/products/{{ product.slug }}/">{% translate "Choose a format" %}<span class="sr-only">: {{ product.name }}</span></a>

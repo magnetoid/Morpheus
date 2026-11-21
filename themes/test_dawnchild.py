@@ -469,11 +469,18 @@ class DawnchildShelfTests(_Dawnchild):
             return body.split('<div class="head-tools">', 1)[1].split('</header>', 1)[0]
 
         empty = tools(self._get('/'))
-        self.assertEqual(empty.count('<svg class="head-icon"'), 2)
+        # Search, the account menu and the basket: one group of three icons.
+        group = empty.split('</header>', 1)[0]
+        self.assertEqual(group.count('<svg class="head-icon"'), 3)
+        self.assertLess(group.index('id="quicksearch-toggle"'), group.index('data-acct-toggle'))
+        self.assertLess(group.index('data-acct-toggle'), group.index('id="cart-icon-link"'))
+        self.assertIn('<span class="sr-only">Search</span>', empty)
         self.assertIn('<span class="sr-only">Account</span>', empty)
         self.assertIn('<span class="sr-only">Basket</span>', empty)
         # Only the hidden names carry the words; the icons stand alone on screen.
-        self.assertEqual(re.findall(r'>(Account|Basket)\b', empty), ['Account', 'Basket'])
+        self.assertEqual(
+            re.findall(r'>(Search|Account|Basket)\b', empty), ['Search', 'Account', 'Basket']
+        )
         self.assertIn('id="cart-badge" hidden></span>', empty)
 
         jam = Product.objects.get(slug='year-of-jam')
@@ -507,6 +514,74 @@ class DawnchildShelfTests(_Dawnchild):
         self.assertRegex(
             body.split('class="home-shelf hs-recent"', 1)[1], r'<script nonce="[^"]+">'
         )
+
+    def test_a_free_book_says_free_and_an_unpriced_edition_shows_no_price(self):
+        from plugins.installed.catalog.models import Category, Product, ProductVariant
+
+        free = Product.objects.create(
+            name='Free Rabbit',
+            slug='free-rabbit',
+            sku='RAB-1',
+            price=Money(Decimal('2.99'), 'USD'),
+            product_type='variable',
+            status='active',
+            category=Category.objects.get(slug='for-children'),
+        )
+        ProductVariant.objects.create(
+            product=free,
+            name='Digital PDF',
+            sku='RAB-PDF',
+            price=Money(0, 'USD'),
+            variant_type='digital',
+            requires_shipping=False,
+        )
+        # The live Dawnchild book: a paperback with no price yet beside a free audiobook.
+        unpriced = Product.objects.create(
+            name='Unpriced Bird',
+            slug='unpriced-bird',
+            sku='BIRD-1',
+            price=Money(0, 'USD'),
+            product_type='variable',
+            status='active',
+        )
+        ProductVariant.objects.create(product=unpriced, name='Paperback', sku='BIRD-PB')
+        ProductVariant.objects.create(
+            product=unpriced,
+            name='Audiobook',
+            sku='BIRD-AB',
+            price=Money(0, 'USD'),
+            variant_type='digital',
+            requires_shipping=False,
+        )
+        self.client = Client(HTTP_USER_AGENT='Mozilla/5.0 (X11; Linux x86_64) Firefox/140.0')
+        pages = {slug: self._get(f'/products/{slug}/') for slug in ('free-rabbit', 'unpriced-bird')}
+        # The book's own page says Free above its editions, never $0.00.
+        headline = pages['free-rabbit'].split('<span data-pdp-price', 1)[1].split('</span>', 1)[0]
+        self.assertIn('Free', headline)
+        self.assertNotIn('0.00', headline)
+        rail = self._get('/').split('class="home-shelf hs-recent"', 1)[1].split('</section>', 1)[0]
+        cards = {
+            c.split('href="/products/', 1)[1].split('/', 1)[0]: c
+            for c in rail.split('<li class="hs-card"')[1:]
+        }
+        self.assertIn('<p class="hs-price"><span>Free</span>', cards['free-rabbit'])
+        self.assertNotIn('2.99', cards['free-rabbit'])
+        self.assertNotIn('hs-price', cards['unpriced-bird'])
+        self.assertNotIn('0.00', rail)
+        # The shelf on /products/ and the card on the category page say the same.
+        for path in ('/products/', '/category/for-children/'):
+            with self.subTest(path=path):
+                page = self._get(path)
+                card = page.split('href="/products/free-rabbit/"', 1)[1].split('</a>', 1)[0]
+                self.assertIn('<span class="shelf-price"><span>Free</span>', card)
+        # A featured free book on the home shelves (GraphQL's isFree) says Free too.
+        Product.objects.filter(pk=free.pk).update(is_featured=True)
+        cache.clear()
+        home = self._get('/').split('class="home-shelf hs-recent"', 1)[0]
+        card = home.split('<article class="hs-card"', 1)[1].split('</article>', 1)[0]
+        self.assertIn('free-rabbit', card)
+        self.assertIn('<p class="hs-price"><span>Free</span>', card)
+        self.assertNotIn('0.00', card)
 
     def test_category_search_and_basket_pages_answer(self):
         for path in ('/category/for-children/', '/search/?q=owl', '/cart/', '/categories/'):

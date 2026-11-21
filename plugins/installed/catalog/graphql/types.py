@@ -432,6 +432,12 @@ class ProductType:
         return sum(1 for v in self.variants.all() if v.is_active and not v.is_free) > 1
 
     @strawberry.field(
+        description='True when every active edition is a free download (Product.is_free): a storefront shows the product as Free rather than a price of 0. False for a product that is not variable.'
+    )
+    def is_free(self) -> bool:
+        return bool(self.is_free)
+
+    @strawberry.field(
         description='The edition a product page selects first: the first active one that costs something, else the first active one. Null without variants.'
     )
     def default_variant_id(self) -> strawberry.ID | None:

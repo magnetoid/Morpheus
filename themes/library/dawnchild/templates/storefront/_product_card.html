@@ -28,7 +28,7 @@ stand-in picture.
     <div class="meta">
       <strong>{{ product.name }}</strong>
       {% if bc.author %}<span>{{ bc.author }}</span>{% elif product.category.name %}<span>{{ product.category.name }}</span>{% endif %}
-      {% if card_price %}<span class="shelf-price">{% if product.price_starts_from or product.priceStartsFrom %}{% translate "From" %} {% endif %}<span>{{ card_price|money }}</span>{% if bc.formats_line %} · {{ bc.formats_line|lower }}{% endif %}</span>{% endif %}
+      {% if product.is_free %}<span class="shelf-price"><span>{% translate "Free" %}</span>{% if bc.formats_line %} · {{ bc.formats_line|lower }}{% endif %}</span>{% elif card_price %}<span class="shelf-price">{% if product.price_starts_from or product.priceStartsFrom %}{% translate "From" %} {% endif %}<span>{{ card_price|money }}</span>{% if bc.formats_line %} · {{ bc.formats_line|lower }}{% endif %}</span>{% endif %}
       {% if product.is_on_sale or product.isOnSale %}<span class="ribbon">{% translate "Reduced" %}</span>{% endif %}
     </div>
   </a>

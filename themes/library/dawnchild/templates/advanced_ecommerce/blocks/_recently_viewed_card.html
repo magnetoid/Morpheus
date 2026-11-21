@@ -2,7 +2,9 @@
 One book on the "Recently viewed" shelf, in the home shelves' card (hs-card): the
 cover (it repeats the title's link, so it is hidden from screen readers and the
 tab order), title, author, the first sentence of its own description as plain
-text, the price and the two actions. `product` is the catalogue's own row.
+text, the price and the two actions. `product` is the catalogue's own row. A
+book whose every edition is a free download says Free (`Product.is_free`); one
+with an edition that has no price yet shows none (the basket refuses it too).
 {% endcomment %}{% recently_viewed_product slug as product %}{% if product %}
 {% storefront_price product as card_price %}{% product_card_meta product as bc %}
 <li class="hs-card" data-product-card>
@@ -12,7 +14,7 @@ text, the price and the two actions. `product` is the catalogue's own row.
     {% if bc.author %}<p class="hs-by">{{ bc.author }}</p>{% endif %}
     {% if product.short_description %}<p class="hs-hook">{{ product.short_description|first_sentence }}</p>{% endif %}
     <div class="hs-foot">
-      {% if card_price %}<p class="hs-price">{% if product.price_starts_from %}{% translate "From" %} {% endif %}<span>{{ card_price|money }}</span>{% if bc.formats_line %} · {{ bc.formats_line|lower }}{% endif %}</p>{% endif %}
+      {% if product.is_free %}<p class="hs-price"><span>{% translate "Free" %}</span>{% if bc.formats_line %} · {{ bc.formats_line|lower }}{% endif %}</p>{% elif card_price %}<p class="hs-price">{% if product.price_starts_from %}{% translate "From" %} {% endif %}<span>{{ card_price|money }}</span>{% if bc.formats_line %} · {{ bc.formats_line|lower }}{% endif %}</p>{% endif %}
       <div class="actions">
         {% if product.price_starts_from %}
         <a class="btn" href="/products/{{ product.slug }}/">{% translate "Choose a format" %}<span class="sr-only">: {{ product.name }}</span></a>

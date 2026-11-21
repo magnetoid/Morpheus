@@ -38,13 +38,17 @@ logger = logging.getLogger('morpheus.templatetags')
 register = template.Library()
 
 _SENTENCE_END = re.compile(r'[.!?](\s|$)')
+# A full stop after a lone letter is an initial ("P. C. B. Newington", "e.g."),
+# not the end of a sentence: the card for Good Food read "P." alone.
+_INITIAL = re.compile(r'(?:^|\W)[^\W\d_]$')
 
 
 @register.filter
 def first_sentence(text) -> str:
     """First sentence of `text` — up to the first . ! or ?, trimmed, capped at
-    180 chars; the whole (capped) string when there's no sentence break. Used on
-    every theme's product card for a one-line pitch under the title.
+    180 chars; the whole (capped) string when there's no sentence break. A full
+    stop after a lone letter is an initial, not a break. Used on every theme's
+    product card for a one-line pitch under the title.
 
     Normalises to PLAIN TEXT first: unescape entities (twice — some stored copy
     arrived pre-escaped, and `{% firstof … as %}` escapes once more) then strip
@@ -62,8 +66,13 @@ def first_sentence(text) -> str:
     s = strip_tags(unescape(unescape(s))).strip()
     if not s:
         return ''
-    m = _SENTENCE_END.search(s)
-    out = s[: m.start() + 1] if m else s
+    end = None
+    for m in _SENTENCE_END.finditer(s):
+        if s[m.start()] == '.' and _INITIAL.search(s, 0, m.start()):
+            continue
+        end = m.start() + 1
+        break
+    out = s[:end] if end else s
     return out.strip()[:180]
 
 
