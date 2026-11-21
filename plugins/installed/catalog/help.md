@@ -4,7 +4,7 @@ summary: Holds every product, its photos, variants, categories, collections and 
 
 ## What it's for
 
-This is where your products live: their names, descriptions, prices, photos, variants (size, colour and so on), categories, collections and tags. Anyone who manages what you sell works here every day. It also owns the one setting that decides the shape, crop and file format of every product photo shown anywhere in the store — on a product page, in a list, or on the storefront.
+This is where your products live: their names, descriptions, prices, photos, variants (size, colour and so on), categories, collections and tags. It also owns the one setting that decides the shape, crop and file format of every product photo shown anywhere in the store — on a product page, in a list, or on the storefront.
 
 ## Set it up
 
@@ -21,8 +21,8 @@ Open [](settings:catalog) to choose the frame every product photo is shown in ([
 
 ## Good to know
 
-A download priced 0 (a PDF, say) is free and says so; on a variant that ships, 0 means the product's price.
+A download priced 0 (a PDF, say) is free and says so. On a variant that ships, 0 means the product's price; with [](field:catalog.give_away_print) on, a printed copy of a product priced 0 is free too, and shipping is still charged.
 
 Every price change is recorded, however it was made. When a product is on sale (its compare-at price is higher than its price), its page shows the lowest price it had in the 30 days before the reduction, as EU law requires; the line appears only when the recorded prices prove it. 
 
-Your active top-level categories and their subcategories build the storefront's main navigation menu automatically. Switching a category off removes it from the menu along with everything beneath it. Shoppers whose browser cannot show the extra image format get the default one. A variant's size, and a variant attribute named colour, material or pattern, tell search engines how the variants differ.
+Your active top-level categories and their subcategories build the storefront's main navigation menu automatically. Switching a category off removes it from the menu along with everything beneath it. A variant's size, and a variant attribute named colour, material or pattern, tell search engines how the variants differ.

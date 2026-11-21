@@ -13,6 +13,8 @@ from morpheus.core import events
 
 class CatalogPlugin(Plugin):
     name = 'catalog'
+    # The give-away switch is read by the cart and every card, in every worker.
+    config_fresh_s = 10.0
     label = 'Product Catalog'
     version = '1.0.0'
     description = 'Products, categories, collections, variants, attributes, and reviews.'
@@ -178,7 +180,7 @@ class CatalogPlugin(Plugin):
         return value
 
     def get_config_schema(self):
-        """Store-wide image settings.
+        """Store-wide image settings, and whether printed copies priced 0 are given away.
 
         Stored under PluginConfig['catalog'] and read through ONE resolver,
         `core/images.py`, so the dashboard, the themes and the variant
@@ -195,6 +197,18 @@ class CatalogPlugin(Plugin):
         return {
             'type': 'object',
             'properties': {
+                'give_away_print': {
+                    'type': 'boolean',
+                    'default': False,
+                    'title': 'Give away printed copies priced 0',
+                    'description': (
+                        'Off: an edition that ships and has no price takes the '
+                        "product's price, and is not sold while the product has none. "
+                        'On: such an edition of a product priced 0 is given away like a '
+                        'free download: shown as Free and added to the basket at 0. '
+                        'Shipping is still charged at your rates.'
+                    ),
+                },
                 'image_aspect_ratio': {
                     'type': 'string',
                     'enum': list(ASPECT_RATIOS),

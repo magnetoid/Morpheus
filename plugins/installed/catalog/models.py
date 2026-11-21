@@ -19,6 +19,7 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from django.utils import timezone
 from django.utils.text import slugify
 from djmoney.models.fields import MoneyField
+from djmoney.money import Money
 from morpheus.app import models
 from mptt.models import MPTTModel, TreeForeignKey
 from taggit.managers import TaggableManager
@@ -457,7 +458,8 @@ class Product(models.Model):
 
     @property
     def is_free(self) -> bool:
-        """Every active edition is a free download (``ProductVariant.is_free``).
+        """Every active edition is given away (``ProductVariant.is_free``): a free
+        download, or a printed copy where the store gives print away.
 
         Such a product is shown as Free and listed in no shopping feed; one with
         a paid edition is shown at that edition's price."""
@@ -783,19 +785,44 @@ class ProductVariant(models.Model):
 
     @property
     def is_free(self) -> bool:
-        """A download given away: its own price is 0 and nothing ships.
+        """A copy given away: a download whose own price is 0, or a printed copy
+        nothing prices where the store gives print away.
 
-        A variant that ships is never free: 0 on it means "use the product's
-        price", as a missing price does (10 printed editions on dotbooks carry
-        a 0 and are sold at the book's price)."""
+        On a variant that ships, 0 means "use the product's price", as a missing
+        price does (10 printed editions on dotbooks carry a 0 and are sold at the
+        book's price). Such a copy is free only when the book's price is 0 as
+        well and catalog's ``give_away_print`` is on (``give_away_print()``)."""
         price = self.price
-        return price is not None and price.amount == 0 and not self.requires_shipping
+        if not self.requires_shipping:
+            return price is not None and price.amount == 0
+        if price is not None and price.amount:
+            return False
+        book = getattr(self.product, 'price', None)
+        if book is not None and book.amount:
+            return False
+        return give_away_print()
 
     @property
     def effective_price(self):
-        if self.price or self.is_free:
+        if self.is_free:
+            # A printed copy given away may have no price of its own: it costs 0
+            # in the book's currency.
+            if self.price is not None:
+                return self.price
+            return Money(0, self.product.price.currency)
+        if self.price:
             return self.price
         return self.product.price
+
+
+def give_away_print() -> bool:
+    """The store gives away printed copies nothing prices (catalog's setting
+    ``give_away_print``, off by default). Read through the app's settings, which
+    every worker reads again within ``CatalogPlugin.config_fresh_s``."""
+    from plugins.registry import app_registry  # noqa: PLC0415
+
+    plugin = app_registry.get('catalog')
+    return bool(plugin is not None and plugin.get_config_value('give_away_print', False))
 
 
 def cheapest_variant_price(variants):

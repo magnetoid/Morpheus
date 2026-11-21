@@ -13,9 +13,11 @@ cover repeats the title's link, so it is hidden from screen readers and the tab 
     {% if product.shortDescription %}<p class="hs-hook">{{ product.shortDescription|first_sentence }}</p>{% endif %}
     {% if bc.genre %}<p class="hs-who">{{ bc.genre }}</p>{% endif %}
     <div class="hs-foot">
-      {% if product.isFree %}<p class="hs-price"><span>{% translate "Free" %}</span>{% if bc.formats_line %} · {{ bc.formats_line|lower }}{% endif %}</p>{% elif card_price %}<p class="hs-price">{% if product.priceStartsFrom %}{% translate "From" %} {% endif %}<span>{{ card_price|money }}</span>{% if bc.formats_line %} · {{ bc.formats_line|lower }}{% endif %}</p>{% endif %}
+      {% if product.isFree %}<p class="hs-price"><span>{% translate "Free" %}</span></p>{% elif card_price %}<p class="hs-price">{% if product.priceStartsFrom %}{% translate "From" %} {% endif %}<span>{{ card_price|money }}</span>{% if bc.formats_line %} · {{ bc.formats_line|lower }}{% endif %}</p>{% endif %}
       <div class="actions">
-        {% if product.priceStartsFrom %}
+        {% if product.isFree %}
+        <a class="btn" href="/products/{{ product.slug }}/">{% translate "Get it free" %}<span class="sr-only">: {{ product.name }}</span></a>
+        {% elif product.priceStartsFrom %}
         <a class="btn" href="/products/{{ product.slug }}/">{% translate "Choose a format" %}<span class="sr-only">: {{ product.name }}</span></a>
         {% else %}
         <form method="post" action="/cart/add/{{ product.id }}/">
@@ -24,7 +26,7 @@ cover repeats the title's link, so it is hidden from screen readers and the tab 
           <button class="btn" type="submit" data-buy>{% translate "Add to basket" %}<span class="sr-only">: {{ product.name }}</span></button>
         </form>
         {% endif %}
-        <a class="btn ghost" href="/products/{{ product.slug }}/">{% translate "The book" %}<span class="sr-only">: {{ product.name }}</span></a>
+        {% if not product.isFree %}<a class="btn ghost" href="/products/{{ product.slug }}/">{% translate "The book" %}<span class="sr-only">: {{ product.name }}</span></a>{% endif %}
       </div>
     </div>
   </div>

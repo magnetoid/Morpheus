@@ -129,14 +129,22 @@ class CartService:
         variant = ProductVariant.objects.get(id=variant_id) if variant_id else None
         if variant is not None and not getattr(variant, 'is_active', True):
             raise ValueError('Variant is not available.')
+        if variant is None and product.is_free:
+            # A given-away line must name its copy: a download is delivered and a
+            # printed copy shipped by its edition, never by the book.
+            editions = [v for v in product.variants.all() if v.is_active]
+            if len(editions) != 1:
+                raise ValueError('Choose a format first.')
+            variant = editions[0]
         target = variant or product
         unit_price = _resolve_unit_price(
             target, currency, fallback=product, customer=getattr(cart, 'customer', None)
         )
         # A price of 0 means the merchant has not priced it yet (18 such products
         # were buyable for nothing on a live store) — not for sale until it is.
-        # The one exception is a download the merchant gives away on purpose: a
-        # variant whose own price is 0 and that ships nothing (``is_free``).
+        # The one exception is a copy the merchant gives away on purpose
+        # (``is_free``): a download priced 0, or a printed copy where the store
+        # gives print away.
         free = bool(getattr(target, 'is_free', False))
         if unit_price.amount < 0 or (unit_price.amount == 0 and not free):
             raise ValueError('This product is not available to buy yet.')
@@ -275,10 +283,13 @@ def _resolve_unit_price(target, currency: str | None, *, fallback, customer=None
     when present, else the default MoneyField price — then let the
     ``PRODUCT_CALCULATE_PRICE`` filter adjust it.
 
-    A free download (``ProductVariant.is_free``) costs 0 in every currency: the
-    product's own per-currency prices are the book's, not the download's."""
+    A copy given away (``ProductVariant.is_free``) costs 0 in every currency: the
+    product's own per-currency prices are the book's, not the copy's."""
     if getattr(target, 'is_free', False):
-        code = (currency or str(target.price.currency)).upper()
+        price = getattr(target, 'effective_price', None)  # Money(0) is falsy
+        if price is None:
+            price = target.price
+        code = (currency or str(price.currency)).upper()
         return apply_price_filter(Money(0, code), product=fallback, customer=customer)
     default_price = (
         target.effective_price if hasattr(target, 'effective_price') else target.price

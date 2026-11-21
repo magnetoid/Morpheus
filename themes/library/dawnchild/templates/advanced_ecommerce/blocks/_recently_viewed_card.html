@@ -3,8 +3,9 @@ One book on the "Recently viewed" shelf, in the home shelves' card (hs-card): th
 cover (it repeats the title's link, so it is hidden from screen readers and the
 tab order), title, author, the first sentence of its own description as plain
 text, the price and the two actions. `product` is the catalogue's own row. A
-book whose every edition is a free download says Free (`Product.is_free`); one
-with an edition that has no price yet shows none (the basket refuses it too).
+book whose every edition is given away says Free (`Product.is_free`) and leads
+to its page to pick a copy; one with an edition that has no price yet shows none
+(the basket refuses it too).
 {% endcomment %}{% recently_viewed_product slug as product %}{% if product %}
 {% storefront_price product as card_price %}{% product_card_meta product as bc %}
 <li class="hs-card" data-product-card>
@@ -14,9 +15,11 @@ with an edition that has no price yet shows none (the basket refuses it too).
     {% if bc.author %}<p class="hs-by">{{ bc.author }}</p>{% endif %}
     {% if product.short_description %}<p class="hs-hook">{{ product.short_description|first_sentence }}</p>{% endif %}
     <div class="hs-foot">
-      {% if product.is_free %}<p class="hs-price"><span>{% translate "Free" %}</span>{% if bc.formats_line %} · {{ bc.formats_line|lower }}{% endif %}</p>{% elif card_price %}<p class="hs-price">{% if product.price_starts_from %}{% translate "From" %} {% endif %}<span>{{ card_price|money }}</span>{% if bc.formats_line %} · {{ bc.formats_line|lower }}{% endif %}</p>{% endif %}
+      {% if product.is_free %}<p class="hs-price"><span>{% translate "Free" %}</span></p>{% elif card_price %}<p class="hs-price">{% if product.price_starts_from %}{% translate "From" %} {% endif %}<span>{{ card_price|money }}</span>{% if bc.formats_line %} · {{ bc.formats_line|lower }}{% endif %}</p>{% endif %}
       <div class="actions">
-        {% if product.price_starts_from %}
+        {% if product.is_free %}
+        <a class="btn" href="/products/{{ product.slug }}/">{% translate "Get it free" %}<span class="sr-only">: {{ product.name }}</span></a>
+        {% elif product.price_starts_from %}
         <a class="btn" href="/products/{{ product.slug }}/">{% translate "Choose a format" %}<span class="sr-only">: {{ product.name }}</span></a>
         {% else %}
         <form method="post" action="/cart/add/{{ product.id }}/">
@@ -25,7 +28,7 @@ with an edition that has no price yet shows none (the basket refuses it too).
           <button class="btn" type="submit" data-buy>{% translate "Add to basket" %}<span class="sr-only">: {{ product.name }}</span></button>
         </form>
         {% endif %}
-        <a class="btn ghost" href="/products/{{ product.slug }}/">{% translate "The book" %}<span class="sr-only">: {{ product.name }}</span></a>
+        {% if not product.is_free %}<a class="btn ghost" href="/products/{{ product.slug }}/">{% translate "The book" %}<span class="sr-only">: {{ product.name }}</span></a>{% endif %}
       </div>
     </div>
   </div>

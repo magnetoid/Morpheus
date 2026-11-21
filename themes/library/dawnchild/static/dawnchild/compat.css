@@ -304,6 +304,8 @@ img.ko-fade-img.is-loaded { opacity: 1; }
 .hs-rail > .hs-card { scroll-snap-align: start; }
 .hs-rail .hs-hook { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .hs-rail .hs-foot .actions { grid-template-columns: 1fr; }
+/* A free book has one button ("Get it free"); it takes the whole row. */
+.hs-foot .actions > :only-child { grid-column: 1 / -1; }
 @media (max-width: 1099px) { .hs-rail { grid-auto-columns: 50%; } }
 @media (max-width: 699px) { .hs-rail { grid-auto-columns: 86%; } }
 #page-home .hs-card form { display: contents; }

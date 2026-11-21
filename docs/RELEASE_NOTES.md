@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.184.0 — 2026-11-21
+
+**A store can give printed copies away**
+
+- Catalog: a new setting, "Give away printed copies priced 0" (off by default). When it is on, a printed edition with no price of its own, of a product priced 0, is given away like a free download: it says Free, the basket takes it at 0, and shipping is still charged at your rates. A printed edition of a product that has a price keeps that price either way.
+- A free book added to the basket without a format takes its only copy, or asks to choose one; a free PDF added from a card is now delivered like one chosen on its page.
+- Dawnchild: a free book's card says Free and "Get it free", leading to its page to pick a copy; a book card's formats say "Free print" for a printed copy given away.
+
 ## v0.183.3 — 2026-11-21
 
 **Dawnchild: free books say Free, the header's three icons line up**

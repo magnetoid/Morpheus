@@ -564,8 +564,11 @@ class DawnchildShelfTests(_Dawnchild):
             c.split('href="/products/', 1)[1].split('/', 1)[0]: c
             for c in rail.split('<li class="hs-card"')[1:]
         }
-        self.assertIn('<p class="hs-price"><span>Free</span>', cards['free-rabbit'])
+        self.assertIn('<p class="hs-price"><span>Free</span></p>', cards['free-rabbit'])
         self.assertNotIn('2.99', cards['free-rabbit'])
+        # A free book leads to its page to pick a copy; the basket would ask which.
+        self.assertIn('Get it free<span class="sr-only">: Free Rabbit</span>', cards['free-rabbit'])
+        self.assertNotIn('/cart/add/', cards['free-rabbit'])
         self.assertNotIn('hs-price', cards['unpriced-bird'])
         self.assertNotIn('0.00', rail)
         # The shelf on /products/ and the card on the category page say the same.
@@ -582,6 +585,19 @@ class DawnchildShelfTests(_Dawnchild):
         self.assertIn('free-rabbit', card)
         self.assertIn('<p class="hs-price"><span>Free</span>', card)
         self.assertNotIn('0.00', card)
+        self.assertIn('Get it free', card)
+
+        # A store that gives print away (catalog's give_away_print): the printed
+        # copy nothing prices is free too, so the whole book says Free.
+        from plugins.testing import set_app_settings
+
+        set_app_settings(self, 'catalog', give_away_print=True)
+        cache.clear()
+        page = self._get('/products/unpriced-bird/')
+        self.assertIn('Free', page.split('<span data-pdp-price', 1)[1].split('</span>', 1)[0])
+        rail = self._get('/').split('class="home-shelf hs-recent"', 1)[1].split('</section>', 1)[0]
+        bird = rail.split('href="/products/unpriced-bird/"', 1)[1].split('</li>', 1)[0]
+        self.assertIn('<p class="hs-price"><span>Free</span></p>', bird)
 
     def test_category_search_and_basket_pages_answer(self):
         for path in ('/category/for-children/', '/search/?q=owl', '/cart/', '/categories/'):

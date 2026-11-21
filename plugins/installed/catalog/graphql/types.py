@@ -164,8 +164,9 @@ class ProductVariantType:
         # move the variant picker too, or the shopper is quoted one price on the
         # PDP headline and another in the variant selector (displayed≠charged).
         parent = getattr(self, 'product', None)
-        own = self.price
-        if own or self.is_free:
+        free = self.is_free
+        own = self.effective_price if free else self.price
+        if own or free:
             adj = apply_price_filter(own, product=parent)
             return MoneyType(amount=str(adj.amount), currency=str(adj.currency))
         parent_price = getattr(parent, 'price', None) if parent else None
@@ -175,7 +176,7 @@ class ProductVariantType:
         return None
 
     @strawberry.field(
-        description='True for a download given away: its own price is 0 and nothing ships. A variant that ships is never free; 0 there means it takes the product price.'
+        description="True for a copy given away: a download whose own price is 0, or, where the store gives print away (catalog's give_away_print), a printed copy with no price above 0 of a product priced 0. On any other variant that ships, 0 means it takes the product price."
     )
     def is_free(self) -> bool:
         return bool(self.is_free)
