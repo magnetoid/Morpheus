@@ -51,7 +51,7 @@
 }
 [data-christmas] .site-head .lockup .wordmark { position: relative; }
 [data-christmas] .site-head .lockup .wordmark::before {
-  content: ""; position: absolute; left: -15px; top: -12px; width: 30px; height: 30px; pointer-events: none;
+  content: ""; position: absolute; left: -19px; top: -15px; width: 30px; height: 30px; pointer-events: none;
   transform: rotate(-24deg); background: var(--xmas-holly) no-repeat center / contain;
 }
 [data-christmas] #cart-icon-link { overflow: visible; }
@@ -71,7 +71,7 @@
 .xmas-smoke .puff { opacity: .3; transform-box: fill-box; transform-origin: center; }
 [data-christmas] .site-foot .lockup .wordmark { position: relative; }
 [data-christmas] .site-foot .lockup .wordmark::after {
-  content: ""; position: absolute; left: -2px; right: 18%; top: -9px; height: 12px; pointer-events: none;
+  content: ""; position: absolute; left: -2px; right: 18%; top: -10px; height: 12px; pointer-events: none;
   background: var(--xmas-fcap) no-repeat 0 0 / 100% 100%; transform-origin: 50% 100%;
 }
 .xmas-letter { display: inline-block; vertical-align: -6px; width: 30px; height: 22px; margin-right: 8px; overflow: visible; }
