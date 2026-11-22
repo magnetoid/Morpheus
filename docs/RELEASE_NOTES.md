@@ -15,6 +15,12 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.186.1 — 2026-11-22
+
+**Basket and checkout pages are counted again**
+
+- The analytics pageview script now carries the payment pages' nonce. Their security policy had refused it, so no basket or checkout pageview was counted.
+
 ## v0.186.0 — 2026-11-22
 
 **A Christmas look for Dawnchild**
