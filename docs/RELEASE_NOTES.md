@@ -15,6 +15,12 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.187.1 — 2026-11-22
+
+**No fallen snow under Dawnchild's header**
+
+- Dawnchild's Christmas look no longer draws the strip of fallen snow and icicles along the bottom of the header (owner's ask). The holly on the wordmark, the banner's snow and the footer scene stay.
+
 ## v0.187.0 — 2026-11-22
 
 **Apps can teach Linda their own routines**
@@ -34,7 +40,7 @@ surfaced in **Dashboard → Settings → Version & updates**.
 **A Christmas look for Dawnchild**
 
 - Dawnchild has a Christmas look under Settings, Storefront, Theme: off, between two days every year (1 December to 6 January unless you change them), or on to preview it. Linda can switch it once you say yes.
-- Snow, lights and frost on the home banner, a snowy ledge and holly in the header, pines and a cottage above the footer line; one button pauses all of it, and visitors who ask their device for less motion see it still.
+- Snow, lights and frost on the home banner, holly in the header, pines and a cottage above the footer line; one button pauses all of it, and visitors who ask their device for less motion see it still.
 - The footer's letter field and its button are readable again on Dawnchild's olive footer.
 
 ## v0.185.0 — 2026-11-21
