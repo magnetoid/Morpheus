@@ -23,12 +23,16 @@ _EXCLUDED_PREFIXES = (
 
 
 def _hit_tag(request) -> bytes:
+    from django.middleware.csp import get_nonce
     from django.templatetags.static import static
     from django.utils.html import escape
 
     # A payment page runs only scripts that carry its nonce (core/security_headers.py).
-    nonce = str(getattr(request, 'csp_nonce', '') or '')
-    attr = f' nonce="{escape(nonce)}"' if nonce else ''
+    # Django keeps it on the request, lazily (get_nonce; there is no
+    # request.csp_nonce). This middleware sits inside the CSP middleware, so
+    # reading it here comes before the header is written, and both name it.
+    nonce = get_nonce(request)
+    attr = f' nonce="{escape(str(nonce))}"' if nonce is not None else ''
     src = escape(static('analytics/hit.js'))
     return f'<script src="{src}" defer data-morph-hit{attr}></script>'.encode()
 

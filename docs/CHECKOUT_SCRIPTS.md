@@ -92,7 +92,7 @@ Served from the store itself, inline or from `/static/`:
 - **payments**: `express-cart.js` and the card-form setup that mounts Stripe's
   frames.
 - **Apps on every page**, each only while the app is on and configured:
-  analytics (page-view beacon to the store), motion and immersive_pdp
+  analytics (page-view beacon to the store, added by its middleware with the page's nonce), motion and immersive_pdp
   (`/static/` runtimes), pwa (service worker), newsletter (sign-up pop-up), crm
   (support chat), agent_mcp (WebMCP tools for AI browsers), localization
   (language switcher; the language bar, while its setting is on), the tracking and pixel apps' loader snippets above.
