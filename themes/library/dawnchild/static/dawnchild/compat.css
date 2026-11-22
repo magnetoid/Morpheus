@@ -242,9 +242,11 @@ img.ko-fade-img.is-loaded { opacity: 1; }
 /* Footer: the rows the design does not draw (newsletter, legal links). */
 .site-foot .foot-letter { margin-top: 18px; max-width: 30rem; }
 .site-foot .foot-letter label { display: block; font-size: .92rem; color: var(--parchment); }
-.site-foot .foot-letter .signup input { border-color: var(--parchment-light); }
-.site-foot .foot-letter .btn { background: var(--parchment-light); color: var(--ink); border-color: var(--parchment-light); }
-.site-foot .foot-letter .btn:hover { background: #fff; color: var(--ink); }
+/* The footer is olive and redefines --parchment and --parchment-light as ink,
+   so the field and button name their colours: cream field, bordeaux button. */
+.site-foot .foot-letter .signup input { background: #f8f1df; color: #0b0e06; }
+.site-foot .foot-letter .btn { background: #4f150f; color: #f8f1df; border-color: #4f150f; }
+.site-foot .foot-letter .btn:hover { background: #0b0e06; color: #f8f1df; }
 .site-foot .foot-letter [role=status] { color: var(--parchment); font-size: .9rem; margin-top: 8px; min-height: 1.4em; }
 .site-foot .foot-signoff { border-top: 1px solid rgba(233, 221, 192, .35); padding-block: 16px 22px; display: flex; flex-wrap: wrap; gap: 6px 20px; justify-content: space-between; font-size: .85rem; color: var(--parchment); }
 .site-foot .foot-signoff a { color: var(--parchment-light); }

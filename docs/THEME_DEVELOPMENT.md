@@ -441,6 +441,16 @@ Linda reads and changes the same settings: `theme.describe` lists each setting
 own yes. Mark a setting `"x-agent-writable": false` to keep it for the
 merchant alone.
 
+A setting a theme reads in Python rather than in a template lives in the
+theme's own module beside `theme.py` (the reader guard,
+`core/tests/test_settings_keys_have_readers.py`, counts both). Dawnchild's
+Christmas look is the example (v0.186.0): `christmas_look` (`off`, `dates`,
+`on`) and two days written `DD-MM` with `"pattern": "\\d{2}-\\d{2}"`, decided
+on the store's clock by `themes/library/dawnchild/christmas.py` and read in
+templates through `active_theme.christmas_on`. A seasonal look draws every
+piece still and finished in its markup and moves only under `.js`, never with
+reduced motion, and offers one pause the visitor's device remembers.
+
 ---
 
 ## 10. Inheriting from another theme

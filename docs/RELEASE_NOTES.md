@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.186.0 — 2026-11-22
+
+**A Christmas look for Dawnchild**
+
+- Dawnchild has a Christmas look under Settings, Storefront, Theme: off, between two days every year (1 December to 6 January unless you change them), or on to preview it. Linda can switch it once you say yes.
+- Snow, lights and frost on the home banner, a snowy ledge and holly in the header, pines and a cottage above the footer line; one button pauses all of it, and visitors who ask their device for less motion see it still.
+- The footer's letter field and its button are readable again on Dawnchild's olive footer.
+
 ## v0.185.0 — 2026-11-21
 
 **Theme settings on the dashboard**

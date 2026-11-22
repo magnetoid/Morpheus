@@ -1238,8 +1238,9 @@ between them and the second request counts the re-read.
 `plugins/config_schema.py`: the dashboard's form, its save, Linda's `settings.set` and
 `settings.describe`, and `set_config` itself. It understands `type` (`string`, `boolean`,
 `integer`, `number`, `array` with `items`, `object`), `enum`, `minimum`/`maximum`,
-`minLength`/`maxLength`, `format: password` and `x-agent-writable`, and nothing else; a
-property of any other type is stored as given. The dashboard edits a list as comma-separated
+`minLength`/`maxLength`, `pattern` (v0.186.0: the whole value must match; give an `examples`
+list and the refusal quotes its first entry), `format: password` and `x-agent-writable`, and
+nothing else; a property of any other type is stored as given. The dashboard edits a list as comma-separated
 text and saves it as a list.
 
 * A value that does not fit its declared setting is refused by `settings.set` and logged as a

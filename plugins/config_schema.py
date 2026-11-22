@@ -8,7 +8,8 @@ argument check all read it; until v0.173.0 each had its own partial copy.
 The schema is the JSON Schema an app returns from `get_config_schema()`, plus
 the one its settings panel renders. Keywords read here: `type` (string,
 boolean, integer, number, array, object), `enum`, `minimum`, `maximum`,
-`minLength`, `maxLength`, `items`, `format: password`, and `x-agent-writable`.
+`minLength`, `maxLength`, `pattern` (the whole value must match), `items`,
+`format: password`, and `x-agent-writable`.
 
 `x-agent-writable: false` on a property, or on the whole schema, keeps an agent
 from changing it: only the merchant can, on the dashboard. A secret
@@ -23,6 +24,7 @@ from __future__ import annotations
 import json
 import logging
 import math
+import re
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -233,8 +235,10 @@ def _list_from_text(text: str) -> list:
 def validate(name: str, value: Any, spec: dict) -> str:  # noqa: PLR0911
     """'' when `value` fits `spec`, else why not (`'limit' must be integer`).
 
-    A JSON-Schema subset: type, enum, minimum/maximum, minLength/maxLength. It
-    checks the value itself; `errors` also checks a list's items.
+    A JSON-Schema subset: type, enum, minimum/maximum, minLength/maxLength and
+    pattern (matched against the whole value, so `\\d{2}-\\d{2}` means exactly
+    that; the refusal quotes the property's first example). It checks the value
+    itself; `errors` also checks a list's items.
     """
     t = spec.get('type')
     py = _JSON_TYPES.get(t)
@@ -256,6 +260,8 @@ def validate(name: str, value: Any, spec: dict) -> str:  # noqa: PLR0911
             return f'{name!r} is too short'
         if 'maxLength' in spec and len(value) > spec['maxLength']:
             return f'{name!r} is too long'
+        if 'pattern' in spec and not re.fullmatch(spec['pattern'], value):
+            return f'{name!r} must be written like {spec.get("examples", [spec["pattern"]])[0]}'
     return ''
 
 
@@ -377,6 +383,7 @@ _DESCRIBED_KEYWORDS = {
     'maximum': 'maximum',
     'minLength': 'min_length',
     'maxLength': 'max_length',
+    'pattern': 'pattern',
     'items': 'items',
 }
 
