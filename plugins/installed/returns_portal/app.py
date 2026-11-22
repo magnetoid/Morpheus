@@ -30,7 +30,7 @@ class ReturnsPortalPlugin(Plugin):
         "feedback box routed to the CRM plugin's lead pipeline."
     )
     has_models = True
-    requires = ['orders', 'loyalty_points', 'customers', 'consent', 'payments']
+    requires = ['orders', 'loyalty_points', 'customers', 'consent', 'payments', 'catalog']
 
     def ready(self) -> None:
         from morpheus.core import events  # noqa: PLC0415
