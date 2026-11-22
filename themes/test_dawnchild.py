@@ -128,6 +128,17 @@ def _gql_product(name: str, slug: str, category: tuple[str, str] | None, amount:
 class DawnchildFilesTests(SimpleTestCase):
     """What can be read off the disk, with no page rendered."""
 
+    def test_the_footer_letter_field_and_button_can_be_read(self):
+        # The footer is olive and redefines --parchment(-light) as ink, so the
+        # field and button rendered ink on ink until v0.186.0.
+        css = (ROOT / 'static' / 'dawnchild' / 'compat.css').read_text(encoding='utf-8')
+        for rule in (
+            '.site-foot .foot-letter .signup input { background: #f8f1df; color: #0b0e06; }',
+            '.site-foot .foot-letter .btn { background: #4f150f; color: #f8f1df; border-color: #4f150f; }',
+            '.site-foot .foot-letter .btn:hover { background: #0b0e06; color: #f8f1df; }',
+        ):
+            self.assertTrue(rule in css, f'compat.css lacks {rule!r}')
+
     def test_the_theme_is_registered_and_is_nobodys_default(self):
         theme = theme_registry.get(THEME)
         self.assertIsNotNone(theme, 'themes/library/dawnchild was not discovered')
