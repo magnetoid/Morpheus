@@ -1110,6 +1110,30 @@ class StoreSkillsTests(SimpleTestCase):
         self.assertNotIn('external_dirs', body)
         self.assertFalse((self.home / eng.STORE_SKILLS_DIR).exists())
 
+    def test_overlapping_turns_in_one_chat_stage_without_failing(self):
+        # Two messages of one chat can be in flight at once in one worker (review).
+        import threading
+
+        self._add_app('returns_portal')
+        errors = []
+
+        def stage():
+            try:
+                for _ in range(15):
+                    eng.stage_store_skills(self.home)
+            except Exception as exc:  # noqa: BLE001 — collected for the assertion
+                errors.append(exc)
+
+        threads = [threading.Thread(target=stage) for _ in range(6)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+        self.assertTrue(self._skill('returns_portal', 'restock-routine').is_file())
+        leftovers = [p.name for p in self.home.iterdir() if p.name.startswith('.store-skills')]
+        self.assertEqual(leftovers, [])
+
     def test_staged_skills_are_never_kept_as_learned(self):
         from core.assistant import janus_learning
 

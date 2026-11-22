@@ -313,32 +313,51 @@ def _copy_skill_tree(src: Path, dest: Path) -> None:
             shutil.copyfile(file, target)
 
 
+_staging_locks: dict[str, threading.Lock] = {}
+_staging_locks_guard = threading.Lock()
+
+
+def _staging_lock(home: Path) -> threading.Lock:
+    with _staging_locks_guard:
+        return _staging_locks.setdefault(str(home), threading.Lock())
+
+
 def stage_store_skills(home: Path) -> Path | None:
     """Rebuild ``<home>/store-skills`` for this turn and return it (None when off).
 
     Rebuilt every turn from the code, so an app switched off takes its skills with
     it, and an edit the agent makes to a skill lasts one turn in one conversation:
     Janus used to read the skills straight from the /app tree.
+
+    Two messages of one chat can be in flight at once: a lock serialises them in
+    this process, each copy is built in its own temporary folder, and a swap that
+    another process won leaves its copy (the same files) in place.
     """
     staged = home / STORE_SKILLS_DIR
-    if not janus_settings.bundled_skills_enabled():
-        shutil.rmtree(staged, ignore_errors=True)
-        return None
-    fresh = home / f'.{STORE_SKILLS_DIR}-{os.getpid()}'
-    shutil.rmtree(fresh, ignore_errors=True)
-    fresh.mkdir(mode=0o700)
-    sources = [('core', bundled_skills_dir())] if bundled_skills_dir().is_dir() else []
-    for name, folder in sources + app_skill_dirs():
+    with _staging_lock(home):
+        if not janus_settings.bundled_skills_enabled():
+            shutil.rmtree(staged, ignore_errors=True)
+            return None
+        fresh = Path(tempfile.mkdtemp(prefix=f'.{STORE_SKILLS_DIR}-', dir=home))
+        old = Path(tempfile.mkdtemp(prefix=f'.{STORE_SKILLS_DIR}-old-', dir=home))
         try:
-            _copy_skill_tree(folder, fresh / name)
-        except OSError:
-            logger.warning('janus: skills of %s not staged', name, exc_info=True)
-    old = home / f'.{STORE_SKILLS_DIR}-old-{os.getpid()}'
-    shutil.rmtree(old, ignore_errors=True)
-    if staged.exists():
-        staged.rename(old)
-    fresh.rename(staged)
-    shutil.rmtree(old, ignore_errors=True)
+            sources = [('core', bundled_skills_dir())] if bundled_skills_dir().is_dir() else []
+            for name, folder in sources + app_skill_dirs():
+                try:
+                    _copy_skill_tree(folder, fresh / name)
+                except OSError:
+                    logger.warning('janus: skills of %s not staged', name, exc_info=True)
+            with contextlib.suppress(FileNotFoundError):
+                staged.rename(old / STORE_SKILLS_DIR)
+            try:
+                fresh.rename(staged)
+            except OSError:
+                # Another process put its copy there between the two renames.
+                if not staged.is_dir():
+                    raise
+        finally:
+            shutil.rmtree(fresh, ignore_errors=True)
+            shutil.rmtree(old, ignore_errors=True)
     return staged
 
 
