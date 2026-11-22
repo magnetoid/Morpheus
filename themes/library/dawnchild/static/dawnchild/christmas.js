@@ -165,7 +165,6 @@
   const showState = () => {
     for (const b of buttons) {
       const label = paused ? b.getAttribute('data-label-play') : b.getAttribute('data-label-pause');
-      b.setAttribute('aria-pressed', paused ? 'true' : 'false');
       if (label) {
         b.setAttribute('aria-label', label);
         const text = b.querySelector('.xmas-pause__text');

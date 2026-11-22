@@ -153,10 +153,28 @@ class ChristmasPagesTests(_Dawnchild):
         self.assertEqual(len(buttons), 2)
         for button in buttons:
             self.assertIn(' hidden', button)
-            self.assertIn('aria-pressed="false"', button)
+            self.assertNotIn('aria-pressed', button)
             self.assertIn('data-label-pause="Pause the snow"', button)
             self.assertIn('data-label-play="Let it snow"', button)
             self.assertIn('aria-label="Pause the snow"', button)
+
+    def test_the_banner_picture_comes_before_the_look(self):
+        # The picture is the page's largest paint and the head preloads nothing
+        # for it, so none of the look's markup may stand ahead of it.
+        from themes.models import ThemeConfig
+        from themes.test_dawnchild import HERO, HERO_ALT
+
+        config = {'hero_image_url': HERO, 'hero_image_alt': HERO_ALT, 'christmas_look': 'on'}
+        ThemeConfig.objects.update_or_create(theme_name='dawnchild', defaults={'config': config})
+        theme = theme_registry.get('dawnchild')
+        theme.invalidate_config_cache()
+        self.addCleanup(theme.invalidate_config_cache)
+        banner = self._home().split('id="home-banner"', 1)[1].split('id="home-why"', 1)[0]
+        self.assertIn('<img', banner)
+        self.assertIn('data-xmas="hero"', banner)
+        self.assertLess(banner.index('<img'), banner.index('data-xmas="hero"'))
+        self.assertLess(banner.index('home-banner-text'), banner.index('data-xmas="hero"'))
+        self.assertEqual(len(PAUSE.findall(banner)), 1)
 
     def test_on_other_pages_has_the_footer_and_header_but_no_hero(self):
         self._look('on')
@@ -205,12 +223,56 @@ class ChristmasFilesTests(SimpleTestCase):
         self.assertIn('animation: none', block)
         self.assertRegex(block, r'\[data-xmas-snow\][^{]*\{[^}]*display: none')
         self.assertRegex(block, r'\.xmas-pause[^{]*\{[^}]*display: none')
-        paused = [b for s, b in rules if '[data-christmas-paused]' in s]
+        # Under the pause a loop holds where it is and a one-time rise shows finished;
+        # the button's own icon rules are the only other rules the pause carries.
+        paused = [b for s, b in rules if '[data-christmas-paused]' in s and '.xmas-pause' not in s]
         self.assertTrue(paused)
-        self.assertTrue(all('animation-play-state: paused' in b for b in paused))
+        for body in paused:
+            self.assertTrue(
+                'animation-play-state: paused' in body or 'animation: none' in body, body
+            )
         phone = css.split('@media (max-width: 600px)', 1)
         self.assertEqual(len(phone), 2, 'no phone block')
         self.assertRegex(phone[1].split('\n}', 1)[0], r'\.foot-inner[^{]*\{[^}]*padding-bottom')
+
+    def test_a_paused_visit_shows_every_piece_finished(self):
+        # The head script sets the pause before the first paint, so on a later page
+        # the one-time rises never start; held in their delay they would show their
+        # first frame, no cap, no drift, no frost, for the whole visit.
+        rules = _rules((STATIC / 'christmas.css').read_text(encoding='utf-8'))
+        for piece, mirrored in (
+            ('.xmas-cap', False),
+            ('.xmas-drift', False),
+            ('.site-foot .lockup .wordmark::after', False),
+            ('.xmas-frost__corner', True),
+        ):
+            selector = f'[data-christmas-paused] [data-christmas] {piece}'
+            body = ' '.join(b for s, b in rules if selector in (p.strip() for p in s.split(',')))
+            with self.subTest(piece=piece):
+                self.assertIn('animation: none !important', body)
+                if mirrored:
+                    self.assertNotIn('transform', body)  # a corner keeps its own mirror
+                else:
+                    self.assertIn('transform: none !important', body)
+
+    def test_the_pause_button_names_its_action_without_a_pressed_state(self):
+        # The label says what a press does ("Pause the snow", "Let it snow"); a
+        # pressed state as well would announce "Let it snow, pressed" while the
+        # snow stands still. The icon follows the page's pause.
+        css = (STATIC / 'christmas.css').read_text(encoding='utf-8')
+        js = (STATIC / 'christmas.js').read_text(encoding='utf-8')
+        self.assertFalse('aria-pressed' in css, 'christmas.css styles a pressed state')
+        self.assertFalse('aria-pressed' in js, 'christmas.js sets a pressed state')
+        rules = _rules(css)
+
+        def display(selector: str) -> str | None:
+            body = ' '.join(b for s, b in rules if selector in (p.strip() for p in s.split(',')))
+            found = re.search(r'display:\s*([a-z-]+)', body)
+            return found.group(1) if found else None
+
+        self.assertEqual(display('.xmas-pause .xmas-pause__play'), 'none')
+        self.assertEqual(display('[data-christmas-paused] .xmas-pause .xmas-pause__pause'), 'none')
+        self.assertEqual(display('[data-christmas-paused] .xmas-pause .xmas-pause__play'), 'block')
 
     def test_the_script_waits_for_the_picture_and_stops_when_unseen(self):
         js = (STATIC / 'christmas.js').read_text(encoding='utf-8')

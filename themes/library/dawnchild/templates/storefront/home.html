@@ -30,7 +30,6 @@ hang in them.
 {% if link|slice:":1" == "/" and link|slice:":2" != "//" %}{% firstof link as book_url %}{% else %}{% firstof "/products/" as book_url %}{% endif %}
 <section class="page is-active" id="page-home" aria-labelledby="home-h">
   <div class="home-banner{% if not hero_art %} home-banner--plain{% endif %}" id="home-banner">
-    {% if christmas %}{% include "storefront/_christmas_hero.html" %}{% endif %}
     {% if hero_art %}
     <figure class="home-banner-art home-banner-art--full">
       {% seo_responsive_image hero_art alt=theme_config.hero_image_alt widths="400,600,800,1200" sizes="(min-width: 900px) 45vw, (min-width: 600px) 46vw, 100vw" priority=True %}
@@ -54,6 +53,7 @@ hang in them.
         <p class="hw-lead">{% blocktranslate trimmed %}Four books she wrote or drew between 1926 and 1947, set afresh by her great-grandson and printed to order. Begin with <a href="{{ book_url }}"><em>The Dawnchild</em></a>, her fairy adventure, back for its centenary: 1926–2026.{% endblocktranslate %}</p>
       </div>
     </div>
+    {% if christmas %}{% include "storefront/_christmas_hero.html" %}{% endif %}
   </div>
 
   <div class="home-why" id="home-why" role="region" aria-label="{% translate 'Why these books' %}">
