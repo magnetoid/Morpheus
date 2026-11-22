@@ -1,4 +1,4 @@
-{% load morph %}{% load caching %}{% load i18n %}<!DOCTYPE html>
+{% load morph %}{% load caching %}{% load i18n %}{% with christmas=active_theme.christmas_on %}<!DOCTYPE html>
 <html lang="{% get_current_language as LANG %}{{ LANG|default:'en' }}">
 <head>
 <meta charset="UTF-8">
@@ -30,7 +30,11 @@ names they already use; dawnchild.css is the design's own stylesheet and loads
 last, so the design wins wherever both speak.{% endcomment %}
 <link rel="stylesheet" href="{% static 'dawnchild/compat.css' %}">
 <link rel="stylesheet" href="{% static 'dawnchild/dawnchild.css' %}">
-<script nonce="{{ csp_nonce }}">document.documentElement.classList.add('js');</script>
+{% comment %}The Christmas look (theme setting christmas_look, v0.186.0): its stylesheet, and
+before first paint the visitor's remembered pause, so a paused page never starts moving.{% endcomment %}
+{% if christmas %}<link rel="stylesheet" href="{% static 'dawnchild/christmas.css' %}">{% endif %}
+<script nonce="{{ csp_nonce }}">document.documentElement.classList.add('js');{% if christmas %}
+try { if (localStorage.getItem('dawnchild:christmas-paused') === '1') document.documentElement.setAttribute('data-christmas-paused', ''); } catch (e) {}{% endif %}</script>
 
 {% block extra_head %}{% endblock %}
 
@@ -82,7 +86,7 @@ the theme's own defaults.
 {% endcomment %}
 {% storefront_blocks "global_head" %}
 </head>
-<body class="{% block body_class %}{% endblock %}">
+<body class="{% block body_class %}{% endblock %}"{% if christmas %} data-christmas{% endif %}>
 <a class="skip" href="#main">{% translate "Skip to content" %}</a>
 {% include "storefront/_admin_bar.html" %}
 
@@ -334,7 +338,7 @@ the theme's own defaults.
     <form class="signup-form foot-letter" id="footer-newsletter" method="post" action="/newsletter/subscribe/" data-dc-signup data-fail="{% translate 'That did not work. Please check the address.' %}" toolname="subscribe_to_newsletter" tooldescription="Subscribe an email address to the shop newsletter">
       {% csrf_token %}
       <input type="hidden" name="source" value="footer">
-      <label for="email-footer">{% translate "The letter: first word when a book can be ordered." %}</label>
+      <label for="email-footer">{% if christmas %}<svg class="xmas-letter" data-xmas="letter" viewBox="0 0 30 22" aria-hidden="true" focusable="false"><rect x="1" y="1" width="28" height="20" rx="1.5" fill="#f8f1df" stroke="#2b1a10" stroke-width="1.2"/><path d="M1.5 2L15 12.5L28.5 2" fill="none" stroke="#2b1a10" stroke-width="1.2"/><g class="seal"><circle cx="15" cy="13" r="4.6" fill="#9b1c14"/><circle cx="15" cy="13" r="2.6" fill="none" stroke="#c2493d" stroke-width=".8"/></g></svg>{% endif %}{% translate "The letter: first word when a book can be ordered." %}</label>
       <div class="signup"><input id="email-footer" type="email" name="email" placeholder="you@example.com" autocomplete="email" required maxlength="254" toolparamdescription="The email address to subscribe"><button class="btn" type="submit">{% translate "Send me the letter" %}</button></div>
       <p data-signup-msg role="status"></p>
       {% bot_check "newsletter" %}
@@ -350,8 +354,9 @@ the theme's own defaults.
     {% storefront_blocks "footer_extra" %}
   </nav>
 </div>
+{% if christmas %}{% include "storefront/_christmas_footer.html" %}{% endif %}
 <div class="wrap foot-signoff">
-  <span>© {% now "Y" %} {{ STORE_NAME|default:"Dawnchild Books" }}</span>
+  <span>© {% now "Y" %} {{ STORE_NAME|default:"Dawnchild Books" }}{% if christmas %}{% include "storefront/_christmas_pause.html" %}{% endif %}</span>
   <span class="foot-legal">{% storefront_blocks "footer_legal" %}</span>
 </div>
 </footer>
@@ -403,6 +408,7 @@ document.querySelectorAll('#sf-toast .sf-toast__msg').forEach(function (el) {
 </script>
 {% storefront_blocks "global_below_body" %}
 <script nonce="{{ csp_nonce }}" src="{% static 'dawnchild/dawnchild.js' %}" defer></script>
+{% if christmas %}<script nonce="{{ csp_nonce }}" src="{% static 'dawnchild/christmas.js' %}" defer></script>{% endif %}
 
 
 {% include "storefront/_cart_drawer.html" %}
@@ -583,4 +589,4 @@ document.querySelectorAll('#sf-toast .sf-toast__msg').forEach(function (el) {
 }
 </script>
 </body>
-</html>
+</html>{% endwith %}

@@ -30,6 +30,7 @@ hang in them.
 {% if link|slice:":1" == "/" and link|slice:":2" != "//" %}{% firstof link as book_url %}{% else %}{% firstof "/products/" as book_url %}{% endif %}
 <section class="page is-active" id="page-home" aria-labelledby="home-h">
   <div class="home-banner{% if not hero_art %} home-banner--plain{% endif %}" id="home-banner">
+    {% if christmas %}{% include "storefront/_christmas_hero.html" %}{% endif %}
     {% if hero_art %}
     <figure class="home-banner-art home-banner-art--full">
       {% seo_responsive_image hero_art alt=theme_config.hero_image_alt widths="400,600,800,1200" sizes="(min-width: 900px) 45vw, (min-width: 600px) 46vw, 100vw" priority=True %}
@@ -45,6 +46,7 @@ hang in them.
       <div class="hb-author home-why" role="group" aria-labelledby="home-author-h">
         <h2 class="hw-plaque" id="home-author-h">
           <svg class="hw-plaque-frame" viewBox="0 0 1000 100" preserveAspectRatio="none" aria-hidden="true" focusable="false"><path d="M30 3H970Q976 3 976 9V38Q976 46 990 50Q976 54 976 62V91Q976 97 970 97H30Q24 97 24 91V62Q24 54 10 50Q24 46 24 38V9Q24 3 30 3Z" fill="#bcb474" stroke="#241404" stroke-width="4" vector-effect="non-scaling-stroke"/><path d="M46 14Q37 30 37 40Q37 47 29 50Q37 53 37 60Q37 70 46 86M954 14Q963 30 963 40Q963 47 971 50Q963 53 963 60Q963 70 954 86" fill="none" stroke="#241404" stroke-width="1" vector-effect="non-scaling-stroke"/></svg>
+          {% if christmas %}<span class="xmas-cap" data-xmas="cap" aria-hidden="true"><svg viewBox="0 0 1000 40" preserveAspectRatio="none" focusable="false"><path d="M0 40L0 25.8Q55.6 18.2 111.1 20.4Q166.7 16.3 222.2 21.7Q277.8 15.9 333.3 19Q388.9 15.6 444.4 20.1Q500 16.1 555.6 20.5Q611.1 11.8 666.7 16.7Q722.2 13.5 777.8 24.1Q833.3 16.1 888.9 20.7Q944.4 15.9 1000 17.8L1000 40Z" fill="#cdbfae" opacity=".7" transform="translate(0 4)"/><path d="M0 40L0 10.6Q45.5 3.1 90.9 8.1Q136.4 4.1 181.8 6.1Q227.3 3.8 272.7 8.5Q318.2 7.1 363.6 9.4Q409.1 4.8 454.5 6.5Q500 4.4 545.5 5.8Q590.9 2.8 636.4 16.1Q681.8 3 727.3 6.3Q772.7 1.9 818.2 4.4Q863.6 1 909.1 12.3Q954.5 9.6 1000 18L1000 40Z" fill="#fbf6ee"/></svg></span>{% endif %}
           <span class="hw-plaque-top">{% translate "The books of" %}</span>
           <span class="hw-plaque-name">Beryl Irving</span>
           <span class="hw-plaque-sub">{% translate "back in print with every picture" %}</span>
