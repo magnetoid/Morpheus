@@ -141,6 +141,9 @@ _APP_CONFIG = {
     'google_shopping': {'remarketing_enabled': True, 'remarketing_id': 'AW-123456789'},
     'storefront': {'service_worker_enabled': True},
     'localization': {'suggest_language': True},
+    # The analytics app's pageview script, which its middleware adds to the page.
+    # The shopper here is staff, whose own browsing the app leaves out by default.
+    'analytics': {'exclude_staff': False},
     # Turnstile on the footer's newsletter form (the checkout itself asks for none).
     'cloudflare': {
         'turnstile_enabled': True,
@@ -162,6 +165,7 @@ _EXPECTED_ON_THE_CART = (
     'serviceWorker',
     'challenges.cloudflare.com',
     'morpheus-language-bar',
+    'data-morph-hit',
 )
 _TRACKING = {
     'gtm': {'gtm_container_id': 'GTM-ABC1234', 'measurement_id': ''},
@@ -234,6 +238,11 @@ class PaymentPageRenderTests(TestCase):
             username='shopper', email='shopper@example.test', password='pw', is_staff=True
         )
         self.client.force_login(user)
+        # A browser's user agent: the analytics app writes nothing for a request
+        # without one, which it counts as a crawler.
+        self.client.defaults['HTTP_USER_AGENT'] = (
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/605.1.15 Version/17.5'
+        )
         self.client.cookies['morpheus_consent'] = json.dumps(
             {'necessary': True, 'analytics': True, 'marketing': True, 'functional': True}
         )
