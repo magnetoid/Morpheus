@@ -160,3 +160,17 @@ class CloseExchangeTests(_Base):
         self.assertEqual(calls[0]['outcome'], 'exchange')
         self.assertEqual(calls[0]['exchange_order'], self.exchange_orders().get())
         self.assertEqual(calls[0]['unmade'], [])
+
+    def test_unmade_lines_reach_webhooks_as_plain_data(self):
+        calls = []
+        saved = list(hook_registry._handlers.get('return.refunded', []))
+        self.addCleanup(hook_registry._handlers.__setitem__, 'return.refunded', saved)
+        hook_registry.register('return.refunded', lambda **kw: calls.append(kw), priority=1)
+        self.close('exchange', exchange=self.exchange(self.deluxe))
+        expected = [
+            {'order_item_id': str(self.item.pk), 'variant_id': str(self.deluxe.pk), 'quantity': 1}
+        ]
+        self.assertEqual(calls[0]['unmade'], expected)
+        self.assertEqual(
+            hook_registry._serialize_payload({'unmade': calls[0]['unmade']}), {'unmade': expected}
+        )

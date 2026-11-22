@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import logging
 import uuid
+from dataclasses import asdict
 from decimal import Decimal
 
 from django.conf import settings
@@ -523,7 +524,8 @@ class ReturnService:
             store_credit=credit,
             outcome=outcome,
             exchange_order=exchange_order,
-            unmade=unmade,
+            # Plain dicts, so the event's webhook payload can carry them.
+            unmade=[asdict(line) for line in unmade],
         )
         return rr
 

@@ -1,0 +1,10 @@
+{% extends "emails/_layout.html" %}
+{% block title %}About your return{% endblock %}
+{% block preheader %}We can't take back the items in return {{ rma.rma_number }}.{% endblock %}
+{% block body %}
+  <p>We looked at your return <strong>{{ rma.rma_number }}</strong> for order <strong>#{{ order.order_number }}</strong>, and we can't take these items back:</p>
+  {% include "emails/_return_lines.html" %}
+  {% if rma.staff_note %}{{ rma.staff_note|linebreaks }}{% endif %}
+  <p>If you have a question, reply to this email.</p>
+  <p><a class="btn" href="{{ status_url }}">See your return</a></p>
+{% endblock %}

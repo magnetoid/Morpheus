@@ -1,0 +1,9 @@
+{% extends "emails/_layout.html" %}
+{% block title %}We received your return request{% endblock %}
+{% block preheader %}Return {{ rma.rma_number }} for order #{{ order.order_number }}: we will look at it and write again.{% endblock %}
+{% block body %}
+  <p>We received your request to send back items from order <strong>#{{ order.order_number }}</strong>. Its number is <strong>{{ rma.rma_number }}</strong>.</p>
+  {% include "emails/_return_lines.html" %}
+  <p>We will look at it and write to you again. Please don't send anything back until we have approved it.</p>
+  <p><a class="btn" href="{{ status_url }}">See your return</a></p>
+{% endblock %}

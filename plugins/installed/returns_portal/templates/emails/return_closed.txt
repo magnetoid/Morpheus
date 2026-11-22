@@ -1,0 +1,22 @@
+{% autoescape off %}Your return is closed.
+
+We received the items you sent back from order #{{ order.order_number }} and closed return {{ rma.rma_number }}.
+
+{% for line in lines %}- {{ line.quantity }}× {{ line.item.product_name }}{% if line.item.variant_name %} ({{ line.item.variant_name }}){% endif %}
+{% endfor %}
+Outcome: {{ outcome_label }}{% if refund_amount %}
+Refund: {{ refund_amount }}{% endif %}{% if credit_amount %}
+Store credit: {{ credit_amount }}{% endif %}{% if exchange_order %}
+Exchange order: #{{ exchange_order.order_number }}
+
+{% if exchange_owes %}Your exchange order has {{ exchange_order.total }} to pay. We are sending you a link to pay it, and we send the new edition once it is paid.{% else %}We are sending your new edition, and write again when it is on its way.{% endif %}{% endif %}
+{% if unmade_lines %}
+These items could not be exchanged, so we refunded them instead:
+{% for line in unmade_lines %}- {{ line.item.product_name }}{% if line.wanted %} ({{ line.wanted.name }} edition){% endif %}
+{% endfor %}{% endif %}{% if refund_amount %}
+A refund lands in your original payment method in a few business days.
+{% endif %}
+See your return: {{ status_url }}
+
+— The team
+{% endautoescape %}

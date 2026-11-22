@@ -65,6 +65,7 @@ class ReturnsPortalPlugin(Plugin):
 
         # Returns and exchanges the customer starts (C4, v0.188.0).
         from plugins.installed.returns_portal import (
+            notices,  # noqa: PLC0415
             policy,  # noqa: PLC0415
             views_returns,  # noqa: PLC0415
         )
@@ -73,6 +74,11 @@ class ReturnsPortalPlugin(Plugin):
         self.register_hook(
             events.ORDER_EMAIL_LINKS, views_returns.on_order_email_links, priority=60
         )
+        self.register_hook('return.requested', notices.on_return_requested, priority=60)
+        self.register_hook('return.approved', notices.on_return_approved, priority=60)
+        self.register_hook('return.rejected', notices.on_return_rejected, priority=60)
+        self.register_hook('return.refunded', notices.on_return_closed, priority=60)
+        self.register_hook(events.ORDER_CANCELLED, notices.on_order_cancelled, priority=60)
 
     def on_seo_jsonld_graph(self, value, page=None, request=None, **kwargs):
         from plugins.installed.returns_portal.seo_graph import (  # noqa: PLC0415
@@ -116,6 +122,38 @@ class ReturnsPortalPlugin(Plugin):
                 group='Orders',
                 description='The acknowledgement a customer gets when they withdraw from the '
                 'contract for an order, with the date and time it was received.',
+            ),
+            EmailTemplateDef(
+                key='return_requested',
+                label='Return requested',
+                default_subject='We received your return request {{ rma.rma_number }}',
+                group='Orders',
+                description='Sent when a customer asks to send items back, with the return '
+                'number and a link to follow it.',
+            ),
+            EmailTemplateDef(
+                key='return_approved',
+                label='Return approved',
+                default_subject='Your return {{ rma.rma_number }} is approved',
+                group='Orders',
+                description='Sent when you approve a return, with your instructions for '
+                'sending it back.',
+            ),
+            EmailTemplateDef(
+                key='return_rejected',
+                label='Return rejected',
+                default_subject='About your return {{ rma.rma_number }}',
+                group='Orders',
+                description='Sent when you turn a return down, with the note you wrote.',
+            ),
+            EmailTemplateDef(
+                key='return_closed',
+                label='Return closed',
+                default_subject='Your return {{ rma.rma_number }} is closed',
+                group='Orders',
+                description='Sent when the items arrive and the return is closed: the refund, '
+                'the store credit or the exchange order, and anything that could not be '
+                'exchanged.',
             ),
         ]
 
