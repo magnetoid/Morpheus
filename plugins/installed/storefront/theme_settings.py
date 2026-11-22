@@ -13,6 +13,9 @@ from django.shortcuts import redirect, render
 
 from core.authz import require_capability
 
+# Linda makes the same change with theme.set (scripts/check_agent_coverage.py).
+AGENT_TOOLS = {'theme_settings': 'theme.set'}
+
 
 @staff_member_required
 @require_capability('system.write')
