@@ -33,30 +33,3 @@ class DotBooksTheme(MorpheusTheme):
     vendor_noun = 'Publisher'
     vendor_noun_plural = 'Publishers'
     demo_topic = 'bookstore'
-
-    def get_config_schema(self) -> dict:
-        return {
-            'type': 'object',
-            'properties': {
-                'brand_name': {
-                    'type': 'string',
-                    'default': 'dot books',
-                    'title': 'Brand name (without trailing dot)',
-                },
-                'tagline': {
-                    'type': 'string',
-                    'default': 'a quieter shelf for louder books',
-                    'title': 'Tagline (single line)',
-                },
-                'accent_color': {
-                    'type': 'string',
-                    'default': '#E63946',
-                    'title': 'Accent color (the dot)',
-                },
-                'newsletter_pitch': {
-                    'type': 'string',
-                    'default': 'One letter a month. New titles, staff picks, no spam. Just books.',
-                    'title': 'Newsletter pitch',
-                },
-            },
-        }

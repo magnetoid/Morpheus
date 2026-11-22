@@ -948,7 +948,9 @@ in the **same change**, or don't add the field. The cheap check:
 is its own declaration, it does nothing. 78 such controls across 30 apps
 were found and removed in v0.76.4 (`docs/plans/dead-settings-2026-10.md`), and
 `core/tests/test_settings_keys_have_readers.py` now fails on any schema key with no
-reader — so the only way to add a control is together with the code that reads it. Guarded by
+reader — so the only way to add a control is together with the code that reads it. A theme's
+schema too, read by that theme's own files (v0.185.0): four themes declared brand name, tagline,
+accents and a newsletter pitch nothing read, harmless only until the Theme card showed them. Guarded by
 `storefront/tests/test_identity_maintenance.py` (brand_kit, the tokens example, left in v0.122.0).
 
 **Landmine — a vertical shipped in the DEFAULT app list appears on every store,

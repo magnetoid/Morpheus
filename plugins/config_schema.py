@@ -1,4 +1,4 @@
-"""One reading of an app's settings schema (v0.173.0).
+"""One reading of an app's, or a theme's, settings schema (v0.173.0; themes v0.185.0).
 
 What a value must be, how a typed-in value becomes one, which settings are
 secret and which an agent may change. The dashboard's settings save, its panel

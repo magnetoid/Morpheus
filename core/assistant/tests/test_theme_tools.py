@@ -16,12 +16,23 @@ from core.assistant.tools.filesystem import ToolError
 from themes.models import ThemeConfig
 from themes.registry import theme_registry
 
+# The active theme in tests (dot_books) declares no settings, so each test gives it one.
+SCHEMA = {
+    'type': 'object',
+    'properties': {
+        'tagline': {'type': 'string', 'default': 'A quiet shelf', 'title': 'Tagline'},
+    },
+}
+
 
 class ThemeToolsTests(TestCase):
     def setUp(self):
         self.theme = theme_registry.active
         self.theme.invalidate_config_cache()
         self.addCleanup(self.theme.invalidate_config_cache)
+        schema = patch.object(type(self.theme), 'get_config_schema', return_value=SCHEMA)
+        schema.start()
+        self.addCleanup(schema.stop)
 
     def _set(self, **args):
         from core.assistant.tools.admin_ops import theme_set_tool
@@ -43,7 +54,7 @@ class ThemeToolsTests(TestCase):
         self.assertEqual(out['theme'], self.theme.name)
         self.assertEqual(out['label'], self.theme.label)
         entries = {e['key']: e for e in out['settings']}
-        self.assertEqual(entries['tagline']['default'], 'a quieter shelf for louder books')
+        self.assertEqual(entries['tagline']['default'], 'A quiet shelf')
         self.assertIs(entries['tagline']['agent_writable'], True)
 
     def test_set_needs_the_merchants_yes(self):
@@ -87,3 +98,21 @@ class ThemeToolsTests(TestCase):
         names = [t.name for t in get_default_tools()]
         self.assertIn('theme.describe', names)
         self.assertIn('theme.set', names)
+
+
+class ThemeToolsInTheSkillTests(TestCase):
+    """The store skill sends a theme's settings to the theme tools: `settings.set` on
+    the storefront app stores an undeclared key "as given", so a theme setting
+    changed that way reports success and changes nothing."""
+
+    def test_the_store_skill_names_the_theme_tools(self):
+        from pathlib import Path
+
+        from django.conf import settings
+
+        skill = Path(settings.BASE_DIR) / (
+            'core/assistant/janus_skills/ecommerce/morpheus-store-operator/SKILL.md'
+        )
+        text = skill.read_text(encoding='utf-8')
+        self.assertIn('`theme.describe`', text)
+        self.assertIn('`theme.set`', text)

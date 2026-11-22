@@ -53,30 +53,3 @@ class SupernaturalShopTheme(MorpheusTheme):
                 'xl': '48px',
             },
         }
-
-    def get_config_schema(self) -> dict:
-        return {
-            'type': 'object',
-            'properties': {
-                'brand_name': {
-                    'type': 'string',
-                    'default': 'Supernatural Shop',
-                    'title': 'Brand name',
-                },
-                'tagline': {
-                    'type': 'string',
-                    'default': 'objects with a pulse',
-                    'title': 'Tagline (single line)',
-                },
-                'accent_color': {
-                    'type': 'string',
-                    'default': '#c9a227',
-                    'title': 'Accent color',
-                },
-                'newsletter_pitch': {
-                    'type': 'string',
-                    'default': 'Rare drops. No noise.',
-                    'title': 'Newsletter pitch',
-                },
-            },
-        }

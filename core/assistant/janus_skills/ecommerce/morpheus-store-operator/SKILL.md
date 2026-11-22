@@ -45,12 +45,16 @@ Bigger or riskier changes deserve a clearer description, not a different
 process: refunds and cancellations (`orders.refund`, `orders.cancel`), stock
 (`inventory.adjust_stock`, `inventory.set_stock`), deleting
 (`catalog.delete_product`), and store settings, apps and themes
-(`settings.set`, `plugins.toggle`, `theme.activate`, `updates.apply`).
+(`settings.set`, `plugins.toggle`, `theme.activate`, `theme.set`, `updates.apply`).
 
 Before `settings.set`, read the app's settings with `settings.describe`: each
 one's type, allowed values, current value and whether you may change it. A
 setting marked not agent-writable (a key, where your own model runs, who signs
 in) is the merchant's to change in the dashboard; say where, and change nothing.
+
+A theme's own settings (a notice, the home banner) belong to the active theme,
+not to an app: read them with `theme.describe` and change one with `theme.set`.
+`settings.set` on the storefront app would store a key no page reads.
 
 ## Recurring work
 

@@ -13,6 +13,14 @@ from django.test import TestCase
 
 from themes.registry import theme_registry
 
+# The active theme in tests (dot_books) declares no settings, so each test gives it one.
+SCHEMA = {
+    'type': 'object',
+    'properties': {
+        'tagline': {'type': 'string', 'default': 'A quiet shelf', 'title': 'Tagline'},
+    },
+}
+
 PAGE = '/dashboard/apps/storefront/theme/'
 
 
@@ -21,6 +29,9 @@ class _Signed(TestCase):
         self.theme = theme_registry.active
         self.theme.invalidate_config_cache()
         self.addCleanup(self.theme.invalidate_config_cache)
+        schema = patch.object(type(self.theme), 'get_config_schema', return_value=SCHEMA)
+        schema.start()
+        self.addCleanup(schema.stop)
         self.admin = get_user_model().objects.create_superuser(
             username='theme-admin', email='theme-admin@example.test', password='pw-12345!'
         )

@@ -82,3 +82,50 @@ class SettingsKeysHaveReadersTests(TestCase):
         self.assertEqual(
             unread, [], 'settings keys with no reader (wire them or remove the control)'
         )
+
+
+_TEMPLATE_COMMENTS = re.compile(
+    r'\{#.*?#\}|\{%\s*comment\s*%\}.*?\{%\s*endcomment\s*%\}|<!--.*?-->', re.S
+)
+
+
+class ThemeSettingsHaveReadersTests(TestCase):
+    """A theme's settings are read by that theme (v0.185.0).
+
+    Settings, Storefront → Theme renders the active theme's schema and Linda's
+    ``theme.set`` writes it, so a key the theme never reads is a control that
+    changes nothing. Four themes declared brand name, tagline, accent colours and
+    a newsletter pitch that no template or Python of theirs read; nobody could
+    edit them until the page existed. A word inside a template comment is not a
+    read (montenegro's ``product_list.html`` mentions ``brand_name()`` in one).
+    """
+
+    maxDiff = None
+
+    def test_every_theme_setting_is_read_by_its_own_theme(self):
+        import inspect
+
+        from themes.registry import theme_registry
+
+        unread = []
+        for theme in sorted(theme_registry.all_themes(), key=lambda t: t.name):
+            keys = sorted(((theme.get_config_schema() or {}).get('properties') or {}).keys())
+            if not keys:
+                continue
+            folder = Path(inspect.getfile(type(theme))).parent
+            texts = [
+                _TEMPLATE_COMMENTS.sub('', f.read_text(encoding='utf-8', errors='replace'))
+                for f in folder.rglob('*')
+                if f.suffix in {'.html', '.py', '.js'}
+                and f.name != 'theme.py'
+                and not f.name.startswith('test')
+            ]
+            blob = '\n'.join(texts)
+            unread += [
+                f'{theme.name}.{key}'
+                for key in keys
+                if not re.search(r'\b' + re.escape(key) + r'\b', blob)
+            ]
+        self.assertEqual(
+            unread, [], 'theme settings no template or code of that theme reads (wire or remove)'
+        )

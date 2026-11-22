@@ -47,35 +47,3 @@ class CroatiaTheme(MorpheusTheme):
     demo_topic = 'travel'
     # The booking app's regions, address country and page titles follow it.
     country = 'HR'
-
-    def get_config_schema(self) -> dict:
-        return {
-            'type': 'object',
-            'properties': {
-                'brand_name': {
-                    'type': 'string',
-                    'default': 'Croatia Experience',
-                    'title': 'Brand name',
-                },
-                'tagline': {
-                    'type': 'string',
-                    'default': 'Unforgettable experiences along the Adriatic',
-                    'title': 'Tagline (single line)',
-                },
-                'accent_color': {
-                    'type': 'string',
-                    'default': '#1a4f89',
-                    'title': 'Primary accent (Adriatic blue)',
-                },
-                'accent_warm_color': {
-                    'type': 'string',
-                    'default': '#c7471f',
-                    'title': 'Warm accent (terracotta CTA)',
-                },
-                'newsletter_pitch': {
-                    'type': 'string',
-                    'default': 'One letter a month. New experiences, hidden gems, no spam.',
-                    'title': 'Newsletter pitch',
-                },
-            },
-        }
