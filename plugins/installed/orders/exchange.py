@@ -48,6 +48,25 @@ def paid_unit_price(item) -> Money:
     return Money(max(price, Decimal('0')).quantize(Decimal('0.01')), str(item.unit_price.currency))
 
 
+def edition_price(variant, item) -> Money:
+    """What ``variant`` costs in the currency ``item`` was bought in, priced the way
+    checkout prices a line (its ``localized_prices``, then the price filter)."""
+    from plugins.installed.orders.services import _resolve_unit_price  # noqa: PLC0415
+
+    return _resolve_unit_price(
+        variant,
+        str(item.unit_price.currency),
+        fallback=variant.product,
+        customer=getattr(item.order, 'customer', None),
+    )
+
+
+def can_ship(variant) -> bool:
+    """An exchange sends goods: a download or a service edition is not one (nothing
+    would deliver it, since an exchange order fires no ORDER_PAID)."""
+    return bool(getattr(variant, 'requires_shipping', True))
+
+
 def units_available(variant_ids: list) -> dict[str, int]:
     """Units the stock reservation could take per variant (inventory answers;
     a variant with no stock row is untracked and left out)."""
@@ -93,10 +112,10 @@ def _makeable(rr, lines: list[ExchangeLine]) -> tuple[list[tuple], list[Exchange
             and variant.pk != item.variant_id
             and getattr(variant, 'is_active', True)
             and variant.is_for_sale
-            and variant.effective_price is not None
-            # List price against list price: a coupon or a gift card on the order
-            # never makes an equal edition "dearer than paid".
-            and variant.effective_price.amount <= item.unit_price.amount
+            and can_ship(variant)
+            # List price against list price, in the order's currency: a coupon or a
+            # gift card on the order never makes an equal edition "dearer than paid".
+            and _priced_within(variant, item)
             and stock.get(str(variant.pk), qty) >= qty
         )
         if ok:
@@ -104,6 +123,16 @@ def _makeable(rr, lines: list[ExchangeLine]) -> tuple[list[tuple], list[Exchange
         else:
             unmade.append(line)
     return made, unmade
+
+
+def _priced_within(variant, item) -> bool:
+    if variant.effective_price is None:
+        return False
+    price = edition_price(variant, item)
+    return (
+        str(price.currency) == str(item.unit_price.currency)
+        and price.amount <= item.unit_price.amount
+    )
 
 
 def difference(made: list[tuple]) -> Money | None:
@@ -116,7 +145,8 @@ def difference(made: list[tuple]) -> Money | None:
         total += (
             max(
                 Decimal('0'),
-                Decimal(paid_unit_price(item).amount) - Decimal(variant.effective_price.amount),
+                Decimal(paid_unit_price(item).amount)
+                - Decimal(edition_price(variant, item).amount),
             )
             * qty
         )

@@ -243,3 +243,49 @@ class ReviewFixTests(_Base):
         self.cancel_unpaid_exchange()
         amounts = sorted(r.amount.amount for r in Refund.objects.filter(order=self.order))
         self.assertEqual(amounts, [10, 10])
+
+
+class CodexReviewTests(_Base):
+    """Codex's findings on PR #207 (C4, v0.188.0)."""
+
+    def test_editions_are_priced_in_the_orders_currency(self):
+        Order.objects.filter(pk=self.order.pk).update(
+            subtotal=Money(9, 'EUR'), total=Money(9, 'EUR')
+        )
+        OrderItem.objects.filter(pk=self.item.pk).update(
+            unit_price=Money(9, 'EUR'), total_price=Money(9, 'EUR')
+        )
+        ProductVariant.objects.filter(pk=self.hardback.pk).update(
+            price=_usd(8), localized_prices={'EUR': '8.50'}
+        )
+        self.rr.refresh_from_db()
+        self.close('exchange', exchange=self.exchange(self.hardback))
+        self.assertTrue(self.exchange_orders().exists())
+        self.assertEqual(Refund.objects.get(order=self.order).amount, Money('0.50', 'EUR'))
+
+    def test_a_dearer_localized_price_is_refused(self):
+        Order.objects.filter(pk=self.order.pk).update(
+            subtotal=Money(9, 'EUR'), total=Money(9, 'EUR')
+        )
+        OrderItem.objects.filter(pk=self.item.pk).update(
+            unit_price=Money(9, 'EUR'), total_price=Money(9, 'EUR')
+        )
+        ProductVariant.objects.filter(pk=self.pocket.pk).update(localized_prices={'EUR': '9.50'})
+        self.rr.refresh_from_db()
+        self.close('exchange', exchange=self.exchange(self.pocket))
+        self.assertFalse(self.exchange_orders().exists())
+
+    def test_a_download_edition_is_not_an_exchange(self):
+        ebook = ProductVariant.objects.create(
+            product=self.book, name='PDF', sku='ZA-PDF', price=_usd(5), requires_shipping=False
+        )
+        self.close('exchange', exchange=self.exchange(ebook))
+        self.assertFalse(self.exchange_orders().exists())
+
+    def test_a_free_exchange_is_not_counted_as_a_sale(self):
+        from plugins.installed.orders.reports import counted
+
+        self.close('exchange', exchange=self.exchange(self.hardback))
+        new = self.exchange_orders().get()
+        self.assertIn(self.order.pk, set(counted().values_list('pk', flat=True)))
+        self.assertNotIn(new.pk, set(counted().values_list('pk', flat=True)))

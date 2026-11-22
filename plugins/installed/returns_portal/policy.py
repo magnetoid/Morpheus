@@ -55,19 +55,24 @@ def offered_outcomes(order, *, signed_in: bool) -> list[str]:
 
 def exchange_editions(item) -> list:
     """The other editions ``item`` may be exchanged for: active, for sale, of the same
-    product, and no dearer than its list price (a coupon or gift card on the order
-    never makes an equal edition dearer)."""
+    product, sent as goods, and no dearer than its list price in the order's currency
+    (a coupon or gift card on the order never makes an equal edition dearer)."""
     from plugins.installed.catalog.models import ProductVariant  # noqa: PLC0415
+    from plugins.installed.orders.exchange import can_ship, edition_price  # noqa: PLC0415
 
     if item.product_id is None:
         return []
-    paid = item.unit_price.amount
+    paid = item.unit_price
     found = []
-    for variant in ProductVariant.objects.filter(
-        product_id=item.product_id, is_active=True
-    ).exclude(pk=item.variant_id):
-        price = variant.effective_price
-        if variant.is_for_sale and price is not None and price.amount <= paid:
+    for variant in (
+        ProductVariant.objects.select_related('product')
+        .filter(product_id=item.product_id, is_active=True)
+        .exclude(pk=item.variant_id)
+    ):
+        if not (variant.is_for_sale and can_ship(variant)) or variant.effective_price is None:
+            continue
+        price = edition_price(variant, item)
+        if str(price.currency) == str(paid.currency) and price.amount <= paid.amount:
             found.append(variant)
     return found
 

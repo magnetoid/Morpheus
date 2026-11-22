@@ -96,6 +96,30 @@ class OfferedOutcomeTests(_Base):
         self.item.refresh_from_db()
         self.assertIn('ZA-HB', {v.sku for v in exchange_editions(self.item)})
 
+    def test_a_download_edition_is_not_offered(self):
+        from plugins.installed.returns_portal.policy import exchange_editions
+
+        ProductVariant.objects.create(
+            product=self.book, name='PDF', sku='ZA-PDF', price=_usd(5), requires_shipping=False
+        )
+        self.assertNotIn('ZA-PDF', {v.sku for v in exchange_editions(self.item)})
+
+    def test_editions_are_compared_in_the_orders_currency(self):
+        from plugins.installed.returns_portal.policy import exchange_editions
+
+        Order.objects.filter(pk=self.order.pk).update(
+            subtotal=Money(9, 'EUR'), total=Money(9, 'EUR')
+        )
+        OrderItem.objects.filter(pk=self.item.pk).update(
+            unit_price=Money(9, 'EUR'), total_price=Money(9, 'EUR')
+        )
+        ProductVariant.objects.filter(pk=self.hardback.pk).update(localized_prices={'EUR': '8'})
+        ProductVariant.objects.filter(pk=self.pocket.pk).update(localized_prices={'EUR': '9.50'})
+        self.item.refresh_from_db()
+        found = {v.sku for v in exchange_editions(self.item)}
+        self.assertIn('ZA-HB', found)
+        self.assertNotIn('ZA-PO', found)
+
 
 class FeeTests(_Base):
     def test_exchange_fee_modes(self):

@@ -63,6 +63,8 @@ def _sent_batches(order) -> dict[str, list[tuple[int, date]]]:
     """For each line, (units, window start date) per parcel, earliest first."""
     batches: dict[str, list[tuple[int, date]]] = {}
     for parcel in order.fulfillments.prefetch_related('items'):
+        if parcel.status == 'pending' and not parcel.shipped_at and not parcel.delivered_at:
+            continue  # recorded, not yet sent
         start = timezone.localdate(parcel_start(parcel))
         for fi in parcel.items.all():
             batches.setdefault(str(fi.order_item_id), []).append((fi.quantity, start))

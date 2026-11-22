@@ -93,6 +93,13 @@ class ReturnableLinesTests(_Base):
         line = self.lines(order)[str(item.pk)]
         self.assertEqual((line.units, line.reason), (1, ''))
 
+    def test_a_parcel_recorded_but_not_yet_sent_does_not_count(self):
+        order = self.order()
+        item = order.items.get()
+        parcel = Fulfillment.objects.create(order=order, status='pending')
+        FulfillmentItem.objects.create(fulfillment=parcel, order_item=item, quantity=1)
+        self.assertEqual(self.lines(order)[str(item.pk)].reason, 'not_sent')
+
     def test_window_counts_from_the_parcels_delivery(self):
         order = self.order()
         item = order.items.get()
