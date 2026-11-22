@@ -360,14 +360,33 @@ class ReturnService:
         reason: str = 'other',
         customer_note: str = '',
         requested_by=None,
+        window_days: int | None = None,
     ) -> ReturnRequest:
-        rr = ReturnRequest.objects.create(
-            order=order,
-            reason=reason,
-            items=items,
-            customer_note=customer_note,
-            requested_by=requested_by,
-        )
+        """Record a return. A customer's request passes ``window_days``: it is then
+        checked against ``orders.returns.returnable_lines`` with the order locked, so
+        two tabs cannot both return the last unit. Staff and withdrawals pass None."""
+        if window_days is None:
+            rr = ReturnRequest.objects.create(
+                order=order,
+                reason=reason,
+                items=items,
+                customer_note=customer_note,
+                requested_by=requested_by,
+            )
+        else:
+            from plugins.installed.orders.models import Order  # noqa: PLC0415
+            from plugins.installed.orders.returns import check_request  # noqa: PLC0415
+
+            with transaction.atomic():
+                locked = Order.objects.select_for_update().get(pk=order.pk)
+                check_request(locked, items, window_days=window_days)
+                rr = ReturnRequest.objects.create(
+                    order=locked,
+                    reason=reason,
+                    items=items,
+                    customer_note=customer_note,
+                    requested_by=requested_by,
+                )
         hook_registry.fire('return.requested', return_request=rr, order=order)
         # Fan-out to the staff notifications center so the dashboard bell
         # shows it on the next page load. Optional plugin — fail-soft.
