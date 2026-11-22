@@ -64,9 +64,15 @@ class ReturnsPortalPlugin(Plugin):
         self.register_hook(events.HEALTH_CHECKS, withdrawal.on_health_checks, priority=60)
 
         # Returns and exchanges the customer starts (C4, v0.188.0).
-        from plugins.installed.returns_portal import policy  # noqa: PLC0415
+        from plugins.installed.returns_portal import (
+            policy,  # noqa: PLC0415
+            views_returns,  # noqa: PLC0415
+        )
 
         self.register_hook(events.RETURN_RESOLUTION, policy.on_return_resolution, priority=50)
+        self.register_hook(
+            events.ORDER_EMAIL_LINKS, views_returns.on_order_email_links, priority=60
+        )
 
     def on_seo_jsonld_graph(self, value, page=None, request=None, **kwargs):
         from plugins.installed.returns_portal.seo_graph import (  # noqa: PLC0415
@@ -91,6 +97,11 @@ class ReturnsPortalPlugin(Plugin):
                 slot='account_order_actions',
                 template='returns_portal/blocks/order_withdraw.html',
                 priority=50,
+            ),
+            StorefrontBlock(
+                slot='account_order_actions',
+                template='returns_portal/blocks/order_return.html',
+                priority=40,
             ),
         ]
 

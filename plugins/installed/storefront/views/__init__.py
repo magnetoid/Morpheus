@@ -14,10 +14,10 @@ Layout:
   checkout.py    — checkout / checkout_shipping / checkout_review /
                    checkout_payment + gift-card side trips
   account.py     — account_home / account_profile / account_orders /
-                   account_order_detail / account_order_return /
+                   account_order_detail /
                    account_addresses / account_address_form /
-                   account_address_delete / account_returns /
-                   account_return_status / account_credits /
+                   account_address_delete /
+                   account_credits /
                    order_confirmation
   content.py     — about / contact / journal_index / journal_detail /
                    shipping / returns / coming_soon
@@ -34,12 +34,9 @@ from .account import (
     account_home,
     account_order_cancel,
     account_order_detail,
-    account_order_return,
     account_orders,
     account_payment_methods,
     account_profile,
-    account_return_status,
-    account_returns,
     order_confirmation,
 )
 from .cart import cart, cart_add, cart_remove, cart_update
@@ -123,12 +120,9 @@ __all__ = [
     'account_orders',
     'account_order_detail',
     'account_order_cancel',
-    'account_order_return',
     'account_addresses',
     'account_address_form',
     'account_address_delete',
-    'account_returns',
-    'account_return_status',
     'account_credits',
     'account_payment_methods',
     'order_confirmation',

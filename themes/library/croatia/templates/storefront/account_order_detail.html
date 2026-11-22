@@ -100,10 +100,6 @@ links to the return flow and the orders list, unchanged.{% endcomment %}
 
     <!-- Actions -->
     <div class="mt-6 flex items-center gap-3 flex-wrap">
-      <a href="/account/orders/{{ order.order_number }}/return/" class="inline-flex items-center justify-center gap-2 h-11 px-5 rounded-lg border border-input bg-background text-sm font-medium text-foreground hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
-        {% trans "Request a return" %}
-      </a>
       <a href="/account/orders/" class="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:text-primary/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg px-1.5 py-1">
         {% trans "All orders" %}
         <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>

@@ -1,0 +1,26 @@
+{% extends "storefront/base.html" %}
+{% load i18n morph %}
+{% comment %}
+returns_portal (C4): a guest finds their order by its number and their email. A wrong
+pair reads exactly like an unknown number, so nobody learns about someone else's order.
+{% endcomment %}
+{% block content %}
+<section style="padding: 3rem 0 5rem;">
+  <div class="wrap" style="max-width: 560px;">
+    <p class="eyebrow">{% trans "Returns" %}</p>
+    <h1 class="display display-l" style="margin: 1rem 0 1rem;">{% trans "Return or exchange" %}</h1>
+    <p class="meta" style="margin-bottom: 1.5rem;">{% trans "Enter your order number and the email you ordered with. Signed in? Start from the order in your account." %}</p>
+    {% if error %}<p role="alert" style="border: 1px solid var(--rule); border-radius: 6px; padding: .75rem 1rem; margin-bottom: 1.25rem;">{{ error }}</p>{% endif %}
+    {% if not_found %}<p role="alert" data-return-not-found style="border: 1px solid var(--rule); border-radius: 6px; padding: .75rem 1rem; margin-bottom: 1.25rem;">{% trans "We could not find that order. Check the number and the email and try again." %}</p>{% endif %}
+    <form method="post" action="/returns/start/" style="display: grid; gap: 1rem;">
+      {% csrf_token %}
+      <label class="meta" for="return-number">{% trans "Order number" %}</label>
+      <input id="return-number" name="order_number" value="{{ draft.number }}" required autocomplete="off" style="height: 44px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper);">
+      <label class="meta" for="return-email">{% trans "Email" %}</label>
+      <input id="return-email" type="email" name="email" value="{{ draft.email }}" required autocomplete="email" style="height: 44px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper);">
+      <div><button type="submit" class="btn btn-primary">{% trans "Find my order" %}</button></div>
+      {% bot_check "withdrawal" %}
+    </form>
+  </div>
+</section>
+{% endblock %}
