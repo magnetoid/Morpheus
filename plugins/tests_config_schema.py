@@ -347,3 +347,11 @@ class TargetAgnosticTests(SimpleTestCase):
         self.assertIs(entries['title']['agent_writable'], True)
         self.assertEqual(entries['count']['value'], 3)
         self.assertIs(entries['count']['stored'], False)
+
+
+class PatternTests(SimpleTestCase):
+    def test_a_pattern_is_checked_and_described(self):
+        spec = {'type': 'string', 'pattern': r'\d+'}
+        self.assertNotEqual(cs.validate('x', 'ab', spec), '')
+        self.assertEqual(cs.validate('x', '12', spec), '')
+        self.assertEqual(cs.describe_settings({'x': spec}, {})[0]['pattern'], r'\d+')

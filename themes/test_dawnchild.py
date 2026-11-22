@@ -264,8 +264,12 @@ class DawnchildFilesTests(SimpleTestCase):
     def test_theme_settings_all_have_a_reader(self):
         schema = theme_registry.get(THEME).get_config_schema()['properties']
         everything = '\n'.join(_sources().values())
+        code = '\n'.join(
+            p.read_text(encoding='utf-8') for p in sorted(ROOT.glob('*.py')) if p.name != 'theme.py'
+        )
         for key in schema:
-            self.assertIn(f'theme_config.{key}', everything, f'{key} is read by no template')
+            read = f'theme_config.{key}' in everything or f"'{key}'" in code
+            self.assertTrue(read, f'{key} is read by no template and no theme code')
 
 
 class _Dawnchild(TestCase):

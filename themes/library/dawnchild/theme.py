@@ -107,5 +107,36 @@ class DawnchildTheme(MorpheusTheme):
                         "book's name lead to, starting with / (empty leads to the shelf)"
                     ),
                 },
+                'christmas_look': {
+                    'type': 'string',
+                    'enum': ['off', 'dates', 'on'],
+                    'default': 'off',
+                    'title': (
+                        'Christmas look: off, dates (every year between the two days below) '
+                        'or on (shown now, to preview it)'
+                    ),
+                },
+                'christmas_from': {
+                    'type': 'string',
+                    'default': '01-12',
+                    'pattern': r'\d{2}-\d{2}',
+                    'examples': ['01-12'],
+                    'title': 'Christmas look starts (day-month, DD-MM; 01-12 is 1 December)',
+                },
+                'christmas_until': {
+                    'type': 'string',
+                    'default': '06-01',
+                    'pattern': r'\d{2}-\d{2}',
+                    'examples': ['06-01'],
+                    'title': 'Christmas look ends, that day included (DD-MM; 06-01 is 6 January)',
+                },
             },
         }
+
+    def christmas_on(self) -> bool:
+        """Whether today, on the store's clock, the Christmas look shows
+        (``christmas.py`` holds the rule)."""
+        from core.utils.site import store_today  # noqa: PLC0415
+        from themes.library.dawnchild.christmas import is_on  # noqa: PLC0415
+
+        return is_on(self.get_config(), store_today())
