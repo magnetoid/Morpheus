@@ -229,7 +229,7 @@ From 2026-11-18 the rows left (P6, P8, P9, P10+) take their places in the merged
 
 ### P9 — App skills for Linda
 
-**Status:** v0.187.0, in review (2026-11-22). Built as below; the staged folder is `<home>/store-skills/` with `core/` and one folder per app, and the Janus page's skills switch turns off both.
+**Status:** v0.187.0, live on all six stores (2026-11-22, PR #205). Built as below; the staged folder is `<home>/store-skills/` with `core/` and one folder per app, and the Janus page's skills switch turns off both.
 
 - `janus_engine._prepare_home` rebuilds `<home>/store-skills/` each turn from `core/assistant/janus_skills` plus `<app>/janus_skills/` of every active app, and `skills.external_dirs` points only there. A convention, not a hook: a disabled app's skills are gone next turn, and an agent's edit cannot outlive the turn or reach another conversation (today the external directory is the writable `/app` tree).
 - Tests: `LindaCatalogueTests.test_prompt_and_skills_name_only_tools_linda_has` extends to app skill folders (a skill may name core tools and its own app's); staging tests in `test_janus_engine.py`. `docs/PLUGIN_DEVELOPMENT.md` gains the convention.

@@ -1,6 +1,6 @@
 # Morpheus as an e-commerce platform — gap analysis and completion plan (Nov 2026)
 
-**Status:** approved by the owner on 2026-11-09. A1 (tax) v0.149.0, A2 (promotions) v0.150.0, A3 (inventory) v0.152.0, A4 (fulfilment and shipping rates) v0.154.0, A5 (payments, with the A4 choices as settings) v0.155.0, A7 (checkout fields) v0.168.0 and A8 (payment link) v0.171.0 are live on all five stores. F1 (AI marks on translations and images) v0.177.0 is live on all five stores (2026-11-18). F2 (claims and legal copy) v0.178.0 is live on all five stores (2026-11-18). P6 (manifest compatibility, third in the merged order) v0.179.0 is live on all five stores (2026-11-19). A10a (cancel and refund rules, fourth) v0.180.0 is live on all five stores (2026-11-20). F3 (the online withdrawal function, fifth) v0.181.0 is live on all five stores (2026-11-20). P8 (agent-coverage ratchet, sixth) v0.182.0 is live on all five stores (2026-11-20). P9 (app skills for Linda, seventh) is v0.187.0, in review. From A5 on, each commerce choice is a merchant setting whose default is the earlier behaviour (owner, 2026-11-12). Update the status column of the release tables as each release ships; this file is the plan of record (a plan in a chat does not survive `/clear`).
+**Status:** approved by the owner on 2026-11-09. A1 (tax) v0.149.0, A2 (promotions) v0.150.0, A3 (inventory) v0.152.0, A4 (fulfilment and shipping rates) v0.154.0, A5 (payments, with the A4 choices as settings) v0.155.0, A7 (checkout fields) v0.168.0 and A8 (payment link) v0.171.0 are live on all five stores. F1 (AI marks on translations and images) v0.177.0 is live on all five stores (2026-11-18). F2 (claims and legal copy) v0.178.0 is live on all five stores (2026-11-18). P6 (manifest compatibility, third in the merged order) v0.179.0 is live on all five stores (2026-11-19). A10a (cancel and refund rules, fourth) v0.180.0 is live on all five stores (2026-11-20). F3 (the online withdrawal function, fifth) v0.181.0 is live on all five stores (2026-11-20). P8 (agent-coverage ratchet, sixth) v0.182.0 is live on all five stores (2026-11-20). P9 (app skills for Linda, seventh) v0.187.0 is live on all six stores (2026-11-22). C4 (customer returns and exchanges, eighth) is v0.188.0, in review. From A5 on, each commerce choice is a merchant setting whose default is the earlier behaviour (owner, 2026-11-12). Update the status column of the release tables as each release ships; this file is the plan of record (a plan in a chat does not survive `/clear`).
 
 **Order of work:** from 2026-11-18 the remaining rows here and in [janus-alignment-and-app-platform-2026-11.md](janus-alignment-and-app-platform-2026-11.md) run in one merged order, set out in the next section. It replaces "platform first, then commerce" (owner, 2026-11-15).
 
@@ -38,8 +38,8 @@ Where that default leaves a store outside a rule that may bind it, the setup che
 | 4 | Cancel and refund rules | A10a | a withdrawal or a return that ends in a wrong refund is worse than none |
 | 5 | Online withdrawal function | F3 | in force since 19 June 2026; needs 4 |
 | 6 | Agent-coverage ratchet | P8 | every later row ships its tools under it |
-| 7 | App skills for Linda | P9 | |
-| 8 | Customer returns and exchanges | C4 | on the page 5 builds; its tools are P10's returns batch |
+| 7 | App skills for Linda | P9 | live, v0.187.0 (2026-11-22) |
+| 8 | Customer returns and exchanges | C4 | v0.188.0, in review; its tools are P10's returns batch |
 | 9 | Post-purchase emails | C1 | nearly built; mail is the channel the store owns |
 | 10 | "Email customer" action and newsletter composer | C2 | |
 | 11 | Regional card gateway app | F4 | card reach for stores Stripe does not serve |
