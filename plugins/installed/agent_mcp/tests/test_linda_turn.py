@@ -364,6 +364,28 @@ class LindaCatalogueTests(TestCase):
                     missing.add((source.rsplit('/', 2)[-2] if '/' in source else source, ref))
         self.assertEqual(sorted(missing), [])
 
+    def test_an_apps_skills_name_only_core_tools_and_its_own(self):
+        # P9: an active app's janus_skills/ reach Linda every turn. A skill that
+        # names another app's tool stops working the day that app is switched off.
+        import re
+
+        from core.agents.registry import agent_registry
+        from core.assistant.janus_engine import app_skill_dirs
+        from plugins.registry import app_registry
+
+        names = self._names('general')
+        apps = {p.name for p in app_registry.all_plugins()}
+        wrong = set()
+        for app, folder in app_skill_dirs():
+            for skill_md in folder.rglob('SKILL.md'):
+                for ref in re.findall(r'`([^`]+)`', skill_md.read_text(encoding='utf-8')):
+                    if not re.fullmatch(r'[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*', ref):
+                        continue
+                    owner = agent_registry._tool_owners.get(ref, '')
+                    if ref not in names or (owner in apps and owner != app):
+                        wrong.add((app, skill_md.parent.name, ref))
+        self.assertEqual(sorted(wrong), [])
+
     def test_every_tool_declares_the_arguments_its_handler_requires(self):
         # A missing `required` lets a call through validation and crashes the
         # handler with a TypeError the model cannot learn from (plugins.describe).

@@ -8,6 +8,7 @@ turn mock ``subprocess.run`` or ``run_janus_turn``.
 from __future__ import annotations
 
 import subprocess
+import sys
 import types
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -148,14 +149,18 @@ class ConfigTests(SimpleTestCase):
         self.assertIn('  pre_tool_call:', body)
         self.assertIn('janus_progress_hook.py', body)
 
-    def test_config_points_at_bundled_ecommerce_skills(self):
+    def test_config_points_at_the_turns_copy_of_the_ecommerce_skills(self):
+        skills = bundled_skills_dir()
+        self.assertTrue(skills.is_dir(), f'missing bundled skills at {skills}')
         with TemporaryDirectory() as tmp:
             cfg = _ensure_config(Path(tmp), mcp_url='https://s/mcp/')
             body = cfg.read_text(encoding='utf-8')
-        skills = bundled_skills_dir()
-        self.assertTrue(skills.is_dir(), f'missing bundled skills at {skills}')
+            staged = Path(tmp) / eng.STORE_SKILLS_DIR
+            self.assertTrue(
+                (staged / 'core' / 'ecommerce' / 'morpheus-orders' / 'SKILL.md').is_file()
+            )
         self.assertIn('external_dirs', body)
-        self.assertIn(str(skills).replace('\\', '/'), body)
+        self.assertIn(str(staged).replace('\\', '/'), body)
         self.assertIn('morpheus_admin', body)
 
 
@@ -1009,3 +1014,107 @@ class JanusHistoryTests(SimpleTestCase):
         from core.assistant.runtime import _format_janus_history
 
         self.assertEqual(_format_janus_history([]), '')
+
+
+def _fake_app(
+    root: Path, name: str, skill: str = 'restock-routine', body: str = 'x'
+) -> types.SimpleNamespace:
+    """An active app whose package (root/name) ships one Janus skill."""
+    pkg = root / name
+    skill_dir = pkg / 'janus_skills' / skill
+    skill_dir.mkdir(parents=True)
+    (skill_dir / 'SKILL.md').write_text(
+        f'---\nname: {skill}\ndescription: test\n---\n{body}\n', encoding='utf-8'
+    )
+    (pkg / 'app.py').write_text('', encoding='utf-8')
+    module = types.ModuleType(f'fakeapps.{name}.app')
+    module.__file__ = str(pkg / 'app.py')
+    cls = type('FakeApp', (), {'__module__': module.__name__})
+    plugin = cls()
+    plugin.name = name
+    return plugin, module
+
+
+class StoreSkillsTests(SimpleTestCase):
+    """P9: each turn's home gets a fresh copy of the store skills, core's and every
+    active app's, and Janus reads only that copy (it used to read the /app tree)."""
+
+    def setUp(self):
+        tmp = TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.root = Path(tmp.name)
+        self.home = self.root / 'home'
+        self.home.mkdir()
+        self.apps = []
+        patcher = mock.patch(
+            'plugins.registry.app_registry.active_plugins', side_effect=lambda: list(self.apps)
+        )
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        mods = mock.patch.dict('sys.modules')
+        mods.start()
+        self.addCleanup(mods.stop)
+
+    def _add_app(self, name, **kw):
+        plugin, module = _fake_app(self.root / 'apps', name, **kw)
+        self.apps.append(plugin)
+        sys.modules[module.__name__] = module
+        return plugin
+
+    def _skill(self, *parts):
+        return self.home / eng.STORE_SKILLS_DIR / Path(*parts) / 'SKILL.md'
+
+    def test_the_turn_home_carries_core_and_active_app_skills(self):
+        self._add_app('returns_portal')
+        body = _ensure_config(self.home, mcp_url='https://s/mcp/').read_text(encoding='utf-8')
+        staged = self.home / eng.STORE_SKILLS_DIR
+        self.assertIn(f'- "{str(staged).replace(chr(92), "/")}"', body)
+        # Janus no longer reads the repository tree, which the app user can write.
+        self.assertNotIn(str(bundled_skills_dir()).replace('\\', '/'), body)
+        self.assertTrue(self._skill('core', 'ecommerce', 'morpheus-orders').is_file())
+        self.assertTrue(self._skill('returns_portal', 'restock-routine').is_file())
+
+    def test_a_switched_off_apps_skills_are_gone_next_turn(self):
+        app = self._add_app('returns_portal')
+        _ensure_config(self.home, mcp_url='https://s/mcp/')
+        self.apps.remove(app)
+        _ensure_config(self.home, mcp_url='https://s/mcp/')
+        self.assertFalse((self.home / eng.STORE_SKILLS_DIR / 'returns_portal').exists())
+        self.assertTrue(self._skill('core', 'ecommerce', 'morpheus-orders').is_file())
+
+    def test_an_edit_to_a_staged_skill_lasts_one_turn(self):
+        self._add_app('returns_portal', body='the real routine')
+        _ensure_config(self.home, mcp_url='https://s/mcp/')
+        staged = self._skill('returns_portal', 'restock-routine')
+        staged.write_text('---\nname: restock-routine\n---\ninjected\n', encoding='utf-8')
+        _ensure_config(self.home, mcp_url='https://s/mcp/')
+        self.assertIn('the real routine', staged.read_text(encoding='utf-8'))
+
+    def test_links_and_hidden_files_are_not_copied(self):
+        self._add_app('returns_portal')
+        src = self.root / 'apps' / 'returns_portal' / 'janus_skills' / 'restock-routine'
+        secret = self.root / 'secret.txt'
+        secret.write_text('key', encoding='utf-8')
+        (src / 'notes.md').symlink_to(secret)
+        (src / '.hidden').write_text('x', encoding='utf-8')
+        _ensure_config(self.home, mcp_url='https://s/mcp/')
+        copied = self._skill('returns_portal', 'restock-routine').parent
+        self.assertFalse((copied / 'notes.md').exists())
+        self.assertFalse((copied / '.hidden').exists())
+
+    def test_the_skills_switch_off_stages_nothing(self):
+        self._add_app('returns_portal')
+        _ensure_config(self.home, mcp_url='https://s/mcp/')
+        with mock.patch('core.assistant.janus_settings.bundled_skills_enabled', return_value=False):
+            body = _ensure_config(self.home, mcp_url='https://s/mcp/').read_text(encoding='utf-8')
+        self.assertNotIn('external_dirs', body)
+        self.assertFalse((self.home / eng.STORE_SKILLS_DIR).exists())
+
+    def test_staged_skills_are_never_kept_as_learned(self):
+        from core.assistant import janus_learning
+
+        self._add_app('returns_portal')
+        _ensure_config(self.home, mcp_url='https://s/mcp/')
+        self.assertFalse(
+            [p for p in janus_learning.scan(self.home) if p.startswith(eng.STORE_SKILLS_DIR)]
+        )

@@ -277,6 +277,7 @@ The contribution surfaces an app may use:
 | **Email template** | `contribute_email_templates()` | central list at Settings → Email templates | ✅ |
 | **Agent command** | `contribute_agent_tools()` | Linda's tool catalogue (the agent runtime + MCP) | ✅ |
 | **Agent skill** | `contribute_skills()` | a named tool bundle Linda opts into | ✅ |
+| **Janus skill** | a `janus_skills/<skill>/SKILL.md` folder in the app (no method) | Linda's skill index, every turn | ✅ (gone the next turn) |
 | **Hook subscriber** | `register_hook(event, handler)` in `ready()` | the `core.hooks` event bus | ✅ (handler isn't re-registered) |
 
 Beyond `ready()`-time imperative registration, plugins **declaratively
@@ -542,6 +543,16 @@ Conventions:
   `agent_mcp/scopes.py`). Read tools can use `scopes=[]` (public).
 - For a related set of tools + a prompt prelude, bundle them with
   `contribute_skills()` so Linda opts into them as a unit.
+- To teach Linda a routine (how to work a returns queue, what to check before a
+  refund), ship a Janus skill: a folder `janus_skills/<skill-name>/SKILL.md` in
+  the app, with `name:` and `description:` front matter, plus any plain text files
+  it refers to. Each turn copies the skills of core and of every active app into
+  the conversation's home (`janus_engine.stage_store_skills`), so a switched-off
+  app's skills are gone from the next turn and an edit the agent makes lasts that
+  turn only. Links and hidden files are not copied. A skill names only tools Linda
+  has, from core or from its own app: another app's tool stops existing when that
+  app is off (`agent_mcp/tests/test_linda_turn.py`). The merchant's "Use the
+  built-in store skills" switch on the Janus page turns them all off.
 
 **An app with no tools is invisible to Linda in everyday use.** Her
 introspection tools — `plugins.describe(name)`, `platform.capabilities`, the

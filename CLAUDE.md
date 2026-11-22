@@ -674,9 +674,10 @@ automations through `automations.*` (v0.99.0) **only from a merchant's own chat*
 automation reads with Linda's profile as its owner, so one created by an external
 agent or by another automation would read beyond that caller's grant. Schedules are
 five cron fields on the store clock (`agent_core/cron.py`), 15 minutes apart at least
-for Linda. Bundled ecommerce skills live in
-`core/assistant/janus_skills/` and are wired via `skills.external_dirs` in the
-per-conversation Janus home. **Four CLI traps shipped live in v0.63.0 and each
+for Linda. Store skills live in `core/assistant/janus_skills/` and in each app's
+`janus_skills/`; every turn copies those of core and of the active apps into
+`<home>/store-skills/`, the one folder `skills.external_dirs` names (v0.187.0, P9:
+Janus used to read the repository tree itself, which the app user can write). **Four CLI traps shipped live in v0.63.0 and each
 looked fine in tests** (v0.63.1): (1) without `-t`, `janus chat` loads its
 default 56-tool `janus-cli` set — terminal, `write_file`, `execute_code`, browser
 — as the user that owns `/app` and can read the web process's env via `/proc`,

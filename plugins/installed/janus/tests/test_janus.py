@@ -254,8 +254,17 @@ class JanusSettingConsumerTests(TestCase):
         )
 
     def test_bundled_skills_toggle_reaches_the_engine_config(self):
-        _set(bundled_skills=False)
-        self.assertNotIn('external_dirs', eng._config_text('https://s/mcp/'))
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+
+        with TemporaryDirectory() as tmp:
+            self.assertIn(
+                'external_dirs', eng._ensure_config(Path(tmp)).read_text(encoding='utf-8')
+            )
+            _set(bundled_skills=False)
+            self.assertNotIn(
+                'external_dirs', eng._ensure_config(Path(tmp)).read_text(encoding='utf-8')
+            )
 
     def test_thinking_effort_reaches_the_engine_config(self):
         self.assertIn('reasoning_effort: low', eng._config_text('https://s/mcp/'))
