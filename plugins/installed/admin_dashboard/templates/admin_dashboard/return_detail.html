@@ -112,6 +112,8 @@
           <input class="input w-full mt-1" type="text" inputmode="decimal" name="fee" value="{{ fee_value }}" placeholder="0.00">
           <span class="text-xs text-[color:var(--text-muted)]">Taken off the refund or credit. On an exchange it comes off any difference first, and the customer pays the rest by a link. Leave it empty for none.</span>
         </label>
+        <input type="hidden" name="prefill_outcome" value="{{ chosen }}">
+        <input type="hidden" name="prefill_fee" value="{{ fee_value }}">
         <button type="submit" name="action" value="close" class="btn btn-primary w-full">Mark received and close</button>
       </form>
       <p class="text-xs text-[color:var(--text-muted)] mt-3">Store credit can be redeemed at checkout on a future order — no money moves through the gateway.</p>

@@ -174,3 +174,72 @@ class CloseExchangeTests(_Base):
         self.assertEqual(
             hook_registry._serialize_payload({'unmade': calls[0]['unmade']}), {'unmade': expected}
         )
+
+
+class ReviewFixTests(_Base):
+    """The final review's findings on closing an exchange (C4, v0.188.0)."""
+
+    def test_a_discounted_order_still_exchanges_for_an_equal_edition(self):
+        Order.objects.filter(pk=self.order.pk).update(discount_total=_usd(1), total=_usd(9))
+        self.rr.refresh_from_db()
+        self.close('exchange', exchange=self.exchange(self.hardback))
+        new = self.exchange_orders().get()
+        self.assertEqual(new.items.get().variant_id, self.hardback.pk)
+        self.assertFalse(Refund.objects.filter(order=self.order).exists())
+
+    def test_exchange_order_money_is_in_the_order_currency(self):
+        Order.objects.filter(pk=self.order.pk).update(
+            subtotal=Money(10, 'EUR'), total=Money(10, 'EUR')
+        )
+        self.rr.refresh_from_db()
+        self.close('exchange', exchange=self.exchange(self.hardback))
+        new = self.exchange_orders().get()
+        for field in ('subtotal', 'shipping_total', 'tax_total', 'discount_total', 'total'):
+            with self.subTest(field=field):
+                self.assertEqual(str(getattr(new, field).currency), 'EUR')
+
+    def cancel_unpaid_exchange(self):
+        new = self.exchange_orders().get()
+        with self.captureOnCommitCallbacks(execute=True):
+            new.cancel(reason='Not paid in time')
+            new.save()
+
+    def test_unpaid_exchange_is_refunded_even_with_the_portal_off(self):
+        from plugins.registry import app_registry
+
+        self.close('exchange', exchange=self.exchange(self.hardback), fee=_usd(5))
+        app_registry.deactivate('returns_portal')
+        self.addCleanup(app_registry.activate, 'returns_portal')
+        self.cancel_unpaid_exchange()
+        self.assertEqual(Refund.objects.get(order=self.order).amount, _usd(10))
+
+    def test_unpaid_exchange_refund_counts_an_earlier_processed_refund_once(self):
+        second = OrderItem.objects.create(
+            order=self.order,
+            product=self.book,
+            variant=self.paperback,
+            product_name='Zephyr Atlas',
+            variant_name='Paperback',
+            quantity=1,
+            unit_price=_usd(10),
+            total_price=_usd(10),
+        )
+        Order.objects.filter(pk=self.order.pk).update(subtotal=_usd(20), total=_usd(20))
+        ReturnRequest.objects.filter(pk=self.rr.pk).update(
+            items=[
+                {'order_item_id': str(self.item.pk), 'quantity': 1},
+                {'order_item_id': str(second.pk), 'quantity': 1},
+            ]
+        )
+        self.rr.refresh_from_db()
+        from plugins.installed.orders.exchange import ExchangeLine
+
+        lines = [
+            *self.exchange(self.hardback),
+            ExchangeLine(order_item_id=str(second.pk), variant_id=str(self.deluxe.pk)),
+        ]
+        self.close('exchange', exchange=lines, fee=_usd(5))
+        Refund.objects.filter(order=self.order).update(is_processed=True)  # as a gateway would
+        self.cancel_unpaid_exchange()
+        amounts = sorted(r.amount.amount for r in Refund.objects.filter(order=self.order))
+        self.assertEqual(amounts, [10, 10])

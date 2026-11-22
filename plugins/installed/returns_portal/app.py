@@ -78,7 +78,6 @@ class ReturnsPortalPlugin(Plugin):
         self.register_hook('return.approved', notices.on_return_approved, priority=60)
         self.register_hook('return.rejected', notices.on_return_rejected, priority=60)
         self.register_hook('return.refunded', notices.on_return_closed, priority=60)
-        self.register_hook(events.ORDER_CANCELLED, notices.on_order_cancelled, priority=60)
 
     def on_seo_jsonld_graph(self, value, page=None, request=None, **kwargs):
         from plugins.installed.returns_portal.seo_graph import (  # noqa: PLC0415

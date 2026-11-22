@@ -111,6 +111,40 @@ class ReturnCloseFormTests(_Base):
         self.client.post(self.url, {'action': 'close', 'outcome': 'exchange', 'fee': '6.00'})
         self.assertEqual(self.exchange_orders().get().total, _usd(6))
 
+    def test_switching_outcome_takes_that_outcomes_fee_not_the_prefilled_one(self):
+        set_app_settings(self, 'returns_portal', exchange_fee='fixed', exchange_fee_amount=6)
+        self.choose_exchange()
+        self.client.force_login(self.admin)
+        self.client.post(
+            self.url,
+            {
+                'action': 'close',
+                'outcome': 'refund',
+                'fee': '6.00',
+                'prefill_outcome': 'exchange',
+                'prefill_fee': '6.00',
+            },
+        )
+        self.rr.refresh_from_db()
+        self.assertEqual(self.rr.refund.amount, _usd(10))
+
+    def test_a_fee_staff_typed_is_kept_when_they_switch(self):
+        set_app_settings(self, 'returns_portal', exchange_fee='fixed', exchange_fee_amount=6)
+        self.choose_exchange()
+        self.client.force_login(self.admin)
+        self.client.post(
+            self.url,
+            {
+                'action': 'close',
+                'outcome': 'refund',
+                'fee': '3',
+                'prefill_outcome': 'exchange',
+                'prefill_fee': '6.00',
+            },
+        )
+        self.rr.refresh_from_db()
+        self.assertEqual(self.rr.refund.amount, _usd(7))
+
     def test_without_portal_no_exchange_is_offered(self):
         from plugins.registry import app_registry
 

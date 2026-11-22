@@ -7,22 +7,17 @@ the staff note) and closed. Every email goes after the change commits.
 
 An exchange that costs something (``exchange_fee``) leaves its order unpaid: closing
 the return emails the payment link, and the new edition ships once it is paid. When
-the unpaid-order sweep cancels that order at its deadline, the return is refunded
-instead, once, and noted on the return and both orders.
+the unpaid-order sweep cancels that order at its deadline, orders refunds the return
+instead (``orders.exchange.refund_unpaid_exchange``), with this app on or off.
 """
 
 from __future__ import annotations
 
 import logging
-from decimal import Decimal
 
 from django.db import transaction
 
 logger = logging.getLogger('morpheus.returns_portal')
-
-#: A refund paid when an exchange order is cancelled unpaid, told apart from the
-#: return's own refund by its note.
-UNPAID_NOTE = 'RMA {rma} (exchange not paid)'
 
 
 def status_url(rr) -> str:
@@ -146,7 +141,10 @@ def on_return_closed(
         if owes:
             from plugins.installed.payments import pay_link  # noqa: PLC0415
 
-            sent, reason = pay_link.send(exchange_order, kind='link')
+            try:
+                sent, reason = pay_link.send(exchange_order, kind='link')
+            except Exception as e:  # noqa: BLE001 — the return is closed; staff can resend
+                sent, reason = False, str(e)
             if not sent:
                 logger.warning(
                     'returns_portal: no payment link for exchange %s: %s',
@@ -155,64 +153,3 @@ def on_return_closed(
                 )
 
     _after_commit(send)
-
-
-def on_order_cancelled(order=None, **kwargs):
-    """ORDER_CANCELLED: an exchange order cancelled before it was paid refunds its
-    return instead, once the cancellation commits."""
-    metadata = getattr(order, 'metadata', None) or {}
-    if order is None or not metadata.get('exchange_of') or not metadata.get('return_id'):
-        return
-    pk, return_id = order.pk, metadata['return_id']
-    _after_commit(lambda: refund_unpaid_exchange(pk, return_id))
-
-
-def refund_unpaid_exchange(order_pk, return_id) -> None:
-    from djmoney.money import Money  # noqa: PLC0415
-
-    from plugins.installed.orders.models import Order  # noqa: PLC0415
-    from plugins.installed.orders.refunds import (  # noqa: PLC0415
-        RefundService,
-        ReturnRequest,
-        ReturnService,
-    )
-    from plugins.installed.payments.pay_link import UNPAID  # noqa: PLC0415
-    from plugins.installed.returns_portal.policy import return_fee  # noqa: PLC0415
-
-    exchange = Order.objects.filter(pk=order_pk).first()
-    if exchange is None or exchange.status != 'cancelled':
-        return
-    if (exchange.payment_status or 'unpaid') not in UNPAID:
-        return
-    rr = ReturnRequest.objects.select_related('order', 'refund').filter(pk=return_id).first()
-    if rr is None:
-        return
-    note = UNPAID_NOTE.format(rma=rr.rma_number)
-    if rr.order.refunds.filter(notes=note).exists():
-        return
-    value = rr.refund_amount
-    if value is None or value.amount <= 0:
-        value = ReturnService._compute_refund(rr)
-    currency = str(value.currency)
-    already = Decimal(rr.refund.amount.amount) if rr.refund is not None else Decimal('0')
-    owed = Decimal(value.amount) - Decimal(return_fee(rr.order).amount) - already
-    if owed <= 0:
-        return
-    try:
-        RefundService.process(order=rr.order, amount=Money(owed, currency), notes=note)
-    except Exception as e:  # noqa: BLE001 — left for staff, said on the timeline
-        logger.error('returns_portal: refund for unpaid exchange %s failed: %s', rr.rma_number, e)
-        rr.order.log_event(
-            'RETURN_REFUND_FAILED',
-            message=f'Exchange #{exchange.order_number} was not paid; refunding {rr.rma_number} '
-            f'failed: {e}',
-        )
-        return
-    message = (
-        f'Exchange #{exchange.order_number} was not paid in time, so return '
-        f'{rr.rma_number} was refunded instead ({Money(owed, currency)}).'
-    )
-    rr.staff_note = f'{rr.staff_note}\n{message}'.strip()
-    rr.save(update_fields=['staff_note', 'updated_at'])
-    rr.order.log_event('RETURN_REFUNDED_INSTEAD', message=message)
-    exchange.log_event('EXCHANGE_NOT_PAID', message=message)

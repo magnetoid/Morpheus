@@ -89,6 +89,13 @@ class OfferedOutcomeTests(_Base):
         found = {v.sku for v in exchange_editions(self.item)}
         self.assertEqual(found, {'ZA-HB', 'ZA-PO'})
 
+    def test_a_discount_or_tender_does_not_hide_an_equal_edition(self):
+        from plugins.installed.returns_portal.policy import exchange_editions
+
+        Order.objects.filter(pk=self.order.pk).update(discount_total=_usd(5), total=_usd(5))
+        self.item.refresh_from_db()
+        self.assertIn('ZA-HB', {v.sku for v in exchange_editions(self.item)})
+
 
 class FeeTests(_Base):
     def test_exchange_fee_modes(self):

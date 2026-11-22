@@ -828,7 +828,8 @@ class MorpheusEvents:
     # RETURN_RESOLUTION — filter, value=None, kwargs: return_request=ReturnRequest.
     #   What the customer chose for a return (C4, v0.188.0): returns_portal answers
     #   {'outcome': 'refund'|'store_credit'|'exchange', 'exchange': [ExchangeLine],
-    #   'fee': Money, 'label': str}, or leaves None (no choice recorded, or the app
+    #   'fee': Money, 'fees': {outcome: Money}, 'label': str}, or leaves None (no
+    #   choice recorded, or the app
     #   off). The dashboard's return page reads it to preselect how the return
     #   closes, so it never imports returns_portal.
     RETURN_RESOLUTION = 'return.resolution'  # filter

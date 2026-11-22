@@ -164,6 +164,17 @@ class ChargedExchangeTests(_Base):
         [closed] = self.sent('is closed')
         self.assertIn('once it is paid', closed.body)
 
+    def test_a_failing_payment_link_never_breaks_the_close(self):
+        from unittest import mock
+
+        rr = ReturnRequest.objects.create(order=self.order, state='approved', items=self.items)
+        with mock.patch(
+            'plugins.installed.payments.pay_link.send', side_effect=RuntimeError('smtp down')
+        ):
+            self.close_exchange(rr, self.hardback, fee=_usd(5))
+        rr.refresh_from_db()
+        self.assertEqual(rr.state, 'refunded')
+
     def test_cancelled_unpaid_exchange_refunds_the_return(self):
         fired = []
         saved = list(hook_registry._handlers.get('return.refunded', []))

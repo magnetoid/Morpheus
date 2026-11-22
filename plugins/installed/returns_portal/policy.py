@@ -55,13 +55,13 @@ def offered_outcomes(order, *, signed_in: bool) -> list[str]:
 
 def exchange_editions(item) -> list:
     """The other editions ``item`` may be exchanged for: active, for sale, of the same
-    product, and not dearer than what was paid for it."""
+    product, and no dearer than its list price (a coupon or gift card on the order
+    never makes an equal edition dearer)."""
     from plugins.installed.catalog.models import ProductVariant  # noqa: PLC0415
-    from plugins.installed.orders.exchange import paid_unit_price  # noqa: PLC0415
 
     if item.product_id is None:
         return []
-    paid = paid_unit_price(item).amount
+    paid = item.unit_price.amount
     found = []
     for variant in ProductVariant.objects.filter(
         product_id=item.product_id, is_active=True
@@ -124,6 +124,7 @@ def on_return_resolution(value, return_request=None, **kwargs):
         'outcome': row.resolution,
         'exchange': lines,
         'fee': fee_for(return_request.order, row.resolution),
+        'fees': {outcome: fee_for(return_request.order, outcome) for outcome in OUTCOMES},
         'label': OUTCOME_LABELS.get(row.resolution, row.resolution),
     }
 

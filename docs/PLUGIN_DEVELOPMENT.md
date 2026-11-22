@@ -1146,7 +1146,8 @@ See [LAW 4 in RULES.md](../RULES.md#law-4--plugins-communicate-via-hooks--outbox
 The dashboard's return page and its "Mark received and close" form ask
 `hook_registry.filter(MorpheusEvents.RETURN_RESOLUTION, None, return_request=rr)`. An app
 that records the customer's choice answers with `{'outcome': 'refund' | 'store_credit' |
-'exchange', 'exchange': [orders.exchange.ExchangeLine], 'fee': Money, 'label': str}`, or
+'exchange', 'exchange': [orders.exchange.ExchangeLine], 'fee': Money, 'fees': {outcome: Money},
+'label': str}` (`fee` is the chosen outcome's, `fees` every outcome's, for when staff switch), or
 leaves the value alone. returns_portal is the answerer today. With nothing answering, staff
 see a plain refund or store credit form. Everything an event payload carries must be JSON
 data or a model, never a dataclass: `fire` also builds the webhook payload from it, and a

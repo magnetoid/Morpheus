@@ -68,6 +68,24 @@ def _fee(raw: str, currency: str):
     return Money(amount.quantize(Decimal('0.01')), currency)
 
 
+def _posted_fee(request, outcome, resolution, currency):
+    """The fee to take: what staff typed, except that an untouched box keeps the
+    fee of the outcome it was filled for, so switching outcome takes the new
+    outcome's fee (a refund never carries the exchange fee by accident)."""
+    raw = request.POST.get('fee', '')
+    prefilled_for = (request.POST.get('prefill_outcome') or '').strip()
+    if (
+        resolution
+        and prefilled_for
+        and outcome != prefilled_for
+        and raw.strip() == (request.POST.get('prefill_fee') or '').strip()
+    ):
+        from djmoney.money import Money
+
+        return (resolution.get('fees') or {}).get(outcome) or Money(0, currency)
+    return _fee(raw, currency)
+
+
 #: The old close buttons, kept for a release so an open tab still works.
 _OLD_CLOSE = {'refund_money': 'refund', 'refund_credit': 'store_credit'}
 
@@ -95,7 +113,7 @@ def _act(request, rr, resolution, currency) -> str:
                 outcome=outcome,
                 actor=request.user,
                 exchange=resolution['exchange'] if outcome == 'exchange' else None,
-                fee=_fee(request.POST.get('fee', ''), currency),
+                fee=_posted_fee(request, outcome, resolution, currency),
             )
         else:
             return 'Unknown action.'
@@ -152,7 +170,8 @@ def return_detail(request: HttpRequest, rma_id) -> HttpResponse:
     chosen = resolution['outcome'] if resolution else 'refund'
     if chosen == 'exchange' and not can_exchange:
         chosen = 'refund'
-    fee = resolution['fee'] if resolution else None
+    # The box shows the fee of the outcome it preselects.
+    fee = (resolution.get('fees') or {}).get(chosen, resolution['fee']) if resolution else None
     return render(
         request,
         'admin_dashboard/return_detail.html',

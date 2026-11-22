@@ -2078,18 +2078,21 @@ for "not built yet". Guarded by `core/tests/test_agent_coverage_check.py`.
 counted per parcel from `delivered_at`, else shipping plus the transit allowance, and not already in
 an open return); `ReturnService.create_request(window_days=…)` checks it again with the order locked.
 The customer's pages, emails and choice (`ReturnResolution`: refund, store credit, or another edition
-of the same product at an equal or lower price) are returns_portal's, at the old `/account/returns/`
+of the same product at an equal or lower list price: a coupon or gift card never makes it dearer) are returns_portal's, at the old `/account/returns/`
 paths plus `/returns/start/` for a guest (order number and email, or the order's token). Staff close a
 return with `ReturnService.close(outcome=…, exchange=…, fee=…)`; the dashboard reads the choice through
 `RETURN_RESOLUTION`, so it imports nothing from the app. An exchange is its own order
 (`orders/exchange.py`, `source='exchange'`, `metadata['exchange_of']`), made only once the old goods
 arrive: free, it is paid at once and fires no `ORDER_PLACED` or `ORDER_PAID` (no sale happened, so no
-analytics, ad conversion or loyalty points); with a fee still owed it stays unpaid, the customer gets
-the payment link, and an unpaid one the sweep cancels refunds the return instead. A sold-out or dearer
+analytics, ad conversion or loyalty points), so inventory turns its reservation into a sale on
+`return.refunded` instead; with a fee still owed it stays unpaid, the customer gets the payment link,
+and an unpaid one the sweep cancels refunds the return instead (`exchange.refund_unpaid_exchange`, in
+orders so it happens with the portal off; the goods' value less what the return already paid back). A sold-out or dearer
 edition is refunded, line by line, and the closing email says which. `return.refunded` carries plain
 dicts so its webhook payload serialises. Guarded by `orders/tests/test_returnable_lines.py`,
 `test_return_close.py`, `returns_portal/tests/test_policy.py`, `test_return_pages.py`,
-`test_return_emails.py` and `admin_dashboard/tests/test_return_close_form.py`.
+`test_return_emails.py`, `inventory/tests/test_exchange_stock.py` and
+`admin_dashboard/tests/test_return_close_form.py`.
 
 **Landmine — `CART_CALCULATE_BREAKDOWN` priority IS the money order; a *tender*
 must run after tax+shipping.** The filter runs handlers lowest-priority-first
