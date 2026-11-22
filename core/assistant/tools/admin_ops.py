@@ -298,5 +298,85 @@ def theme_activate_tool(
     return ToolResult(output={'active_theme': theme}, display=f'Activated theme {theme}.')
 
 
+def _theme_properties(theme) -> dict:
+    return (theme.get_config_schema() or {}).get('properties') or {}
+
+
+@tool(
+    name='theme.describe',
+    description=(
+        "Describe the active storefront theme's settings (read-only): for each, its "
+        'type, allowed values, default and current value, and whether you may change '
+        'it with theme.set.'
+    ),
+    scopes=['system.read'],
+    schema={'type': 'object', 'properties': {}},
+)
+def theme_describe_tool() -> ToolResult:
+    from plugins import config_schema  # noqa: PLC0415
+    from themes.registry import theme_registry  # noqa: PLC0415
+
+    theme = theme_registry.active
+    if theme is None:
+        return ToolResult(
+            output={'theme': None, 'label': '', 'settings': []}, display='No active theme.'
+        )
+    entries = config_schema.describe_settings(_theme_properties(theme), theme.get_config())
+    return ToolResult(
+        output={'theme': theme.name, 'label': theme.label, 'settings': entries},
+        display=f'{len(entries)} setting(s) for the {theme.label} theme',
+    )
+
+
+@tool(
+    name='theme.set',
+    description=(
+        'Change one setting of the active storefront theme: pass `key` and `value` as '
+        "text, read and checked against the setting's type. theme.describe lists them. "
+        'confirmed=True after the user approves.'
+    ),
+    scopes=['system.write'],
+    schema={
+        'type': 'object',
+        'properties': {
+            'key': {'type': 'string'},
+            'value': {'type': 'string'},
+            'confirmed': {'type': 'boolean', 'default': False},
+        },
+        'required': ['key', 'value'],
+    },
+    requires_approval=True,
+)
+def theme_set_tool(*, key: str, value: str, confirmed: bool = False) -> ToolResult:
+    _require_confirmed(confirmed)
+    from plugins import config_schema  # noqa: PLC0415
+    from themes.registry import theme_registry  # noqa: PLC0415
+
+    theme = theme_registry.active
+    if theme is None:
+        raise ToolError('No active theme. Nothing was changed.')
+    prop = _theme_properties(theme).get(key)
+    if prop is None:
+        # A theme has no settings it does not declare, so an unknown key is a typo.
+        raise ToolError(
+            f'The {theme.label} theme has no setting {key!r}; theme.describe lists them. '
+            'Nothing was changed.'
+        )
+    if not config_schema.agent_writable(key, prop):
+        raise ToolError(
+            f'Only the merchant can change the theme setting {key}, on the dashboard. '
+            'Nothing was changed.'
+        )
+    try:
+        coerced = config_schema.clean(key, prop, value)
+    except config_schema.SettingError as e:
+        raise ToolError(f'{theme.label} theme: {e}. Nothing was changed.') from e
+    theme.set_config(key, coerced)
+    return ToolResult(
+        output={'theme': theme.name, 'key': key, 'value': coerced},
+        display=f'Set the {theme.label} theme setting {key} = {coerced!r}.',
+    )
+
+
 # workflows.run migrated to plugins/installed/workflows/agent_tools.py (boundary
 # ratchet) — Linda sources it by name via tools/__init__.py `_migrated_names`.

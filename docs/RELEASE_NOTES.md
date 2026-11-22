@@ -15,6 +15,16 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.185.0 — 2026-11-21
+
+**Theme settings on the dashboard**
+
+- Settings, Storefront has a Theme card: the active theme's own settings (a notice, the home banner and the like), saved like any other settings card.
+- Linda can read them (theme.describe) and change one once you say yes (theme.set).
+- The dot books, Supernatural, Montenegro and Croatia themes no longer list a brand name, tagline, accent colours and newsletter pitch that nothing on the shop read; their Theme card says the theme has no settings. A theme's settings must now be read by that theme, or the build fails.
+- A saved theme setting reaches every server within 10 seconds; before, a change made outside a restart reached only one.
+- Dawnchild: the product page shows the cover whole, without the frame round it, and as large as the screen allows; the edition cards take the full width.
+
 ## v0.184.3 — 2026-11-21
 
 **The free print switch is on a settings card called Catalog**

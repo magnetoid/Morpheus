@@ -46,35 +46,3 @@ class MontenegroTheme(MorpheusTheme):
     demo_topic = 'travel'
     # The booking app's regions, address country and page titles follow it.
     country = 'ME'
-
-    def get_config_schema(self) -> dict:
-        return {
-            'type': 'object',
-            'properties': {
-                'brand_name': {
-                    'type': 'string',
-                    'default': 'Montenegro Experience',
-                    'title': 'Brand name',
-                },
-                'tagline': {
-                    'type': 'string',
-                    'default': 'Unforgettable experiences along the Adriatic',
-                    'title': 'Tagline (single line)',
-                },
-                'accent_color': {
-                    'type': 'string',
-                    'default': '#19726a',
-                    'title': 'Primary accent (Adriatic teal)',
-                },
-                'accent_warm_color': {
-                    'type': 'string',
-                    'default': '#ee7d23',
-                    'title': 'Warm accent (sandstone CTA)',
-                },
-                'newsletter_pitch': {
-                    'type': 'string',
-                    'default': 'One letter a month. New experiences, hidden gems, no spam.',
-                    'title': 'Newsletter pitch',
-                },
-            },
-        }

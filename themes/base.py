@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import logging
 import re
+import time
 from typing import Any
 
 logger = logging.getLogger('morpheus.themes')
@@ -112,8 +113,15 @@ class MorpheusTheme:
     # the booking app's default, Montenegro.
     country: str = ''
 
+    #: Seconds after which this process reads the theme's settings from the
+    #: database again. The cache is per process and a save clears only the
+    #: worker that saved it, so without a re-read a setting changed on the
+    #: dashboard reached one web worker and never the others (v0.185.0).
+    config_fresh_s: float | None = 10.0
+
     # ── Internal ──────────────────────────────────────────────────────────────
     _config_cache: dict | None = None
+    _config_read_at: float = 0.0
 
     def __init_subclass__(cls, **kwargs: Any) -> None:
         super().__init_subclass__(**kwargs)
@@ -161,13 +169,24 @@ class MorpheusTheme:
         return {}
 
     def get_config(self) -> dict:
-        from django.db import DatabaseError
+        """The theme's stored settings (cached per process; see ``config_fresh_s``)."""
+        from django.db import DatabaseError, transaction
 
+        if (
+            self._config_cache is not None
+            and self.config_fresh_s is not None
+            and time.monotonic() - self._config_read_at >= self.config_fresh_s
+        ):
+            self._config_cache = None
         if self._config_cache is None:
+            self._config_read_at = time.monotonic()
             try:
                 from themes.models import ThemeConfig
 
-                row = ThemeConfig.objects.get(theme_name=self.name)
+                # A savepoint: on Postgres a failed statement aborts the whole
+                # surrounding transaction, and the caller's next query would fail.
+                with transaction.atomic():
+                    row = ThemeConfig.objects.get(theme_name=self.name)
                 self._config_cache = row.config or {}
             except (DatabaseError, ImportError, LookupError):
                 self._config_cache = {}
@@ -184,6 +203,21 @@ class MorpheusTheme:
 
     def invalidate_config_cache(self) -> None:
         self._config_cache = None
+
+    def set_config(self, key: str, value: Any) -> None:
+        """Store one setting of this theme and drop this process's cache.
+
+        Creates the theme's row when it has none (a theme switched on by
+        ``MORPHEUS_ACTIVE_THEME``) and never changes which theme is active.
+        """
+        from themes.models import ThemeConfig
+
+        row, _ = ThemeConfig.objects.get_or_create(theme_name=self.name)
+        config = dict(row.config or {})
+        config[key] = value
+        row.config = config
+        row.save(update_fields=['config', 'updated_at'])
+        self.invalidate_config_cache()
 
     # ── Paths ─────────────────────────────────────────────────────────────────
 

@@ -190,7 +190,10 @@ once per version move (a compare-and-swap on `PluginConfig.installed_version`).
 how typed-in text becomes the declared type, what fits, which settings are secret and
 which an agent may change (`x-agent-writable`). The dashboard's settings forms and save,
 `Plugin.set_config`, Linda's `settings.set` / `settings.describe` / `settings.list` and the
-MCP edge's argument check all go through it.
+MCP edge's argument check all go through it. Since v0.185.0 it reads the active theme's
+schema too: the Theme card under Settings → Storefront (`storefront/theme_settings.py`)
+and Linda's `theme.describe` / `theme.set` use the same form, save and description, and
+`MorpheusTheme.set_config` stores the value, which every worker re-reads within 10 s.
 
 **Plugin topology (non-obvious):**
 

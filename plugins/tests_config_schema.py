@@ -275,3 +275,75 @@ class SetConfigReportsTests(TestCase):
         with self.assertNoLogs('plugins.config_schema', 'WARNING'):
             self.plugin.set_config('turn_timeout_s', 120)
             self.plugin.set_config('some_internal_state', {'any': 'thing'})
+
+
+class TargetAgnosticTests(SimpleTestCase):
+    """The settings form, its save and its description work for any target with
+    `get_config()` and `set_config()`: an app, or a theme (v0.185.0)."""
+
+    SCHEMA = {
+        'type': 'object',
+        'properties': {
+            'title': {'type': 'string', 'default': ''},
+            'count': {'type': 'integer', 'default': 3},
+            'on_sale': {'type': 'boolean', 'default': True},
+            'api_key': {'type': 'string', 'format': 'password', 'default': ''},
+        },
+    }
+
+    class Target:
+        def __init__(self, config):
+            self.config = dict(config)
+            self.calls = []
+
+        def get_config(self):
+            return self.config
+
+        def set_config(self, key, value):
+            self.calls.append((key, value))
+            self.config[key] = value
+
+    def test_save_posted_writes_through_any_target(self):
+        from django.http import QueryDict
+
+        target = self.Target({'count': 5, 'api_key': 'kept'})
+        post = QueryDict('title=x&count=abc&api_key=&_booleans=on_sale')
+
+        saved = cs.save_posted(target, self.SCHEMA, post, ajax=False)
+
+        self.assertEqual(saved, ['title', 'on_sale'])
+        self.assertEqual(target.calls, [('title', 'x'), ('on_sale', False)])
+        self.assertEqual(target.config['count'], 5)  # a number that isn't one is kept
+        self.assertEqual(target.config['api_key'], 'kept')  # a blank secret is kept
+
+    def test_save_posted_leaves_a_switch_the_form_did_not_show(self):
+        from django.http import QueryDict
+
+        target = self.Target({'on_sale': True})
+
+        saved = cs.save_posted(target, self.SCHEMA, QueryDict('title=x'), ajax=False)
+
+        self.assertEqual(saved, ['title'])
+        self.assertIs(target.config['on_sale'], True)
+
+    def test_form_fields_reads_the_targets_config(self):
+        target = self.Target({'title': 'Stored', 'api_key': 'secret'})
+
+        fields = {f['key']: f for f in cs.form_fields(target, self.SCHEMA)}
+
+        self.assertEqual(fields['title']['value'], 'Stored')
+        self.assertEqual(fields['api_key']['value'], '')
+        self.assertTrue(fields['api_key']['has_value'])
+        self.assertEqual(fields['count']['value'], 3)
+
+    def test_describe_settings_marks_secrets_and_stored_values(self):
+        entries = {
+            e['key']: e
+            for e in cs.describe_settings(self.SCHEMA['properties'], {'title': 'Stored'})
+        }
+
+        self.assertIs(entries['api_key']['secret'], True)
+        self.assertIs(entries['title']['stored'], True)
+        self.assertIs(entries['title']['agent_writable'], True)
+        self.assertEqual(entries['count']['value'], 3)
+        self.assertIs(entries['count']['stored'], False)
