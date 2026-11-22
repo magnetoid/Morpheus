@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.187.0 — 2026-11-22
+
+**Apps can teach Linda their own routines**
+
+- An app can ship Janus skills in a janus_skills folder. Each turn copies the skills of core and of every active app into the conversation's home, so a switched-off app's skills are gone from the next turn.
+- Janus no longer reads skills straight from the code folder: an edit the agent makes to a skill lasts one turn in one conversation.
+- A check fails when an app's skill names a tool Linda does not have, or another app's tool.
+
 ## v0.186.1 — 2026-11-22
 
 **Basket and checkout pages are counted again**

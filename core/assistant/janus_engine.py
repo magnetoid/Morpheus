@@ -276,6 +276,91 @@ def bundled_skills_dir() -> Path:
     return Path(__file__).resolve().parent / 'janus_skills'
 
 
+# Each turn's copy of the store skills, inside the conversation home: core's
+# (``core``) and every active app's ``janus_skills/`` folder (under its name).
+STORE_SKILLS_DIR = 'store-skills'
+_SKILL_FILE_MAX = 200_000
+
+
+def app_skill_dirs() -> list[tuple[str, Path]]:
+    """``(app name, folder)`` for every active app that ships ``janus_skills/``."""
+    from plugins.registry import app_registry
+
+    found = []
+    for plugin in app_registry.active_plugins():
+        module = sys.modules.get(type(plugin).__module__)
+        path = getattr(module, '__file__', None)
+        if not path:
+            continue
+        skills = Path(path).resolve().parent / 'janus_skills'
+        if skills.is_dir() and not skills.is_symlink():
+            found.append((plugin.name, skills))
+    return sorted(found)
+
+
+def _copy_skill_tree(src: Path, dest: Path) -> None:
+    """Plain files only: no link is followed and no hidden file or folder is copied."""
+    for root, dirs, names in os.walk(src, followlinks=False):
+        dirs[:] = [d for d in dirs if not d.startswith('.') and not (Path(root) / d).is_symlink()]
+        for name in names:
+            file = Path(root) / name
+            if name.startswith('.') or file.is_symlink() or not file.is_file():
+                continue
+            if file.stat().st_size > _SKILL_FILE_MAX:
+                continue
+            target = dest / file.relative_to(src)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(file, target)
+
+
+_staging_locks: dict[str, threading.Lock] = {}
+_staging_locks_guard = threading.Lock()
+
+
+def _staging_lock(home: Path) -> threading.Lock:
+    with _staging_locks_guard:
+        return _staging_locks.setdefault(str(home), threading.Lock())
+
+
+def stage_store_skills(home: Path) -> Path | None:
+    """Rebuild ``<home>/store-skills`` for this turn and return it (None when off).
+
+    Rebuilt every turn from the code, so an app switched off takes its skills with
+    it, and an edit the agent makes to a skill lasts one turn in one conversation:
+    Janus used to read the skills straight from the /app tree.
+
+    Two messages of one chat can be in flight at once: a lock serialises them in
+    this process, each copy is built in its own temporary folder, and a swap that
+    another process won leaves its copy (the same files) in place.
+    """
+    staged = home / STORE_SKILLS_DIR
+    with _staging_lock(home):
+        if not janus_settings.bundled_skills_enabled():
+            shutil.rmtree(staged, ignore_errors=True)
+            return None
+        fresh = Path(tempfile.mkdtemp(prefix=f'.{STORE_SKILLS_DIR}-', dir=home))
+        old = Path(tempfile.mkdtemp(prefix=f'.{STORE_SKILLS_DIR}-old-', dir=home))
+        try:
+            sources = [('core', bundled_skills_dir())] if bundled_skills_dir().is_dir() else []
+            for name, folder in sources + app_skill_dirs():
+                try:
+                    _copy_skill_tree(folder, fresh / name)
+                except OSError:
+                    logger.warning('janus: skills of %s not staged', name, exc_info=True)
+            with contextlib.suppress(FileNotFoundError):
+                staged.rename(old / STORE_SKILLS_DIR)
+            try:
+                fresh.rename(staged)
+            except OSError:
+                # Another process put its copy there between the two renames.
+                if not staged.is_dir():
+                    raise
+        finally:
+            shutil.rmtree(fresh, ignore_errors=True)
+            shutil.rmtree(old, ignore_errors=True)
+    return staged
+
+
 def bundled_skill_names() -> list[str]:
     root = bundled_skills_dir()
     if not root.is_dir():
@@ -360,6 +445,7 @@ def _config_text(
     progress_path: Path | None = None,
     *,
     fallbacks: list[dict[str, str]] | None = None,
+    skills_dir: Path | None = None,
 ) -> str:
     mcp_block = ''
     if mcp_url:
@@ -385,8 +471,7 @@ mcp_servers:
       prompts: false
 """
     external = ''
-    skills_dir = bundled_skills_dir()
-    if skills_dir.is_dir() and janus_settings.bundled_skills_enabled():
+    if skills_dir is not None:
         quoted = str(skills_dir).replace('\\', '/')
         external = f'\n  external_dirs:\n    - "{quoted}"'
     learning = 'true' if janus_settings.learning_enabled() else 'false'
@@ -509,7 +594,13 @@ def _ensure_config(
     would sit on disk in one copy per conversation.
     """
     cfg_path = home / 'config.yaml'
-    desired = _config_text(mcp_url, mcp_headers, home / activity.PROGRESS_FILE, fallbacks=fallbacks)
+    desired = _config_text(
+        mcp_url,
+        mcp_headers,
+        home / activity.PROGRESS_FILE,
+        fallbacks=fallbacks,
+        skills_dir=stage_store_skills(home),
+    )
     try:
         current = cfg_path.read_text(encoding='utf-8')
     except OSError:

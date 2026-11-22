@@ -72,12 +72,14 @@ class ContractInStepTests(SimpleTestCase):
         self.assertEqual(set(contract.TOOLSETS), loadable - {eng.MCP_SERVER_NAME})
 
     def test_every_config_key_morpheus_writes_is_proved_or_waived(self):
-        # With a backup provider configured, so `fallback_providers` is written too.
+        # With a backup provider and staged skills, so `fallback_providers` and
+        # `skills.external_dirs` are written too.
         text = eng._config_text(
             'https://s/mcp/',
             {'Host': 'x'},
             Path('/tmp/p.jsonl'),
             fallbacks=[{'provider': 'deepseek', 'model': 'deepseek-chat'}],
+            skills_dir=Path('/tmp/store-skills'),
         )
         written = _config_keys(text)
         self.assertIn('skills.inline_shell', written)  # the parser works
