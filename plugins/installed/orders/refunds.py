@@ -434,7 +434,6 @@ class ReturnService:
         return rr
 
     @classmethod
-    @transaction.atomic
     def mark_received_and_refund(
         cls,
         rr: ReturnRequest,
@@ -442,22 +441,38 @@ class ReturnService:
         actor=None,
         as_store_credit: bool = False,
     ) -> ReturnRequest:
-        """Close out a return.
+        """Close out a return as a refund or store credit (``close``)."""
+        return cls.close(rr, outcome='store_credit' if as_store_credit else 'refund', actor=actor)
 
-        ``as_store_credit=True`` issues the refund amount as store credit
-        (no money moves through the gateway) instead of a monetary refund.
-        Customer keeps the value in-store for a future order — better for
-        merchants when the return reason is ``changed_mind``.
+    @classmethod
+    @transaction.atomic
+    def close(
+        cls,
+        rr: ReturnRequest,
+        *,
+        outcome: str,
+        actor=None,
+        exchange: list | None = None,
+        fee: Money | None = None,
+    ) -> ReturnRequest:
+        """Close a return once its goods are received (C4, v0.188.0).
 
-        Locks the ReturnRequest row via select_for_update so two staff
-        members approving the same return concurrently can't both pass
-        the state check and both fire a refund. The second caller waits
-        for the lock, then sees state='refunded' and refuses.
+        ``outcome`` is ``'refund'`` (through the order's payment), ``'store_credit'``
+        or ``'exchange'`` (``exchange`` names the editions; see ``orders/exchange.py``).
+        ``fee`` is the return or exchange fee: it comes off what is paid back and never
+        makes it negative; an exchange takes it off the difference first, and the rest
+        goes on the exchange order. An exchange line that cannot be made is refunded,
+        and when none can be, the return closes as a refund without the fee.
+
+        Locks the row, so two staff members closing at once cannot both refund:
+        the second waits, then sees ``refunded`` and is refused. Fires
+        ``return.refunded`` once, with the outcome, the exchange order and the lines
+        not made.
         """
-        # Re-fetch the row with a row-level lock so concurrent staff
-        # actions on the same RMA serialise on the database, not on
-        # whoever clicks first in the UI.
-        rr = ReturnRequest.objects.select_for_update().get(pk=rr.pk)
+
+        if outcome not in ('refund', 'store_credit', 'exchange'):
+            raise ValueError(f'Unknown outcome {outcome}')
+        rr = ReturnRequest.objects.select_for_update().select_related('order').get(pk=rr.pk)
         if rr.state not in ('approved', 'received'):
             raise ValueError(f'Cannot refund from state {rr.state}')
         if rr.state == 'approved':
@@ -466,39 +481,79 @@ class ReturnService:
         amount = rr.refund_amount
         if amount is None or amount.amount <= 0:
             amount = cls._compute_refund(rr)
+        currency = str(amount.currency)
+        fee = fee if fee is not None else Money(0, currency)
 
-        if as_store_credit:
-            from plugins.installed.orders import store_credit
+        exchange_order, unmade = None, []
+        if outcome == 'exchange':
+            outcome, exchange_order, unmade, amount, fee = cls._exchange(rr, exchange, fee, amount)
+        owed = Money(max(Decimal('0'), Decimal(amount.amount) - Decimal(fee.amount)), currency)
+
+        refund, credit = None, None
+        if outcome == 'store_credit':
+            from plugins.installed.orders import store_credit  # noqa: PLC0415
 
             customer = rr.order.customer
             if customer is None:
                 raise ValueError('Cannot issue store credit on a guest order; do a money refund.')
-            store_credit.issue(
-                customer,
-                amount=amount,
-                reference=str(rr.id),
-                note=f'Store credit from return {rr.rma_number}',
-                created_by=actor,
+            if owed.amount > 0:
+                store_credit.issue(
+                    customer,
+                    amount=owed,
+                    reference=str(rr.id),
+                    note=f'Store credit from return {rr.rma_number}',
+                    created_by=actor,
+                )
+                credit = owed
+        elif owed.amount > 0:
+            refund = RefundService.process(
+                order=rr.order,
+                amount=owed,
+                reason='customer_request',
+                notes=f'RMA {rr.rma_number}',
+                actor=actor,
             )
-            rr.state = 'refunded'
-            rr.save(update_fields=['state', 'updated_at'])
-            hook_registry.fire(
-                'return.refunded', return_request=rr, refund=None, store_credit=amount
-            )
-            return rr
-
-        refund = RefundService.process(
-            order=rr.order,
-            amount=amount,
-            reason='customer_request',
-            notes=f'RMA {rr.rma_number}',
-            actor=actor,
-        )
         rr.refund = refund
         rr.state = 'refunded'
         rr.save(update_fields=['refund', 'state', 'updated_at'])
-        hook_registry.fire('return.refunded', return_request=rr, refund=refund)
+        hook_registry.fire(
+            'return.refunded',
+            return_request=rr,
+            refund=refund,
+            store_credit=credit,
+            outcome=outcome,
+            exchange_order=exchange_order,
+            unmade=unmade,
+        )
         return rr
+
+    @staticmethod
+    def _exchange(rr, exchange, fee: Money, amount: Money):
+        """Make the exchange: (outcome, exchange order, lines not made, amount to pay
+        back, fee still to take off it)."""
+        from plugins.installed.orders.exchange import (  # noqa: PLC0415
+            make_exchange,
+            paid_unit_price,
+        )
+
+        currency = str(amount.currency)
+        order, unmade, back = make_exchange(rr, list(exchange or []), fee=fee)
+        if order is None:
+            return 'refund', None, list(exchange or []), amount, Money(0, currency)
+        items = {str(i.pk): i for i in rr.order.items.all()}
+        value = Decimal(back.amount)
+        for line in unmade:
+            item = items.get(str(line.order_item_id))
+            if item is not None:
+                value += Decimal(paid_unit_price(item).amount) * int(line.quantity or 0)
+        # make_exchange already took the fee off the difference.
+        return (
+            'exchange',
+            order,
+            unmade,
+            Money(min(value, Decimal(amount.amount)), currency),
+            Money(0, currency),
+        )
 
     @staticmethod
     def _compute_refund(rr: ReturnRequest) -> Money:
