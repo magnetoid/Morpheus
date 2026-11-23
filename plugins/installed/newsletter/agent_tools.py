@@ -1,7 +1,7 @@
 """Agent commands for the newsletter — lets Linda read the list, see stats, and
 create / toggle signup popups. Contributed via
 `NewsletterPlugin.contribute_agent_tools` (present only while enabled).
-Sending campaigns stays with the marketing plugin (Phase 3 broadcast).
+Campaigns (C2): list, draft and send, with the dashboard composer's rules.
 """
 
 from __future__ import annotations
@@ -155,4 +155,139 @@ def newsletter_toggle_popup_tool(*, popup_id: str, enabled: bool) -> ToolResult:
     return ToolResult(
         output={'id': str(popup.id), 'name': popup.name, 'enabled': popup.enabled},
         display=f'Popup “{popup.name}” {"enabled" if popup.enabled else "disabled"}.',
+    )
+
+
+# ── Campaigns (C2) ──────────────────────────────────────────────────────────
+# The same rules as the dashboard composer (newsletter/campaigns.py). Both writes
+# need the merchant's own yes: a draft goes to the list later, a send goes now.
+
+_AUDIENCE_HELP = (
+    "audience: '' (every confirmed subscriber) or an RFM segment: champions, loyal, "
+    'potential, new, at_risk, lost. A segment only narrows the confirmed list.'
+)
+
+
+def _campaign_row(c) -> dict:
+    from plugins.installed.newsletter.campaigns import is_missed
+
+    return {
+        'id': str(c.id),
+        'name': c.name,
+        'subject': c.subject,
+        'status': c.status,
+        'audience': c.audience,
+        'scheduled_at': c.scheduled_at.isoformat() if c.scheduled_at else None,
+        'missed': is_missed(c),
+        'recipient_count': c.recipient_count,
+    }
+
+
+@tool(
+    name='newsletter.campaigns',
+    description='List newsletter campaigns, newest first: status, audience, send time, '
+    'whether a schedule was missed, and how many people each reached.',
+    scopes=['promotions.read'],
+    schema={
+        'type': 'object',
+        'properties': {'limit': {'type': 'integer', 'minimum': 1, 'maximum': 50, 'default': 20}},
+    },
+)
+def newsletter_campaigns_tool(*, limit: int = 20) -> ToolResult:
+    from plugins.installed.marketing.models import EmailCampaign
+
+    try:
+        limit = max(1, min(50, int(limit)))
+    except (TypeError, ValueError):
+        limit = 20
+    rows = [_campaign_row(c) for c in EmailCampaign.objects.all()[:limit]]
+    return ToolResult(output={'campaigns': rows}, display=f'{len(rows)} campaign(s).')
+
+
+@tool(
+    name='newsletter.campaign_create',
+    description='Write a newsletter campaign as a draft (sent later with '
+    'newsletter.campaign_send). body_html is rich HTML; it is cleaned and sent in the '
+    "store's email look with an unsubscribe link. " + _AUDIENCE_HELP,
+    scopes=['promotions.write'],
+    requires_approval=True,
+    schema={
+        'type': 'object',
+        'properties': {
+            'name': {'type': 'string'},
+            'subject': {'type': 'string'},
+            'body_html': {'type': 'string'},
+            'preview_text': {'type': 'string'},
+            'audience': {
+                'type': 'string',
+                'enum': ['', 'champions', 'loyal', 'potential', 'new', 'at_risk', 'lost'],
+            },
+        },
+        'required': ['name', 'subject', 'body_html'],
+    },
+)
+def newsletter_campaign_create_tool(
+    *, name: str, subject: str, body_html: str, preview_text: str = '', audience: str = ''
+) -> ToolResult:
+    from plugins.installed.newsletter.campaigns import CampaignError, save_campaign
+
+    try:
+        c = save_campaign(
+            name=name,
+            subject=subject,
+            preview_text=preview_text,
+            html_body=body_html,
+            audience=audience,
+        )
+    except CampaignError as e:
+        return ToolResult(output={'error': str(e)})
+    return ToolResult(
+        output={'id': str(c.id), 'status': c.status},
+        display=f'Drafted campaign “{c.name}”.',
+    )
+
+
+@tool(
+    name='newsletter.campaign_send',
+    description='Send a draft newsletter campaign now, or schedule it with send_at '
+    '(ISO 8601 with a UTC offset, e.g. 2026-12-01T09:00:00+01:00). A campaign more than '
+    'a day past its time is not sent.',
+    scopes=['promotions.write'],
+    requires_approval=True,
+    schema={
+        'type': 'object',
+        'properties': {'campaign_id': {'type': 'string'}, 'send_at': {'type': 'string'}},
+        'required': ['campaign_id'],
+    },
+)
+def newsletter_campaign_send_tool(*, campaign_id: str, send_at: str = '') -> ToolResult:
+    from django.core.exceptions import ValidationError
+    from django.utils import timezone
+    from django.utils.dateparse import parse_datetime
+
+    from plugins.installed.marketing.models import EmailCampaign
+    from plugins.installed.newsletter.campaigns import (
+        CampaignError,
+        schedule_campaign,
+        send_campaign_now,
+    )
+
+    try:
+        c = EmailCampaign.objects.get(pk=campaign_id)
+    except (EmailCampaign.DoesNotExist, ValidationError, ValueError):
+        return ToolResult(output={'error': 'No campaign with that id.'})
+    try:
+        if (send_at or '').strip():
+            when = parse_datetime(send_at.strip())
+            if when is None or timezone.is_naive(when):
+                raise CampaignError('send_at needs a date, a time and a UTC offset.')
+            schedule_campaign(c, when)
+        else:
+            send_campaign_now(c)
+    except CampaignError as e:
+        return ToolResult(output={'error': str(e)})
+    c.refresh_from_db()
+    return ToolResult(
+        output={'id': str(c.id), 'status': c.status},
+        display=f'“{c.name}” is {c.status}.',
     )

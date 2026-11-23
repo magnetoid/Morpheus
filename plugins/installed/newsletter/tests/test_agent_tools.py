@@ -15,7 +15,7 @@ from plugins.installed.newsletter.models import NewsletterSubscriber, SignupPopu
 
 
 class NewsletterAgentToolTests(TestCase):
-    def test_plugin_contributes_four_tools(self):
+    def test_plugin_contributes_its_tools(self):
         names = {t.name for t in NewsletterPlugin().contribute_agent_tools()}
         self.assertEqual(
             names,
@@ -24,6 +24,9 @@ class NewsletterAgentToolTests(TestCase):
                 'newsletter.list_subscribers',
                 'newsletter.create_popup',
                 'newsletter.toggle_popup',
+                'newsletter.campaigns',
+                'newsletter.campaign_create',
+                'newsletter.campaign_send',
             },
         )
 
