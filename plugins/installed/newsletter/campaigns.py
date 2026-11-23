@@ -10,8 +10,10 @@ who did not opt in is ever mailed.
 from __future__ import annotations
 
 import html as html_lib
+from datetime import datetime, timedelta
 
 from django.template.loader import render_to_string
+from django.utils import timezone
 from django.utils.html import strip_tags
 
 #: Where each recipient's own unsubscribe link goes. The campaign is rendered once
@@ -87,4 +89,40 @@ def personalise(text: str, html: str, unsubscribe_url: str) -> tuple[str, str]:
     return (
         text.replace(UNSUBSCRIBE_SENTINEL, unsubscribe_url),
         html.replace(UNSUBSCRIBE_SENTINEL, unsubscribe_url),
+    )
+
+
+# ── Scheduling ──────────────────────────────────────────────────────────────
+
+#: A scheduled campaign this far past its time (workers were down) is not sent:
+#: a sale announced days late is worse than one not sent. It goes back to draft.
+MISSED_AFTER = timedelta(hours=24)
+
+
+def schedule_campaign(campaign, when: datetime) -> None:
+    """Send ``campaign`` at ``when`` (aware). Only a draft or scheduled one moves."""
+    if campaign.status not in ('draft', 'scheduled'):
+        raise CampaignError(f'"{campaign.name}" is {campaign.status} and cannot be scheduled.')
+    if when is None or timezone.is_naive(when) or when <= timezone.now():
+        raise CampaignError('Pick a time in the future.')
+    campaign.status = 'scheduled'
+    campaign.scheduled_at = when
+    campaign.save(update_fields=['status', 'scheduled_at'])
+
+
+def cancel_campaign(campaign) -> None:
+    """Take a scheduled campaign back to an editable draft with no time."""
+    if campaign.status != 'scheduled':
+        raise CampaignError(f'"{campaign.name}" is {campaign.status}, not scheduled.')
+    campaign.status = 'draft'
+    campaign.scheduled_at = None
+    campaign.save(update_fields=['status', 'scheduled_at'])
+
+
+def is_missed(campaign) -> bool:
+    """A draft that still carries a past send time: its slot went by unsent."""
+    return bool(
+        campaign.status == 'draft'
+        and campaign.scheduled_at
+        and campaign.scheduled_at < timezone.now()
     )

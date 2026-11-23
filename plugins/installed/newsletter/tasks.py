@@ -214,6 +214,32 @@ def _run_campaign_batch(campaign_id: str) -> dict:
     return {'ok': True, 'sent': sent, 'failed': failed, 'skipped': len(already)}
 
 
+@shared_task(name='newsletter.send_due_campaigns', time_limit=120, soft_time_limit=90)
+def send_due_campaigns() -> dict:
+    """Start every scheduled campaign whose time has come (beat, every 5 minutes).
+
+    ``send_campaign``'s atomic claim keeps a campaign from starting twice, so a
+    second run, or a merchant's Send at the same moment, sends nothing more. One
+    more than ``MISSED_AFTER`` late goes back to draft, keeping its time so the
+    list can say it missed it.
+    """
+    from plugins.installed.marketing.models import EmailCampaign
+    from plugins.installed.newsletter.campaigns import MISSED_AFTER
+
+    now = timezone.now()
+    missed = EmailCampaign.objects.filter(
+        status='scheduled', scheduled_at__lte=now - MISSED_AFTER
+    ).update(status='draft')
+    started = 0
+    due = EmailCampaign.objects.filter(status='scheduled', scheduled_at__lte=now)
+    for pk in due.values_list('pk', flat=True):
+        send_campaign.delay(str(pk))
+        started += 1
+    if missed:
+        logger.warning('newsletter: %s scheduled campaign(s) missed their time', missed)
+    return {'started': started, 'missed': missed}
+
+
 @shared_task(bind=True, time_limit=120, soft_time_limit=90)
 def send_campaign_test(self, campaign_id: str, to: str) -> dict:
     """Send one test copy to ``to`` — no status change, no audience touch."""

@@ -45,6 +45,11 @@ class NewsletterPlugin(Plugin):
 
         self.register_hook(events.CHECKOUT_FIELDS, checkout.on_checkout_fields, priority=50)
         self.register_hook(events.ORDER_PLACED, checkout.on_order_placed, priority=60)
+        # Scheduled campaigns go out at their time (registered name, not the path).
+        self.register_celery_beat(
+            'newsletter:send_due_campaigns',
+            {'task': 'newsletter.send_due_campaigns', 'schedule': 300},
+        )
 
     def on_dashboard_search(self, value, query='', words=None, **kwargs):
         """Sign-up popups (by name or headline) in the dashboard's search box."""
