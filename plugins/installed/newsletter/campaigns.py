@@ -10,7 +10,7 @@ who did not opt in is ever mailed.
 from __future__ import annotations
 
 import html as html_lib
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from django.template.loader import render_to_string
 from django.utils import timezone
@@ -126,3 +126,69 @@ def is_missed(campaign) -> bool:
         and campaign.scheduled_at
         and campaign.scheduled_at < timezone.now()
     )
+
+
+# ── Composing and sending ───────────────────────────────────────────────────
+
+
+def save_campaign(
+    *,
+    campaign=None,
+    name: str,
+    subject: str,
+    preview_text: str = '',
+    html_body: str,
+    audience: str = '',
+):
+    """Create or edit a draft. The body is sanitised; the text version is derived
+    at send time, so an edit never leaves a stale copy behind."""
+    from core.utils.html import sanitize_richtext
+    from plugins.installed.marketing.models import EmailCampaign
+
+    name, subject = (name or '').strip(), (subject or '').strip()
+    body = (sanitize_richtext((html_body or '').strip()) or '').strip()
+    if not name or not subject or not plain_text(body):
+        raise CampaignError('Name, subject and body are required.')
+    audience = (audience or '').strip()
+    if audience not in _AUDIENCE_KEYS:
+        raise CampaignError('Unknown audience.')
+    if campaign is not None and campaign.status != 'draft':
+        raise CampaignError(f'"{campaign.name}" is {campaign.status} and cannot be edited.')
+    campaign = campaign or EmailCampaign()
+    campaign.name = name[:200]
+    campaign.subject = subject[:200]
+    campaign.preview_text = (preview_text or '').strip()[:300]
+    campaign.html_body = body
+    campaign.text_body = ''
+    campaign.audience = audience
+    campaign.save()
+    return campaign
+
+
+def send_campaign_now(campaign) -> None:
+    """Queue a draft for sending. The audience is checked here, so a segment that
+    cannot be resolved is refused now rather than in the worker."""
+    if campaign.status != 'draft':
+        raise CampaignError(f'"{campaign.name}" is {campaign.status} and cannot be sent.')
+    audience_emails(campaign.audience)
+    from plugins.installed.newsletter.tasks import send_campaign
+
+    send_campaign.delay(str(campaign.pk))
+
+
+def parse_local_datetime(raw: str):
+    """A ``datetime-local`` value ('YYYY-MM-DDTHH:MM') on the store's clock → aware UTC."""
+    from core.utils.site import store_timezone
+
+    try:
+        naive = datetime.strptime((raw or '').strip(), '%Y-%m-%dT%H:%M')
+    except ValueError:
+        return None
+    return naive.replace(tzinfo=store_timezone()).astimezone(UTC)
+
+
+def local_input_value(when) -> str:
+    """The reverse, for re-filling the form."""
+    from core.utils.site import store_timezone
+
+    return when.astimezone(store_timezone()).strftime('%Y-%m-%dT%H:%M') if when else ''

@@ -9,6 +9,7 @@ import csv
 
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
+from django.db import transaction
 from django.db.models import Count
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -131,41 +132,142 @@ def popup_edit_view(request, popup_id: str):
 @staff_member_required
 @require_capability('marketing.read')
 def campaigns_view(request):
-    """Send surface for marketing's EmailCampaigns (Phase 3).
-
-    Marketing owns the campaign *content*; this page targets a campaign at
-    the confirmed subscriber list — the audience newsletter owns.
-    """
+    """Marketing's EmailCampaigns, sent to the confirmed list newsletter owns."""
     from plugins.installed.marketing.models import EmailCampaign
+    from plugins.installed.newsletter import campaigns as rules
     from plugins.installed.newsletter.models import NewsletterSubscriber
 
+    rows = [
+        {
+            'c': c,
+            'audience': rules.audience_label(c.audience),
+            'missed': rules.is_missed(c),
+            'scheduled_local': rules.local_input_value(c.scheduled_at).replace('T', ' '),
+        }
+        for c in EmailCampaign.objects.all()[:100]
+    ]
     return render(
         request,
         'newsletter/dashboard/campaigns.html',
         {
-            'campaigns': EmailCampaign.objects.all()[:100],
+            'rows': rows,
             'audience': NewsletterSubscriber.objects.filter(status='confirmed').count(),
             'active_nav': 'marketing',
         },
     )
 
 
+def _edit_context(campaign, data: dict) -> dict:
+    from plugins.installed.newsletter import campaigns as rules
+    from plugins.installed.newsletter.models import NewsletterSubscriber
+
+    return {
+        'campaign': campaign,
+        'form': data,
+        'AUDIENCES': rules.AUDIENCES,
+        'confirmed': NewsletterSubscriber.objects.filter(status='confirmed').count(),
+        'editable': campaign is None or campaign.status == 'draft',
+        'active_nav': 'marketing',
+    }
+
+
 @staff_member_required
-@require_capability('marketing.read')
-def campaign_send_view(request, campaign_id: str):
-    """POST — queue a full send of one campaign to all confirmed subscribers."""
+@require_capability('marketing.write')
+def campaign_edit_view(request, campaign_id=None):
+    """Write a campaign: save it as a draft, schedule it, or send it now."""
+    from plugins.installed.marketing.models import EmailCampaign
+    from plugins.installed.newsletter import campaigns as rules
+
+    campaign = get_object_or_404(EmailCampaign, id=campaign_id) if campaign_id else None
+    if request.method != 'POST':
+        data = {
+            'name': campaign.name if campaign else '',
+            'subject': campaign.subject if campaign else '',
+            'preview_text': campaign.preview_text if campaign else '',
+            'html_body': campaign.html_body if campaign else '',
+            'audience': campaign.audience if campaign else '',
+            'send_at': rules.local_input_value(campaign.scheduled_at) if campaign else '',
+        }
+        return render(
+            request, 'newsletter/dashboard/campaign_edit.html', _edit_context(campaign, data)
+        )
+
+    fields = ('name', 'subject', 'preview_text', 'html_body', 'audience', 'send_at')
+    data = {k: request.POST.get(k, '') for k in fields}
+    action = request.POST.get('action') or 'save'
+    try:
+        # Save and schedule together: a refused time leaves nothing half-saved.
+        with transaction.atomic():
+            campaign = rules.save_campaign(
+                campaign=campaign,
+                name=data['name'],
+                subject=data['subject'],
+                preview_text=data['preview_text'],
+                html_body=data['html_body'],
+                audience=data['audience'],
+            )
+            if action == 'schedule':
+                rules.schedule_campaign(campaign, rules.parse_local_datetime(data['send_at']))
+        # The send is queued after the commit, so the worker reads the saved draft.
+        if action == 'send':
+            rules.send_campaign_now(campaign)
+    except rules.CampaignError as e:
+        messages.error(request, str(e))
+        # Show the row as the database has it: a rolled-back new one is gone, a
+        # draft saved before a refused send is kept.
+        shown = EmailCampaign.objects.filter(pk=getattr(campaign, 'pk', None)).first()
+        return render(
+            request, 'newsletter/dashboard/campaign_edit.html', _edit_context(shown, data)
+        )
+    done = {'schedule': 'scheduled', 'send': 'queued for sending'}.get(action, 'saved as a draft')
+    messages.success(request, f'"{campaign.name}" {done}.')
+    return redirect('/dashboard/newsletter/campaigns/')
+
+
+def _campaign_action(request, campaign_id, act, success: str):
     if request.method != 'POST':
         return redirect('/dashboard/newsletter/campaigns/')
     from plugins.installed.marketing.models import EmailCampaign
-    from plugins.installed.newsletter.tasks import send_campaign
+    from plugins.installed.newsletter.campaigns import CampaignError
 
     campaign = get_object_or_404(EmailCampaign, id=campaign_id)
-    if campaign.status not in ('draft', 'scheduled'):
-        messages.error(request, f'"{campaign.name}" is {campaign.status} — not sendable.')
+    try:
+        act(campaign)
+    except CampaignError as e:
+        messages.error(request, str(e))
     else:
-        send_campaign.delay(str(campaign.id))
-        messages.success(request, f'"{campaign.name}" queued — sending to confirmed subscribers.')
+        messages.success(request, f'"{campaign.name}" {success}.')
     return redirect('/dashboard/newsletter/campaigns/')
+
+
+@staff_member_required
+@require_capability('marketing.write')
+def campaign_send_view(request, campaign_id: str):
+    """POST — queue a full send of one draft to its audience."""
+    from plugins.installed.newsletter.campaigns import send_campaign_now
+
+    return _campaign_action(request, campaign_id, send_campaign_now, 'queued for sending')
+
+
+@staff_member_required
+@require_capability('marketing.write')
+def campaign_schedule_view(request, campaign_id: str):
+    """POST ``send_at`` (store time) — schedule a draft."""
+    from plugins.installed.newsletter import campaigns as rules
+
+    when = rules.parse_local_datetime(request.POST.get('send_at', ''))
+    return _campaign_action(
+        request, campaign_id, lambda c: rules.schedule_campaign(c, when), 'scheduled'
+    )
+
+
+@staff_member_required
+@require_capability('marketing.write')
+def campaign_cancel_view(request, campaign_id: str):
+    """POST — take a scheduled campaign back to an editable draft."""
+    from plugins.installed.newsletter.campaigns import cancel_campaign
+
+    return _campaign_action(request, campaign_id, cancel_campaign, 'is a draft again')
 
 
 @staff_member_required
