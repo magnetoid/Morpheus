@@ -2114,6 +2114,35 @@ on `ORDER_DELIVERED` only: counted from shipping it asked "did it arrive?" befor
 shipping email carries tracking. Count clicks and orders, never opens: links carry
 `utm_source=post_purchase`. Guarded by `post_purchase/tests/test_journey_emails.py`.
 
+**Convention — a campaign reaches only the opted-in list (v0.190.0).** Campaigns are written on
+the dashboard (`/dashboard/newsletter/campaigns/new/`) or by Linda (`newsletter.campaign_create`,
+`newsletter.campaign_send` and `newsletter.campaign_cancel`, all `requires_approval`). They go through one module,
+`newsletter/campaigns.py`, and the send stays `tasks.send_campaign`: its claim, its batches and its
+`CampaignSend` ledger.
+
+- An audience is the confirmed subscribers, or those in one RFM segment. The segment only narrows
+  the list (`CUSTOMER_SEGMENT_EMAILS`, answered by customers, compared lower-cased).
+- The body is sanitised on save and again at send.
+- The campaign is rendered once per batch in the store layout, with `UNSUBSCRIBE_SENTINEL` where
+  each recipient's link goes.
+- Sending needs `marketing.write`; until v0.190.0 it needed only `marketing.read`.
+- `scheduled_at` is read by the beat `newsletter.send_due_campaigns` (300 s). Until v0.190.0
+  nothing read it. A campaign more than `MISSED_AFTER` (24 h) late goes back to draft, unsent.
+
+Workflows' `email_customer` action sends `purpose: service` to whoever the event names.
+`purpose: marketing` goes only when the newsletter answers `MARKETING_EMAIL_RECIPIENT` for the
+address (a confirmed subscriber, with their RFC 8058 pair) and no consent refusal is stamped on the
+order. Its text takes five placeholders from a fixed map and is never a template.
+
+Found on the way: the workflow run snapshot kept model objects (`json.dumps(..., default=str)`
+always succeeds). Saving a `WorkflowRun` therefore raised for every event that carried an order or
+a customer, so none of those runs was ever recorded.
+
+Guarded by:
+- `newsletter/tests/test_campaign_{render,schedule,composer,tools}.py`
+- `customers/tests/test_segment_emails.py`
+- `workflows/tests/test_email_customer.py`
+
 **Landmine — `CART_CALCULATE_BREAKDOWN` priority IS the money order; a *tender*
 must run after tax+shipping.** The filter runs handlers lowest-priority-first
 (`core/hooks.py`). Each handler sees only the fields earlier ones have set, so a

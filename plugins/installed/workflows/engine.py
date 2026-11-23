@@ -239,14 +239,17 @@ def _eval(node: Any, payload: Any) -> bool:  # noqa: PLR0911, PLR0912
 
 def _serialize_payload(payload: dict) -> dict:
     """Best-effort JSON-safe snapshot. Anything not serialisable becomes a stringified placeholder."""
+    import json
+
     out = {}
     for k, v in (payload or {}).items():
         try:
-            import json
-
-            json.dumps({k: v}, default=str)
+            # No ``default=``: with one every object "serialises", the model itself
+            # was kept, and saving the WorkflowRun then raised for every event that
+            # carried an order or a customer, so no such run was ever recorded.
+            json.dumps(v)
             out[k] = v
-        except Exception:  # noqa: BLE001
+        except (TypeError, ValueError):
             out[k] = f'<{type(v).__name__}>'
     return out
 
@@ -382,7 +385,75 @@ def _action_agent_skill(spec: dict, payload: dict) -> tuple[bool, str]:
         return False, f'{type(e).__name__}: {e}'
 
 
+def _marketing_answer(email: str, order) -> tuple[dict, str]:
+    """``(newsletter's answer, '')`` when a marketing email may go, else ``({}, why)``.
+
+    The confirmed subscription is the consent; a refusal stamped on the event's
+    order also stops it. With no order there is no visitor to ask, so the store's
+    own consent setting is not consulted (it would refuse every subscriber).
+    """
+    from core import consent
+    from core.hooks import MorpheusEvents, hook_registry
+
+    answer = hook_registry.filter(MorpheusEvents.MARKETING_EMAIL_RECIPIENT, None, email=email)
+    if not isinstance(answer, dict):
+        return {}, 'not a newsletter subscriber'
+    stamped = isinstance((getattr(order, 'metadata', None) or {}).get('consent'), dict)
+    if stamped and not consent.allowed('marketing', order=order):
+        return {}, 'the order refused marketing'
+    return answer, ''
+
+
+def _action_email_customer(spec: dict, payload: dict) -> tuple[bool, str]:
+    """spec: {kind: email_customer, purpose: service|marketing, subject, body}.
+
+    Service mail (about the customer's order) goes to whoever the event names.
+    Marketing mail goes only to a confirmed newsletter subscriber, with their
+    unsubscribe link, and never when the event's order recorded a refusal.
+    """
+    from django.conf import settings
+
+    from core.email import smtp_configured
+    from core.emails.handlers import send_templated_email
+    from core.utils.site import store_name
+    from plugins.installed.workflows import emailing
+
+    purpose = (spec.get('purpose') or '').strip()
+    if purpose not in ('service', 'marketing'):
+        return False, 'purpose must be service or marketing'
+    subject = (spec.get('subject') or '').strip()
+    body = (spec.get('body') or '').strip()
+    if not subject or not body:
+        return False, 'no subject or body'
+    email, order = emailing.recipient(payload)
+    if not email:
+        return False, 'no email address in the event'
+    if not smtp_configured() or not getattr(settings, 'DEFAULT_FROM_EMAIL', ''):
+        return False, 'no sending email'
+    headers, unsubscribe_url = None, ''
+    if purpose == 'marketing':
+        answer, refusal = _marketing_answer(email, order)
+        if refusal:
+            return False, refusal
+        headers, unsubscribe_url = answer.get('headers'), answer.get('unsubscribe_url', '')
+    send_templated_email(
+        'workflow_email',
+        to=email,
+        subject=emailing.fill(subject, payload),
+        ctx={
+            'subject': emailing.fill(subject, payload),
+            'paragraphs': emailing.paragraphs(emailing.fill(body, payload)),
+            'store_name': store_name(),
+            'marketing': purpose == 'marketing',
+            'unsubscribe_url': unsubscribe_url,
+        },
+        headers=headers,
+    )
+    return True, f'emailed {email} ({purpose})'
+
+
 ACTION_HANDLERS: dict[str, Callable[[dict, dict], tuple[bool, str]]] = {
+    'email_customer': _action_email_customer,
     'notify_staff': _action_notify_staff,
     'add_order_note': _action_add_order_note,
     'tag_customer': _action_tag_customer,

@@ -1,0 +1,6 @@
+{% extends "emails/_layout.html" %}
+{% block title %}{{ subject }}{% endblock %}
+{% block storename %}{{ store_name }}{% endblock %}
+{% block preheader %}{{ preview_text }}{% endblock %}
+{% block body %}{{ body|safe }}{% endblock %}
+{% block footer %}{{ store_name }}. You get this because you subscribed. <a href="{{ unsubscribe_url }}">Unsubscribe</a>{% endblock %}

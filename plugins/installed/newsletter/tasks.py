@@ -20,7 +20,6 @@ from datetime import timedelta
 from celery import shared_task
 from django.conf import settings
 from django.utils import timezone
-from django.utils.html import strip_tags
 
 logger = logging.getLogger('morpheus.newsletter')
 
@@ -44,30 +43,8 @@ def _unsubscribe_headers(token: str) -> dict:
     }
 
 
-def _base_bodies(campaign) -> tuple[str, str | None]:
-    """The campaign's text/html bodies, constant across recipients. Computed
-    once per send so the strip_tags fallback isn't re-run per subscriber."""
-    text = (campaign.text_body or strip_tags(campaign.html_body or '')).strip()
-    html = (campaign.html_body or '').strip() or None
-    return text, html
-
-
-def _with_footer(base_text: str, base_html: str | None, token: str) -> tuple[str, str | None]:
-    """Append this recipient's one-click unsubscribe footer to the base bodies."""
-    from plugins.installed.newsletter.services import _unsubscribe_url
-
-    url = _unsubscribe_url(token)
-    text = f'{base_text}\n\n—\nUnsubscribe: {url}\n'
-    html = (
-        f'{base_html}\n<p style="font-size:12px;color:#777;"><a href="{url}">Unsubscribe</a></p>'
-        if base_html
-        else None
-    )
-    return text, html
-
-
 @shared_task(bind=True, time_limit=600, soft_time_limit=540)
-def send_campaign(self, campaign_id: str) -> dict:
+def send_campaign(self, campaign_id: str, from_schedule: bool = False) -> dict:
     """Start sending a campaign to every confirmed subscriber. Idempotent.
 
     Only a ``draft``/``scheduled`` campaign starts (re-invoking a sending/sent
@@ -94,9 +71,25 @@ def send_campaign(self, campaign_id: str) -> dict:
     # instead of both passing the read-check above and blasting the whole list
     # twice. (A crash after this leaves the campaign 'sending'; the CampaignSend
     # ledger below still de-dupes a manual re-send once it's reset to draft.)
-    claimed = EmailCampaign.objects.filter(
-        pk=campaign.pk, status__in=('draft', 'scheduled')
-    ).update(status='sending')
+    #
+    # The two doors claim different rows. A merchant's Send (and Linda's) takes a
+    # draft only. The beat's message takes the campaign only while it is still
+    # scheduled for a time that has come and is under a day old: the message can
+    # wait in the queue, and a campaign cancelled, moved or gone stale meanwhile
+    # must not go out at the old time.
+    if from_schedule:
+        from plugins.installed.newsletter.campaigns import MISSED_AFTER
+
+        now = timezone.now()
+        claimable = EmailCampaign.objects.filter(
+            pk=campaign.pk,
+            status='scheduled',
+            scheduled_at__lte=now,
+            scheduled_at__gt=now - MISSED_AFTER,
+        )
+    else:
+        claimable = EmailCampaign.objects.filter(pk=campaign.pk, status='draft')
+    claimed = claimable.update(status='sending')
     if not claimed:
         return {'ok': False, 'error': 'already-claimed'}
 
@@ -141,16 +134,34 @@ def _run_campaign_batch(campaign_id: str) -> dict:
             'email', flat=True
         )
     )
-    base_text, base_html = _base_bodies(campaign)  # constant — computed once, not per row
+    from plugins.installed.newsletter.campaigns import (
+        CampaignError,
+        audience_emails,
+        personalise,
+        render_campaign,
+    )
+    from plugins.installed.newsletter.services import _unsubscribe_url
+
+    try:
+        allowed = audience_emails(campaign.audience)
+    except CampaignError as e:
+        # The audience cannot be resolved (the customers app went off): stop and
+        # hand the campaign back as a draft instead of mailing the wrong list.
+        EmailCampaign.objects.filter(pk=campaign.pk, status='sending').update(status='draft')
+        logger.warning('newsletter: campaign %s stopped: %s', campaign.pk, e)
+        return {'ok': False, 'error': str(e), 'sent': 0, 'failed': 0, 'skipped': 0}
+    base_text, base_html = render_campaign(campaign)  # once per batch, not per row
     sent = failed = processed = 0
     for sub in NewsletterSubscriber.objects.filter(status='confirmed').iterator():
         if sub.email in already:
+            continue
+        if allowed is not None and sub.email.lower() not in allowed:
             continue
         if processed >= CAMPAIGN_BATCH_SIZE:
             break
         processed += 1
         try:
-            text, html = _with_footer(base_text, base_html, sub.confirm_token)
+            text, html = personalise(base_text, base_html, _unsubscribe_url(sub.confirm_token))
             deliver_email.delay(
                 subject=campaign.subject,
                 text_body=text,
@@ -219,6 +230,32 @@ def _run_campaign_batch(campaign_id: str) -> dict:
     return {'ok': True, 'sent': sent, 'failed': failed, 'skipped': len(already)}
 
 
+@shared_task(name='newsletter.send_due_campaigns', time_limit=120, soft_time_limit=90)
+def send_due_campaigns() -> dict:
+    """Start every scheduled campaign whose time has come (beat, every 5 minutes).
+
+    ``send_campaign``'s atomic claim keeps a campaign from starting twice, so a
+    second run, or a merchant's Send at the same moment, sends nothing more. One
+    more than ``MISSED_AFTER`` late goes back to draft, keeping its time so the
+    list can say it missed it.
+    """
+    from plugins.installed.marketing.models import EmailCampaign
+    from plugins.installed.newsletter.campaigns import MISSED_AFTER
+
+    now = timezone.now()
+    missed = EmailCampaign.objects.filter(
+        status='scheduled', scheduled_at__lte=now - MISSED_AFTER
+    ).update(status='draft')
+    started = 0
+    due = EmailCampaign.objects.filter(status='scheduled', scheduled_at__lte=now)
+    for pk in due.values_list('pk', flat=True):
+        send_campaign.delay(str(pk), from_schedule=True)
+        started += 1
+    if missed:
+        logger.warning('newsletter: %s scheduled campaign(s) missed their time', missed)
+    return {'started': started, 'missed': missed}
+
+
 @shared_task(bind=True, time_limit=120, soft_time_limit=90)
 def send_campaign_test(self, campaign_id: str, to: str) -> dict:
     """Send one test copy to ``to`` — no status change, no audience touch."""
@@ -233,7 +270,10 @@ def send_campaign_test(self, campaign_id: str, to: str) -> dict:
     from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', '') or ''
     if not from_email or not to:
         return {'ok': False, 'error': 'no-address'}
-    text, html = _base_bodies(campaign)  # no footer/headers on a test copy
+    from plugins.installed.newsletter.campaigns import personalise, render_campaign
+
+    # Rendered exactly like the real send; the unsubscribe link goes nowhere.
+    text, html = personalise(*render_campaign(campaign), '#')
     deliver_email.delay(
         subject=f'[test] {campaign.subject}',
         text_body=text,

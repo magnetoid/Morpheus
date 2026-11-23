@@ -40,8 +40,8 @@ Where that default leaves a store outside a rule that may bind it, the setup che
 | 6 | Agent-coverage ratchet | P8 | every later row ships its tools under it |
 | 7 | App skills for Linda | P9 | live, v0.187.0 (2026-11-22) |
 | 8 | Customer returns and exchanges | C4 | v0.188.0, live on all six (2026-11-23); its tools are P10's returns batch |
-| 9 | Post-purchase emails | C1 | v0.189.0, in review |
-| 10 | "Email customer" action and newsletter composer | C2 | |
+| 9 | Post-purchase emails | C1 | v0.189.0, live on all six (2026-11-23) |
+| 10 | "Email customer" action and newsletter composer | C2 | v0.190.0, in review |
 | 11 | Regional card gateway app | F4 | card reach for stores Stripe does not serve |
 | 12 | Delivery estimate at checkout | F5 | small; the data is already stored |
 | 13 | Order editing and payment delta | A10b | after returns |

@@ -176,7 +176,6 @@
     "plugins.installed.microsoft_commerce.views:ads_dashboard",
     "plugins.installed.microsoft_commerce.views:dashboard",
     "plugins.installed.morpheus_brain.views:brain",
-    "plugins.installed.newsletter.dashboard:campaign_send_view",
     "plugins.installed.newsletter.dashboard:campaign_test_view",
     "plugins.installed.newsletter.dashboard:popup_edit_view",
     "plugins.installed.newsletter.dashboard:popups_view",

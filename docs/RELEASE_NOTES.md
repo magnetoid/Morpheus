@@ -15,6 +15,18 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.190.0 — 2026-11-23
+
+**Email campaigns**
+
+- Write a newsletter campaign on the dashboard: subject, preheader, a rich-text message and an audience; save a draft, send yourself a test, schedule it on your store's clock, or send it now.
+- An audience is every confirmed subscriber or only those in one customer group (champions, loyal, potential, new, at risk, lost); a group only narrows the list, so nobody who did not subscribe is mailed.
+- Campaigns go out in the store's email look, cleaned of anything unsafe, with links that work in an inbox and each subscriber's own unsubscribe link.
+- Scheduled campaigns now go out at their time; one that could not go out within a day goes back to draft and the list says it missed its time. Cancelling or moving a schedule holds even when the send was already queued.
+- Sending a campaign now needs permission to change marketing, not only to see it.
+- Linda can list campaigns and, with your yes, draft, schedule, send or cancel one.
+- Workflows can email the customer: as a service email about their order, or as marketing, which goes only to a confirmed subscriber and carries an unsubscribe link. Workflow runs for events with an order or customer are recorded again.
+
 ## v0.189.0 — 2026-11-23
 
 **Emails after an order, when you switch them on**
