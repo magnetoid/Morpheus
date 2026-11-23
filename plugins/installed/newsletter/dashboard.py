@@ -13,8 +13,17 @@ from django.db import transaction
 from django.db.models import Count
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.http import require_POST
 
 from core.authz import require_capability
+
+#: Linda's tool for each change these pages make (ADR 0039, scripts/check_agent_coverage.py).
+AGENT_TOOLS = {
+    'campaign_edit_view': 'newsletter.campaign_create',
+    'campaign_send_view': 'newsletter.campaign_send',
+    'campaign_schedule_view': 'newsletter.campaign_send',
+    'campaign_cancel_view': 'newsletter.campaign_cancel',
+}
 
 
 @staff_member_required
@@ -225,8 +234,6 @@ def campaign_edit_view(request, campaign_id=None):
 
 
 def _campaign_action(request, campaign_id, act, success: str):
-    if request.method != 'POST':
-        return redirect('/dashboard/newsletter/campaigns/')
     from plugins.installed.marketing.models import EmailCampaign
     from plugins.installed.newsletter.campaigns import CampaignError
 
@@ -242,6 +249,7 @@ def _campaign_action(request, campaign_id, act, success: str):
 
 @staff_member_required
 @require_capability('marketing.write')
+@require_POST
 def campaign_send_view(request, campaign_id: str):
     """POST — queue a full send of one draft to its audience."""
     from plugins.installed.newsletter.campaigns import send_campaign_now
@@ -251,6 +259,7 @@ def campaign_send_view(request, campaign_id: str):
 
 @staff_member_required
 @require_capability('marketing.write')
+@require_POST
 def campaign_schedule_view(request, campaign_id: str):
     """POST ``send_at`` (store time) — schedule a draft."""
     from plugins.installed.newsletter import campaigns as rules
@@ -263,6 +272,7 @@ def campaign_schedule_view(request, campaign_id: str):
 
 @staff_member_required
 @require_capability('marketing.write')
+@require_POST
 def campaign_cancel_view(request, campaign_id: str):
     """POST — take a scheduled campaign back to an editable draft."""
     from plugins.installed.newsletter.campaigns import cancel_campaign

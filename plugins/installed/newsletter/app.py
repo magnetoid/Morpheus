@@ -180,6 +180,7 @@ class NewsletterPlugin(Plugin):
 
     def contribute_agent_tools(self) -> list:
         from plugins.installed.newsletter.agent_tools import (
+            newsletter_campaign_cancel_tool,
             newsletter_campaign_create_tool,
             newsletter_campaign_send_tool,
             newsletter_campaigns_tool,
@@ -197,6 +198,7 @@ class NewsletterPlugin(Plugin):
             newsletter_campaigns_tool,
             newsletter_campaign_create_tool,
             newsletter_campaign_send_tool,
+            newsletter_campaign_cancel_tool,
         ]
 
     def contribute_email_templates(self) -> list:

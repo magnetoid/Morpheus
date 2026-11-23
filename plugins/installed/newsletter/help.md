@@ -17,7 +17,7 @@ Create and turn on a signup popup from [Popups](page:popups) — nothing shows o
 - Write a campaign from [Campaigns](page:newsletter-campaigns) with New campaign: a name only you see, a subject, the line inboxes show after it, the message and the audience. Save it as a draft, schedule it for a time on your store's clock, or send it now.
 - Send yourself a test copy of a saved campaign before it goes out.
 - Cancel a scheduled campaign to make it a draft you can edit again.
-- Ask Linda for subscriber counts, to create or toggle a popup, or to draft, schedule or send a campaign. She asks for your yes before she drafts or sends one.
+- Ask Linda for subscriber counts, to create or toggle a popup, or to draft, schedule, send or cancel a campaign. She asks for your yes before she drafts, sends or cancels one.
 
 ## Good to know
 

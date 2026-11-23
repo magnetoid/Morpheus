@@ -27,6 +27,7 @@ class NewsletterAgentToolTests(TestCase):
                 'newsletter.campaigns',
                 'newsletter.campaign_create',
                 'newsletter.campaign_send',
+                'newsletter.campaign_cancel',
             },
         )
 

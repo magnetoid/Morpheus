@@ -294,3 +294,35 @@ def newsletter_campaign_send_tool(*, campaign_id: str, send_at: str = '') -> Too
         output={'id': str(c.id), 'status': 'queued'},
         display=f'“{c.name}” is queued for sending.',
     )
+
+
+@tool(
+    name='newsletter.campaign_cancel',
+    description='Cancel a scheduled newsletter campaign: it becomes a draft with no send '
+    'time, which can be edited and scheduled or sent again.',
+    scopes=['promotions.write'],
+    requires_approval=True,
+    schema={
+        'type': 'object',
+        'properties': {'campaign_id': {'type': 'string'}},
+        'required': ['campaign_id'],
+    },
+)
+def newsletter_campaign_cancel_tool(*, campaign_id: str) -> ToolResult:
+    from django.core.exceptions import ValidationError
+
+    from plugins.installed.marketing.models import EmailCampaign
+    from plugins.installed.newsletter.campaigns import CampaignError, cancel_campaign
+
+    try:
+        c = EmailCampaign.objects.get(pk=campaign_id)
+    except (EmailCampaign.DoesNotExist, ValidationError, ValueError):
+        return ToolResult(output={'error': 'No campaign with that id.'})
+    try:
+        cancel_campaign(c)
+    except CampaignError as e:
+        return ToolResult(output={'error': str(e)})
+    return ToolResult(
+        output={'id': str(c.id), 'status': 'draft'},
+        display=f'“{c.name}” is a draft again.',
+    )

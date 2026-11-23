@@ -25,6 +25,7 @@ class CampaignToolTests(TestCase):
             'newsletter.campaigns': (['promotions.read'], False),
             'newsletter.campaign_create': (['promotions.write'], True),
             'newsletter.campaign_send': (['promotions.write'], True),
+            'newsletter.campaign_cancel': (['promotions.write'], True),
         }
         for name, (scopes, approval) in cases.items():
             tool = _tool(name)
@@ -90,6 +91,23 @@ class CampaignToolTests(TestCase):
         with mock.patch.object(send_campaign, 'delay'):
             out = _tool('newsletter.campaign_send').invoke({'campaign_id': str(c.id)}).output
         self.assertEqual(out['status'], 'queued')
+
+    def test_cancel_returns_a_scheduled_campaign_to_draft(self):
+        c = EmailCampaign.objects.create(
+            name='a',
+            subject='b',
+            html_body='<p>c</p>',
+            status='scheduled',
+            scheduled_at=timezone.now() + timedelta(days=1),
+        )
+        out = _tool('newsletter.campaign_cancel').invoke({'campaign_id': str(c.id)}).output
+        c.refresh_from_db()
+        self.assertEqual((out['status'], c.status, c.scheduled_at), ('draft', 'draft', None))
+
+    def test_cancel_refuses_a_draft(self):
+        c = EmailCampaign.objects.create(name='a', subject='b', html_body='<p>c</p>')
+        out = _tool('newsletter.campaign_cancel').invoke({'campaign_id': str(c.id)}).output
+        self.assertIn('not scheduled', out['error'])
 
     def test_send_refuses_a_sent_campaign_with_a_message(self):
         c = EmailCampaign.objects.create(name='a', subject='b', html_body='<p>c</p>', status='sent')

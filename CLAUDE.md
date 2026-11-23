@@ -2115,8 +2115,8 @@ shipping email carries tracking. Count clicks and orders, never opens: links car
 `utm_source=post_purchase`. Guarded by `post_purchase/tests/test_journey_emails.py`.
 
 **Convention — a campaign reaches only the opted-in list (v0.190.0).** Campaigns are written on
-the dashboard (`/dashboard/newsletter/campaigns/new/`) or by Linda (`newsletter.campaign_create`
-and `newsletter.campaign_send`, both `requires_approval`). Both go through one module,
+the dashboard (`/dashboard/newsletter/campaigns/new/`) or by Linda (`newsletter.campaign_create`,
+`newsletter.campaign_send` and `newsletter.campaign_cancel`, all `requires_approval`). They go through one module,
 `newsletter/campaigns.py`, and the send stays `tasks.send_campaign`: its claim, its batches and its
 `CampaignSend` ledger.
 
