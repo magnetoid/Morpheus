@@ -1,0 +1,31 @@
+{% extends "storefront/base.html" %}
+{% load i18n %}
+{% comment %}returns_portal (C4): one return, where it stands, and what happens next.{% endcomment %}
+{% block content %}
+<section style="padding: 3rem 0 5rem;">
+  <div class="wrap" style="max-width: 640px;" data-return-status="{{ rma.rma_number }}">
+    <p class="meta">{% blocktrans with number=order.order_number %}Order #{{ number }}{% endblocktrans %}</p>
+    <h1 class="display display-l" style="margin: .5rem 0 1rem;">{% blocktrans with rma=rma.rma_number %}Return {{ rma }}{% endblocktrans %}</h1>
+    {% if rma.state == 'rejected' %}
+    <p class="lede">{% trans "We could not accept this return." %}</p>
+    {% if rma.staff_note %}<p>{{ rma.staff_note|linebreaksbr }}</p>{% endif %}
+    {% elif rma.state == 'cancelled' %}
+    <p class="lede">{% trans "This return was cancelled." %}</p>
+    {% else %}
+    <ol style="display: flex; gap: .5rem; flex-wrap: wrap; list-style: none; padding: 0; margin: 0 0 1.5rem;">
+      {% for step in steps %}<li class="meta" style="padding: .35rem .75rem; border: 1px solid var(--rule); border-radius: 999px;{% if step.current %} font-weight: 600;{% endif %}"{% if step.current %} aria-current="step"{% endif %}>{% if step.done %}✓ {% endif %}{% trans step.label %}</li>{% endfor %}
+    </ol>
+    {% endif %}
+    {% if outcome_label %}<p class="meta">{% trans "You asked for:" %} {% trans outcome_label %}</p>{% endif %}
+    <ul style="list-style: none; padding: 0; margin: 1rem 0;">
+      {% for line in lines %}<li>{{ line.quantity }} × {{ line.item.product_name }}{% if line.item.variant_name %} · {{ line.item.variant_name }}{% endif %}</li>{% endfor %}
+    </ul>
+    {% if instructions %}
+    <div style="border: 1px solid var(--rule); border-radius: 6px; padding: 1rem; margin-top: 1rem;">
+      <p class="meta" style="margin-bottom: .5rem;">{% trans "How to send it back" %}</p>
+      {{ instructions|linebreaks }}
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

@@ -69,6 +69,7 @@ gift_card_count) and the {% templatetag openblock %} storefront_blocks "account_
         <p class="text-sm text-muted-foreground">{% trans "Saved shipping &amp; billing addresses." %}</p>
       </a>
 
+      {% plugin_enabled "returns_portal" as returns_on %}{% if returns_on %}
       <a href="/account/returns/" class="group rounded-2xl border border-border shadow-card bg-card p-6 hover:border-primary/30 hover:shadow-card-hover transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
         <div class="flex items-center gap-3 mb-2">
           <span class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
@@ -78,6 +79,7 @@ gift_card_count) and the {% templatetag openblock %} storefront_blocks "account_
         </div>
         <p class="text-sm text-muted-foreground">{% trans "Open and past return requests." %}</p>
       </a>
+      {% endif %}
 
       {% if summary.store_credit_balance or summary.gift_card_count %}
       <a href="/account/credits/" class="group rounded-2xl border border-border shadow-card bg-card p-6 hover:border-primary/30 hover:shadow-card-hover transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">

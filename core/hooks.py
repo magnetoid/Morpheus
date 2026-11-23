@@ -825,6 +825,14 @@ class MorpheusEvents:
     #   here" while its withdrawal function is on). core.emails renders them as
     #   ``order_links``; an absolute URL, built from the site's base URL.
     ORDER_EMAIL_LINKS = 'order.email_links'  # filter
+    # RETURN_RESOLUTION — filter, value=None, kwargs: return_request=ReturnRequest.
+    #   What the customer chose for a return (C4, v0.188.0): returns_portal answers
+    #   {'outcome': 'refund'|'store_credit'|'exchange', 'exchange': [ExchangeLine],
+    #   'fee': Money, 'fees': {outcome: Money}, 'label': str}, or leaves None (no
+    #   choice recorded, or the app
+    #   off). The dashboard's return page reads it to preselect how the return
+    #   closes, so it never imports returns_portal.
+    RETURN_RESOLUTION = 'return.resolution'  # filter
     # STOREFRONT_PAGE_INTRO — filter, value=dict {'body': '', 'meta_description':
     #   ''}, kwargs: page=str (a stable key: 'products' | 'vendors' | 'journal').
     #   Supplies merchant-edited intro copy + meta for the built-in storefront
@@ -1296,7 +1304,11 @@ class MorpheusEvents:
     # 'return.approved'   — kwargs: return_request=ReturnRequest.
     # 'return.rejected'   — kwargs: return_request=ReturnRequest.
     # 'return.refunded'   — kwargs: return_request=ReturnRequest,
-    #                       refund=Refund|None, store_credit=Money|None.
+    #                       refund=Refund|None, store_credit=Money|None,
+    #                       outcome='refund'|'store_credit'|'exchange',
+    #                       exchange_order=Order|None, unmade=[{'order_item_id',
+    #                       'variant_id', 'quantity'}] (the exchange lines that
+    #                       could not be made, refunded instead; C4, v0.188.0).
     #                       Fired ONCE the return is fully closed (either
     #                       money refund OR store-credit issued). Distinct
     #                       from PAYMENT_REFUNDED — that fires per refund

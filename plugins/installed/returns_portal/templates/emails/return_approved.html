@@ -1,0 +1,13 @@
+{% extends "emails/_layout.html" %}
+{% block title %}Your return is approved{% endblock %}
+{% block preheader %}Return {{ rma.rma_number }} is approved: here is how to send it back.{% endblock %}
+{% block body %}
+  <p>Your return <strong>{{ rma.rma_number }}</strong> for order <strong>#{{ order.order_number }}</strong> is approved. You can send these items back:</p>
+  {% include "emails/_return_lines.html" %}
+  {% if instructions %}
+  <p><strong>How to send it back</strong></p>
+  {{ instructions|linebreaks }}
+  {% endif %}
+  <p>Please write the return number, {{ rma.rma_number }}, on the parcel. Once it arrives we close the return and write to you again.</p>
+  <p><a class="btn" href="{{ status_url }}">See your return</a></p>
+{% endblock %}

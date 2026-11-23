@@ -1,0 +1,26 @@
+{% extends "emails/_layout.html" %}
+{% block title %}Your return is closed{% endblock %}
+{% block preheader %}We received return {{ rma.rma_number }}: {{ outcome_label|lower }}.{% endblock %}
+{% block body %}
+  <p>We received the items you sent back from order <strong>#{{ order.order_number }}</strong> and closed return <strong>{{ rma.rma_number }}</strong>.</p>
+  {% include "emails/_return_lines.html" %}
+  <table class="totals" role="presentation" cellspacing="0" cellpadding="0" border="0">
+    <tr><td>Outcome</td><td class="right">{{ outcome_label }}</td></tr>
+    {% if refund_amount %}<tr class="grand"><td>Refund</td><td class="right">{{ refund_amount }}</td></tr>{% endif %}
+    {% if credit_amount %}<tr class="grand"><td>Store credit</td><td class="right">{{ credit_amount }}</td></tr>{% endif %}
+    {% if exchange_order %}<tr><td>Exchange order</td><td class="right">#{{ exchange_order.order_number }}</td></tr>{% endif %}
+  </table>
+  {% if exchange_order %}
+  <p>{% if exchange_owes %}Your exchange order #{{ exchange_order.order_number }} has {{ exchange_order.total }} to pay. We are sending you a link to pay it, and we send the new edition once it is paid.{% else %}We are sending your new edition in order #{{ exchange_order.order_number }}, and write again when it is on its way.{% endif %}</p>
+  {% endif %}
+  {% if unmade_lines %}
+  <p>These items could not be exchanged, so we refunded them instead:</p>
+  <table class="items" role="presentation" cellspacing="0" cellpadding="0" border="0">
+    {% for line in unmade_lines %}
+    <tr><td>{{ line.item.product_name }}{% if line.wanted %} ({{ line.wanted.name }} edition){% endif %}</td></tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+  {% if refund_amount %}<p class="muted">A refund lands in your original payment method in a few business days.</p>{% endif %}
+  <p><a class="btn" href="{{ status_url }}">See your return</a></p>
+{% endblock %}

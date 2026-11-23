@@ -1,0 +1,16 @@
+{% autoescape off %}About your return.
+
+Order: #{{ order.order_number }}
+Return: {{ rma.rma_number }}
+
+We can't take these items back:
+{% for line in lines %}- {{ line.quantity }}× {{ line.item.product_name }}{% if line.item.variant_name %} ({{ line.item.variant_name }}){% endif %}
+{% endfor %}{% if rma.staff_note %}
+{{ rma.staff_note }}
+{% endif %}
+If you have a question, reply to this email.
+
+See your return: {{ status_url }}
+
+— The team
+{% endautoescape %}

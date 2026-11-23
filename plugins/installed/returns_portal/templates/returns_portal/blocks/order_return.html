@@ -1,0 +1,3 @@
+{% load i18n returns_portal_tags %}{# The account order page's "Return or exchange" link, while something can come back (returns_portal, C4). #}{% order_can_return order as can_return %}{% if can_return %}
+<p class="morpheus-return" data-return-action style="margin-top: 1rem;"><a class="btn btn-ghost" href="/account/orders/{{ order.order_number }}/return/">{% trans "Return or exchange" %}</a></p>
+{% endif %}

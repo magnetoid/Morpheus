@@ -1,0 +1,5 @@
+<table class="items" role="presentation" cellspacing="0" cellpadding="0" border="0">
+  {% for line in lines %}
+  <tr><td>{{ line.quantity }}× {{ line.item.product_name }}{% if line.item.variant_name %} ({{ line.item.variant_name }}){% endif %}</td></tr>
+  {% endfor %}
+</table>

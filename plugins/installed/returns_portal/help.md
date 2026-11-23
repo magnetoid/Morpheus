@@ -1,26 +1,27 @@
 ---
-summary: Lets customers withdraw from an order online, as EU law asks, and states your return window to search engines.
+summary: Lets customers return, exchange or withdraw from an order online, and states your return window to search engines.
 ---
 
 ## What it's for
 
-This app does two jobs. It gives customers the "Withdraw from contract here" function EU law has asked for since 19 June 2026, and it tells search engines and shopping feeds your real return window. The return itself (its RMA number, approving it, the refund) is handled by [Orders](app:orders).
+Customers send things back on their own: from their order page, or as a guest with the order number and their email. They choose a refund, store credit or another edition of the same product. The app also gives the "Withdraw from contract here" function EU law asks for, and tells search engines your real return window. Approving a return and the refund itself happen in [Orders](app:orders).
 
 ## Set it up
 
-Switch the function on with [](field:returns_portal.withdrawal_function) on [Returns portal](settings:returns_portal). The order email then carries the link, and so do the customer's order page and your footer. The period is 14 days ([](field:returns_portal.withdrawal_days)); you can give more, never less.
+On [Returns portal](settings:returns_portal), set the days a customer has to return something; zero states, truthfully, that you take no returns. Say who pays to send a return back ([](field:returns_portal.return_fees)); a fixed fee ([](field:returns_portal.return_shipping_fee)) comes off the refund. Offer store credit and exchanges with [](field:returns_portal.refund_store_credit) and [](field:returns_portal.refund_exchange), and write where to send a return in [](field:returns_portal.return_instructions).
 
-Set how many days a customer has to return something there too. Leaving it at zero states, truthfully, that you take no returns. You can also say who pays to send a return back ([](field:returns_portal.return_fees)), how items can come back and which refunds you give; search engines read each one only once you set it. A fixed fee is stated only with its amount ([](field:returns_portal.return_shipping_fee)).
+An exchange is free, costs the return fee, or a fixed amount ([](field:returns_portal.exchange_fee)). Switch the withdrawal function on with [](field:returns_portal.withdrawal_function).
 
 ## Common tasks
 
-- See who withdrew: each one is on the order's timeline, and Linda can list them.
-- Record a withdrawal a customer sent by email, letter or phone: ask Linda, who asks for your yes first.
+- Close a return: open it under Orders, check what the customer asked for, change the fee if you like, then Mark received and close.
+- See who withdrew: it is on the order's timeline, and Linda can list them.
+- Record a withdrawal sent by email or phone: ask Linda, who asks for your yes first.
 
 ## Good to know
 
-A withdrawal takes two steps: the customer fills in their name, the order number and their email, then confirms. They get an email with the date and time it was received. An order none of which has left is cancelled and paid back in full; otherwise a return opens for the goods. A service, or a download whose buyer waived the right at checkout, cannot be withdrawn from. The period counts from delivery, or from the order for a download.
+The window counts from each parcel's delivery. A download or a service cannot be returned. The customer gets an email when you receive the request, approve it (with your instructions), turn it down (with your note) and close it.
 
-A guest's details are checked only once they confirm, and the last page reads the same whether or not they named an order, so nobody learns about someone else's order. While a store in the EU has the function off, the setup checklist and the nightly health check say so. The check also fails while the store has no sending email, since the acknowledgement would reach nobody.
+An exchange sends the new edition in a new order linked to the return, only once the old one arrives. A cheaper edition's difference is refunded. If the edition sold out, it is refunded instead. When an exchange costs something, the customer pays by a link and the edition ships once paid; unpaid by the deadline, the return is refunded.
 
-The return window is published only for goods you ship, and left out if your store's country is not set.
+A withdrawal needs the customer's name, order number and email, then a confirmation. An order none of which has left is cancelled and paid back; otherwise a return opens. The period is 14 days ([](field:returns_portal.withdrawal_days)), or more. While a store in the EU has the function off, the setup checklist says so.

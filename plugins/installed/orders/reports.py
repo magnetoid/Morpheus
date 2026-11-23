@@ -51,9 +51,15 @@ def counted(qs=None):
     from plugins.installed.orders.models import Order  # noqa: PLC0415
 
     qs = Order.objects.all() if qs is None else qs
-    return qs.filter(
-        Q(status__in=SALE_STATUSES) | (Q(payment_status__in=_MONEY_TAKEN) & ~Q(status='cancelled'))
-    ).exclude(payment_status='released')
+    return (
+        qs.filter(
+            Q(status__in=SALE_STATUSES)
+            | (Q(payment_status__in=_MONEY_TAKEN) & ~Q(status='cancelled'))
+        )
+        .exclude(payment_status='released')
+        # A free exchange order (C4) sends a replacement: nothing was bought.
+        .exclude(source='exchange', total=0)
+    )
 
 
 def _refunds_by(orders, *keys):

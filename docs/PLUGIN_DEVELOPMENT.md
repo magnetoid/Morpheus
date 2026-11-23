@@ -1141,6 +1141,19 @@ That gives you exactly-once side-effect delivery for free.
 
 See [LAW 4 in RULES.md](../RULES.md#law-4--plugins-communicate-via-hooks--outbox).
 
+### Answering what a customer chose for a return (`RETURN_RESOLUTION`, v0.188.0)
+
+The dashboard's return page and its "Mark received and close" form ask
+`hook_registry.filter(MorpheusEvents.RETURN_RESOLUTION, None, return_request=rr)`. An app
+that records the customer's choice answers with `{'outcome': 'refund' | 'store_credit' |
+'exchange', 'exchange': [orders.exchange.ExchangeLine], 'fee': Money, 'fees': {outcome: Money},
+'label': str}` (`fee` is the chosen outcome's, `fees` every outcome's, for when staff switch), or
+leaves the value alone. returns_portal is the answerer today. With nothing answering, staff
+see a plain refund or store credit form. Everything an event payload carries must be JSON
+data or a model, never a dataclass: `fire` also builds the webhook payload from it, and a
+value it cannot serialise drops the event for every endpoint (`return.refunded` passes its
+unmade exchange lines as dicts).
+
 ### Sign-in plugins must respect the second-factor gate
 
 `MorpheusEvents.AUTH_SECOND_FACTOR` (`'auth.second_factor'`) is a **filter**

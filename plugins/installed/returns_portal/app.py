@@ -30,7 +30,7 @@ class ReturnsPortalPlugin(Plugin):
         "feedback box routed to the CRM plugin's lead pipeline."
     )
     has_models = True
-    requires = ['orders', 'loyalty_points', 'customers', 'consent']
+    requires = ['orders', 'loyalty_points', 'customers', 'consent', 'payments', 'catalog']
 
     def ready(self) -> None:
         from morpheus.core import events  # noqa: PLC0415
@@ -63,6 +63,22 @@ class ReturnsPortalPlugin(Plugin):
         self.register_hook(events.DASHBOARD_SETUP_STEPS, withdrawal.on_setup_steps, priority=60)
         self.register_hook(events.HEALTH_CHECKS, withdrawal.on_health_checks, priority=60)
 
+        # Returns and exchanges the customer starts (C4, v0.188.0).
+        from plugins.installed.returns_portal import (
+            notices,  # noqa: PLC0415
+            policy,  # noqa: PLC0415
+            views_returns,  # noqa: PLC0415
+        )
+
+        self.register_hook(events.RETURN_RESOLUTION, policy.on_return_resolution, priority=50)
+        self.register_hook(
+            events.ORDER_EMAIL_LINKS, views_returns.on_order_email_links, priority=60
+        )
+        self.register_hook('return.requested', notices.on_return_requested, priority=60)
+        self.register_hook('return.approved', notices.on_return_approved, priority=60)
+        self.register_hook('return.rejected', notices.on_return_rejected, priority=60)
+        self.register_hook('return.refunded', notices.on_return_closed, priority=60)
+
     def on_seo_jsonld_graph(self, value, page=None, request=None, **kwargs):
         from plugins.installed.returns_portal.seo_graph import (  # noqa: PLC0415
             on_seo_jsonld_graph,
@@ -87,6 +103,11 @@ class ReturnsPortalPlugin(Plugin):
                 template='returns_portal/blocks/order_withdraw.html',
                 priority=50,
             ),
+            StorefrontBlock(
+                slot='account_order_actions',
+                template='returns_portal/blocks/order_return.html',
+                priority=40,
+            ),
         ]
 
     def contribute_email_templates(self) -> list:
@@ -100,6 +121,38 @@ class ReturnsPortalPlugin(Plugin):
                 group='Orders',
                 description='The acknowledgement a customer gets when they withdraw from the '
                 'contract for an order, with the date and time it was received.',
+            ),
+            EmailTemplateDef(
+                key='return_requested',
+                label='Return requested',
+                default_subject='We received your return request {{ rma.rma_number }}',
+                group='Orders',
+                description='Sent when a customer asks to send items back, with the return '
+                'number and a link to follow it.',
+            ),
+            EmailTemplateDef(
+                key='return_approved',
+                label='Return approved',
+                default_subject='Your return {{ rma.rma_number }} is approved',
+                group='Orders',
+                description='Sent when you approve a return, with your instructions for '
+                'sending it back.',
+            ),
+            EmailTemplateDef(
+                key='return_rejected',
+                label='Return rejected',
+                default_subject='About your return {{ rma.rma_number }}',
+                group='Orders',
+                description='Sent when you turn a return down, with the note you wrote.',
+            ),
+            EmailTemplateDef(
+                key='return_closed',
+                label='Return closed',
+                default_subject='Your return {{ rma.rma_number }} is closed',
+                group='Orders',
+                description='Sent when the items arrive and the return is closed: the refund, '
+                'the store credit or the exchange order, and anything that could not be '
+                'exchanged.',
             ),
         ]
 
@@ -179,6 +232,34 @@ class ReturnsPortalPlugin(Plugin):
                     'type': 'boolean',
                     'default': False,
                     'title': 'Offers store credit',
+                },
+                # What an exchange costs the customer (C4, v0.188.0): staff can change
+                # it on each return when they mark the goods received.
+                'exchange_fee': {
+                    'type': 'string',
+                    'enum': ['free', 'same_as_return', 'fixed'],
+                    'default': 'free',
+                    'title': 'Exchange fee',
+                    'description': (
+                        'free: an exchange costs nothing. same_as_return: the return fee above. '
+                        'fixed: the amount below.'
+                    ),
+                },
+                'exchange_fee_amount': {
+                    'type': 'number',
+                    'default': 0,
+                    'title': 'Exchange fee amount',
+                    'description': 'In your store currency, for "fixed".',
+                },
+                'return_instructions': {
+                    'type': 'string',
+                    'format': 'textarea',
+                    'default': '',
+                    'title': 'Return instructions',
+                    'description': (
+                        'Where to send a return and how to pack it. Sent with the approval '
+                        'email and shown on the return page.'
+                    ),
                 },
                 # EU CRD Art. 11a: "Withdraw from contract here" on every order
                 # (returns_portal/withdrawal.py). Off until the merchant chooses.

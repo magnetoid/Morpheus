@@ -15,11 +15,22 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
-## v0.187.1 — 2026-11-22
+## v0.188.1 — 2026-11-23
 
 **No fallen snow under Dawnchild's header**
 
 - Dawnchild's Christmas look no longer draws the strip of fallen snow and icicles along the bottom of the header (owner's ask). The holly on the wordmark, the banner's snow and the footer scene stay.
+
+## v0.188.0 — 2026-11-22
+
+**Customers can return and exchange on their own**
+
+- A customer asks for a return from their order page, or as a guest with the order number and their email, and chooses a refund, store credit or another edition of the same book or product (equal or lower price). Each parcel's return window counts from its delivery; a download or a service cannot come back.
+- Exchanges and store credit are switched on in the returns settings, with an exchange fee that is free, the return fee or a fixed amount, and return instructions for the approval email.
+- The customer gets an email when the request arrives, is approved (with your instructions), is turned down (with your note) and is closed.
+- On the return's page staff see what the customer asked for and close it with one button, the outcome preselected and the fee editable. An exchange becomes its own order linked to the return, sent once the old one arrives; a cheaper edition's difference and any edition that sold out are refunded.
+- An exchange that costs something stays unpaid until the customer pays by the link they are emailed; unpaid by its deadline, the return is refunded instead.
+- Webhooks now receive the return-closed event: one of its fields could not be sent before.
 
 ## v0.187.0 — 2026-11-22
 
