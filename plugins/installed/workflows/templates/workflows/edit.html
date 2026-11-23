@@ -70,7 +70,14 @@
         JSON list of <code>{kind, ...kwargs}</code> objects.
         Kinds: <code>notify_staff</code> · <code>add_order_note</code> ·
         <code>tag_customer</code> · <code>webhook_post</code> ·
-        <code>agent_skill</code>.
+        <code>agent_skill</code> · <code>email_customer</code>.
+      </p>
+      <p class="text-xs text-[color:var(--text-muted)]">
+        <code>email_customer</code> takes a <code>purpose</code>: <code>service</code> (about their order, to anyone)
+        or <code>marketing</code> (only to a confirmed newsletter subscriber, with an unsubscribe link).
+        The subject and body may use {% verbatim %}<code>{customer_first_name}</code> <code>{customer_name}</code>
+        <code>{order_number}</code> <code>{order_total}</code> <code>{store_name}</code>{% endverbatim %};
+        a blank line starts a new paragraph.
       </p>
       <pre class="text-xs" style="background:var(--surface-2); padding:.65rem; border-radius:6px; margin:0;">[
   {"kind": "notify_staff",
@@ -78,6 +85,9 @@
    "body": "Order #{% verbatim %}{{ order.order_number }}{% endverbatim %} — over $200",
    "icon": "star"},
   {"kind": "tag_customer", "tag": "vip"},
+  {"kind": "email_customer", "purpose": "service",
+   "subject": "Thank you for order {% verbatim %}{order_number}{% endverbatim %}",
+   "body": "Hi {% verbatim %}{customer_first_name}{% endverbatim %}, thanks for your order."},
   {"kind": "agent_skill", "agent": "merchant_ops",
    "message": "Send a thank-you note to this VIP customer."}
 ]</pre>

@@ -1,0 +1,5 @@
+{% extends "emails/_layout.html" %}
+{% block title %}{{ subject }}{% endblock %}
+{% block storename %}{{ store_name }}{% endblock %}
+{% block body %}{% for p in paragraphs %}<p>{{ p|linebreaksbr }}</p>{% endfor %}{% endblock %}
+{% block footer %}{% if marketing %}{{ store_name }}. You get this because you subscribed. <a href="{{ unsubscribe_url }}">Unsubscribe</a>{% else %}{{ store_name }}. You get this about your order.{% endif %}{% endblock %}

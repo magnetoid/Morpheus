@@ -34,6 +34,7 @@ ACTION_KINDS = [
     ('add_order_note', 'Add note to order'),
     ('webhook_post', 'POST to webhook'),
     ('agent_skill', 'Invoke agent skill'),
+    ('email_customer', 'Email customer'),
 ]
 
 

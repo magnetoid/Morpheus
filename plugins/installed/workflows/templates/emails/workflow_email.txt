@@ -1,0 +1,5 @@
+{% autoescape off %}{% for p in paragraphs %}{{ p }}
+
+{% endfor %}—
+{% if marketing %}{{ store_name }}. You get this because you subscribed. Unsubscribe: {{ unsubscribe_url }}{% else %}{{ store_name }}. You get this about your order.{% endif %}
+{% endautoescape %}

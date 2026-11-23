@@ -45,6 +45,11 @@ class NewsletterPlugin(Plugin):
 
         self.register_hook(events.CHECKOUT_FIELDS, checkout.on_checkout_fields, priority=50)
         self.register_hook(events.ORDER_PLACED, checkout.on_order_placed, priority=60)
+        # A marketing email outside a campaign (workflows) asks us whether the
+        # address opted in, and gets its unsubscribe link and headers back.
+        self.register_hook(
+            events.MARKETING_EMAIL_RECIPIENT, self.on_marketing_email_recipient, priority=50
+        )
         # Scheduled campaigns go out at their time (registered name, not the path).
         self.register_celery_beat(
             'newsletter:send_due_campaigns',
@@ -70,6 +75,25 @@ class NewsletterPlugin(Plugin):
             hint=lambda p: f'Sign-up popup · {p.headline}',
             url=lambda p: f'/dashboard/newsletter/popups/{p.pk}/',
         )
+
+    def on_marketing_email_recipient(self, value, email='', **kwargs):
+        """The unsubscribe link and RFC 8058 headers for a confirmed subscriber."""
+        from plugins.installed.newsletter.models import NewsletterSubscriber
+        from plugins.installed.newsletter.services import _unsubscribe_url
+        from plugins.installed.newsletter.tasks import _unsubscribe_headers
+
+        address = (email or '').strip()
+        sub = (
+            NewsletterSubscriber.objects.filter(email__iexact=address, status='confirmed').first()
+            if address
+            else None
+        )
+        if sub is None:
+            return value
+        return {
+            'headers': _unsubscribe_headers(sub.confirm_token),
+            'unsubscribe_url': _unsubscribe_url(sub.confirm_token),
+        }
 
     def on_segment_changed(self, customer=None, new=None, **kwargs):
         """Queue a win-back email when a customer slips to at-risk.
