@@ -147,6 +147,8 @@ def _save_config(request) -> None:
         instance.set_config(key, (request.POST.get(key) or '').strip()[:100])
     for key, val in handling.items():
         instance.set_config(key, val)
+    # The estimate under each checkout choice (F5): a box, so absent means off.
+    instance.set_config('show_delivery_estimate', bool(request.POST.get('show_delivery_estimate')))
     messages.success(request, 'Carrier settings saved.')
 
 

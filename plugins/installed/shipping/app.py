@@ -81,6 +81,25 @@ class ShippingPlugin(Plugin):
             url=lambda r: f'{page}?edit_kind=rate&edit={r.pk}',
         )
 
+    def get_config_schema(self):
+        return {
+            'type': 'object',
+            'properties': {
+                'show_delivery_estimate': {
+                    'type': 'boolean',
+                    'default': False,
+                    'title': 'Show delivery estimate at checkout',
+                    'description': (
+                        'Under each shipping choice at checkout, show how many business '
+                        "days delivery takes: the handling time plus the rate's fastest "
+                        'and slowest delivery days. The order page and the order email '
+                        'repeat the estimate the shopper chose. Rates without delivery '
+                        'days show nothing.'
+                    ),
+                },
+            },
+        }
+
     def on_checkout_rates(self, value, cart=None, address=None, **kwargs):
         """CHECKOUT_SHIPPING_RATES: normalized rate options for checkout.
 
@@ -97,15 +116,28 @@ class ShippingPlugin(Plugin):
             country=(address.get('country') or '').strip(),
             region=(address.get('region') or address.get('state') or '').strip(),
         )
-        normalized = [
-            {
+        from plugins.installed.shipping.seo_graph import (  # noqa: PLC0415
+            delivery_estimate,
+            estimate_shown,
+        )
+
+        shown = estimate_shown()
+        normalized = []
+        for r in rates or []:
+            option = {
                 'id': r['rate_id'],
                 'label': r['name'],
                 'amount': r['amount'].amount,
                 'currency': str(r['amount'].currency),
             }
-            for r in rates or []
-        ]
+            estimate = (
+                delivery_estimate(r.get('estimated_days_min'), r.get('estimated_days_max'))
+                if shown
+                else None
+            )
+            if estimate:
+                option['estimate'] = estimate
+            normalized.append(option)
         return normalized or None
 
     def on_seo_jsonld_graph(self, value, page=None, request=None, **kwargs):
@@ -134,6 +166,21 @@ class ShippingPlugin(Plugin):
             quote = quote_rate(cart=cart, rate_id=shipping_rate_id, country=country, region=region)
             if not quote:
                 return value
+
+            from plugins.installed.shipping.seo_graph import (  # noqa: PLC0415
+                delivery_estimate,
+                estimate_shown,
+            )
+
+            # The promise the shopper saw, kept on the order (Order.delivery_estimate).
+            estimate = (
+                delivery_estimate(quote.get('estimated_days_min'), quote.get('estimated_days_max'))
+                if estimate_shown()
+                else None
+            )
+            if estimate:
+                meta['delivery_estimate'] = estimate
+                value['meta'] = meta
 
             amount = quote.get('amount')
             if free_shipping:
