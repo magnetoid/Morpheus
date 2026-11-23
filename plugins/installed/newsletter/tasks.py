@@ -20,7 +20,6 @@ from datetime import timedelta
 from celery import shared_task
 from django.conf import settings
 from django.utils import timezone
-from django.utils.html import strip_tags
 
 logger = logging.getLogger('morpheus.newsletter')
 
@@ -42,28 +41,6 @@ def _unsubscribe_headers(token: str) -> dict:
         'List-Unsubscribe': f'<{_unsubscribe_url(token)}>',
         'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
     }
-
-
-def _base_bodies(campaign) -> tuple[str, str | None]:
-    """The campaign's text/html bodies, constant across recipients. Computed
-    once per send so the strip_tags fallback isn't re-run per subscriber."""
-    text = (campaign.text_body or strip_tags(campaign.html_body or '')).strip()
-    html = (campaign.html_body or '').strip() or None
-    return text, html
-
-
-def _with_footer(base_text: str, base_html: str | None, token: str) -> tuple[str, str | None]:
-    """Append this recipient's one-click unsubscribe footer to the base bodies."""
-    from plugins.installed.newsletter.services import _unsubscribe_url
-
-    url = _unsubscribe_url(token)
-    text = f'{base_text}\n\n—\nUnsubscribe: {url}\n'
-    html = (
-        f'{base_html}\n<p style="font-size:12px;color:#777;"><a href="{url}">Unsubscribe</a></p>'
-        if base_html
-        else None
-    )
-    return text, html
 
 
 @shared_task(bind=True, time_limit=600, soft_time_limit=540)
@@ -141,16 +118,34 @@ def _run_campaign_batch(campaign_id: str) -> dict:
             'email', flat=True
         )
     )
-    base_text, base_html = _base_bodies(campaign)  # constant — computed once, not per row
+    from plugins.installed.newsletter.campaigns import (
+        CampaignError,
+        audience_emails,
+        personalise,
+        render_campaign,
+    )
+    from plugins.installed.newsletter.services import _unsubscribe_url
+
+    try:
+        allowed = audience_emails(campaign.audience)
+    except CampaignError as e:
+        # The audience cannot be resolved (the customers app went off): stop and
+        # hand the campaign back as a draft instead of mailing the wrong list.
+        EmailCampaign.objects.filter(pk=campaign.pk, status='sending').update(status='draft')
+        logger.warning('newsletter: campaign %s stopped: %s', campaign.pk, e)
+        return {'ok': False, 'error': str(e), 'sent': 0, 'failed': 0, 'skipped': 0}
+    base_text, base_html = render_campaign(campaign)  # once per batch, not per row
     sent = failed = processed = 0
     for sub in NewsletterSubscriber.objects.filter(status='confirmed').iterator():
         if sub.email in already:
+            continue
+        if allowed is not None and sub.email.lower() not in allowed:
             continue
         if processed >= CAMPAIGN_BATCH_SIZE:
             break
         processed += 1
         try:
-            text, html = _with_footer(base_text, base_html, sub.confirm_token)
+            text, html = personalise(base_text, base_html, _unsubscribe_url(sub.confirm_token))
             deliver_email.delay(
                 subject=campaign.subject,
                 text_body=text,
@@ -233,7 +228,10 @@ def send_campaign_test(self, campaign_id: str, to: str) -> dict:
     from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', '') or ''
     if not from_email or not to:
         return {'ok': False, 'error': 'no-address'}
-    text, html = _base_bodies(campaign)  # no footer/headers on a test copy
+    from plugins.installed.newsletter.campaigns import personalise, render_campaign
+
+    # Rendered exactly like the real send; the unsubscribe link goes nowhere.
+    text, html = personalise(*render_campaign(campaign), '#')
     deliver_email.delay(
         subject=f'[test] {campaign.subject}',
         text_body=text,
