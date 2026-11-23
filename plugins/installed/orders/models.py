@@ -119,6 +119,23 @@ class OrderEvent(models.Model):
         ]
 
 
+def clean_delivery_estimate(value) -> dict | None:
+    """``{'min': int, 'max': int}`` business days (0 ≤ min ≤ max ≤ 365), or None.
+
+    The shape shipping hands the cart breakdown (F5); read again on the way out
+    because metadata is plain JSON anyone with the order can edit.
+    """
+    if not isinstance(value, dict):
+        return None
+    lo, hi = value.get('min'), value.get('max')
+    for n in (lo, hi):
+        if isinstance(n, bool) or not isinstance(n, int):
+            return None
+    if not 0 <= lo <= hi <= 365:
+        return None
+    return {'min': lo, 'max': hi}
+
+
 class Order(models.Model):
     STATUS_CHOICES = [
         ('pending', 'Pending'),
@@ -255,6 +272,13 @@ class Order(models.Model):
         """The gift message the shopper wrote at checkout (orders/checkout_fields.py)."""
         answers = (self.metadata or {}).get('checkout_fields') or {}
         return str(answers.get('gift_message') or '') if isinstance(answers, dict) else ''
+
+    @property
+    def delivery_estimate(self) -> dict | None:
+        """The delivery estimate the shopper chose at checkout, in business days
+        (``{'min', 'max'}``), as stamped when the order was placed; None when none
+        was shown. A later change to the rate or the setting never changes it."""
+        return clean_delivery_estimate((self.metadata or {}).get('delivery_estimate'))
 
     @property
     def tax_included_lines(self) -> list[dict]:
