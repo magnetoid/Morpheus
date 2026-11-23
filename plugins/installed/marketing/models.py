@@ -102,6 +102,9 @@ class EmailCampaign(models.Model):
     subject = models.CharField(max_length=200)
     preview_text = models.CharField(max_length=300, blank=True)
     html_body = models.TextField()
+    # '' = every confirmed newsletter subscriber; otherwise an RFM segment key,
+    # which only narrows that list (newsletter.campaigns.AUDIENCES).
+    audience = models.CharField(max_length=20, blank=True, default='', db_default='')
     text_body = models.TextField(blank=True)
     status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='draft')
     scheduled_at = models.DateTimeField(null=True, blank=True)

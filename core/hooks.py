@@ -1014,6 +1014,18 @@ class MorpheusEvents:
     #   answers the set of customer ids whose latest decision allows marketing
     #   (audience uploads read it through core.consent.marketing_customer_ids).
     CONSENT_MARKETING_CUSTOMERS = 'consent.marketing_customers'  # filter
+    # CUSTOMER_SEGMENT_EMAILS — filter, value=None, kwargs: segment (an RFM key:
+    #   champions, loyal, potential, new, at_risk, lost). The customers app answers
+    #   the set of lower-cased emails of the customers in that segment (an unknown
+    #   key answers an empty set). The newsletter narrows a campaign's confirmed
+    #   list with it; nothing answering means segments cannot be used.
+    CUSTOMER_SEGMENT_EMAILS = 'customer.segment_emails'  # filter
+    # MARKETING_EMAIL_RECIPIENT — filter, value=None, kwargs: email. The newsletter
+    #   answers ``{'headers': {...}, 'unsubscribe_url': str}`` (the RFC 8058 pair and
+    #   the visible link) when the address is a confirmed subscriber, and passes
+    #   ``value`` through otherwise. A marketing email outside a campaign (the
+    #   workflows "Email customer" action) is sent only on an answer.
+    MARKETING_EMAIL_RECIPIENT = 'marketing.email_recipient'  # filter
     # WEBHOOK_DELIVER — filter, value=False, kwargs: endpoint (core.WebhookEndpoint),
     #   event_name, payload (JSON-safe dict). Core asks once per subscribed endpoint,
     #   after commit; an app that takes the delivery (webhooks_ui: log, retries,

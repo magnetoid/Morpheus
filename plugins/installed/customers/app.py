@@ -22,6 +22,10 @@ class CustomersPlugin(Plugin):
         from plugins.installed.customers import signals  # noqa
 
         self.register_hook(events.RESTORE_LOSSES, self.on_restore_losses, priority=20)
+        # Who is in an RFM segment, for a newsletter campaign's audience (C2).
+        from plugins.installed.customers.segment_emails import on_segment_emails  # noqa: PLC0415
+
+        self.register_hook(events.CUSTOMER_SEGMENT_EMAILS, on_segment_emails, priority=50)
 
         # Nightly RFM re-scoring (04:30 — before the dynamics 3:30/4:00 jobs have
         # long finished and orders have settled). Fires CUSTOMER_SEGMENT_CHANGED.
