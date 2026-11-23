@@ -1,4 +1,4 @@
-Hi{% if order.customer.first_name %} {{ order.customer.first_name }}{% endif %},
+{% load morph %}Hi{% if order.customer.first_name %} {{ order.customer.first_name }}{% endif %},
 
 Thanks for your order — we got it.
 
@@ -15,7 +15,8 @@ Subtotal: {{ order.subtotal }}
 {% endif %}{% for extra in order.extra_lines %}{{ extra.label }}: {{ extra.amount }}
 {% endfor %}Total:    {{ order.total }}
 {% for line in order.tax_included_lines %}Includes {{ line.label }}: {{ line.amount }}
-{% endfor %}
+{% endfor %}{% if order.delivery_estimate %}Estimated delivery: {{ order.delivery_estimate|business_days }}
+{% endif %}
 You'll get another email once payment is confirmed and your order ships.
 {% if track_url %}
 Track your order any time:

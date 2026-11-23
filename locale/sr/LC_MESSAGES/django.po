@@ -5136,3 +5136,7 @@ msgid_plural "%(min)s–%(max)s business days"
 msgstr[0] "%(min)s–%(max)s radni dan"
 msgstr[1] "%(min)s–%(max)s radna dana"
 msgstr[2] "%(min)s–%(max)s radnih dana"
+
+#: themes/library/*/templates/storefront/account_order_detail.html
+msgid "Estimated delivery"
+msgstr "Očekivana isporuka"

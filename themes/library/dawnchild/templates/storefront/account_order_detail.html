@@ -1,6 +1,7 @@
 {% extends "storefront/base.html" %}
 {% block body_class %}reading{% endblock %}
-{% load morph %}{% load seo %}
+{% load morph %}
+{% load i18n %}{% load seo %}
 
 {% block content %}
 <section style="padding: 4rem 0 5rem;">
@@ -16,6 +17,7 @@
     <p class="lede" style="margin-bottom: 2rem;">
       Placed {{ order.placed_at|date:"F j, Y" }} · status: <strong>{{ order.get_status_display }}</strong>
     </p>
+    {% if order.delivery_estimate %}<p class="meta" data-delivery-estimate>{% trans "Estimated delivery" %}: {{ order.delivery_estimate|business_days }}</p>{% endif %}
 
     {% if order.status == 'cancelled' %}
     <p role="status" style="margin: -1rem 0 2rem; padding: .85rem 1.1rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper-2); color: var(--ink-2); font-family: var(--sans); font-size: .92rem;">

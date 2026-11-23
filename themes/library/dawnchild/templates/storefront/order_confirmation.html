@@ -1,6 +1,7 @@
 {% extends "storefront/base.html" %}
 {% block body_class %}reading{% endblock %}
-{% load morph %}{% load tracking %}{% load seo %}
+{% load morph %}
+{% load i18n %}{% load tracking %}{% load seo %}
 
 
 {% block extra_head %}
@@ -18,6 +19,7 @@
       We got your order <strong>#{{ order.order_number }}</strong>. A confirmation
       email is on its way.
     </p>
+    {% if order.delivery_estimate %}<p class="meta" data-delivery-estimate>{% trans "Estimated delivery" %}: {{ order.delivery_estimate|business_days }}</p>{% endif %}
 
     <div style="border: 1px solid var(--rule); border-radius: 6px; padding: 1.5rem; text-align: left;">
       {% for item in order.items.all %}

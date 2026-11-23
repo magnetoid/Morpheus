@@ -1,4 +1,5 @@
 {% extends "emails/_layout.html" %}
+{% load morph %}
 {% block title %}Order #{{ order.order_number }} received{% endblock %}
 {% block preheader %}We got order #{{ order.order_number }} — {{ order.total }}.{% endblock %}
 {% block body %}
@@ -33,6 +34,7 @@
     {% for line in included %}<tr><td>Includes {{ line.label }}</td><td class="right">{{ line.amount }}</td></tr>{% endfor %}
     {% endwith %}
   </table>
+  {% if order.delivery_estimate %}<p data-delivery-estimate>Estimated delivery: {{ order.delivery_estimate|business_days }}</p>{% endif %}
 
   <p class="muted" style="margin-top:18px;">You'll get another email once payment is confirmed and your order ships.</p>
   {% if track_url %}

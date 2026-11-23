@@ -28,6 +28,7 @@
               <input type="radio" name="shipping_rate_id" value="{{ r.id }}" {% if r.id|stringformat:'s' == selected_rate_id or forloop.first and not selected_rate_id %}checked{% endif %}>
               <div style="flex:1;">
                 <div style="font-weight:600;">{{ r.label }}</div>
+                {% if r.estimate %}<div class="meta" data-delivery-estimate>{{ r.estimate|business_days }}</div>{% endif %}
               </div>
               <div style="font-weight:600;">
                 {% if r.amount %}{{ r.amount }} {{ r.currency }}{% else %}{% trans "Free" %}{% endif %}
