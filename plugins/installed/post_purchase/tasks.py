@@ -30,12 +30,13 @@ def process_due_steps() -> dict:
     from plugins.installed.post_purchase.models import JourneyStep  # noqa: PLC0415
     from plugins.registry import app_registry  # noqa: PLC0415
 
-    dispatched = {'sent': 0, 'skipped': 0, 'failed': 0}
+    dispatched = {'sending': 0, 'skipped': 0, 'failed': 0}
     if not app_registry.is_active('post_purchase'):
         return dispatched  # the beat entry outlives a switch-off
     cfg = _config()
     now = timezone.now()
     _skip_in_bulk(cfg, now)
+    _retry_stuck(now)
     qs = JourneyStep.objects.filter(status='queued', due_at__lte=now).order_by('due_at')[
         :BATCH_SIZE
     ]
@@ -59,10 +60,9 @@ def process_due_steps() -> dict:
                 logger.exception('post_purchase: step dispatch raised for %s', step.pk)
                 outcome = 'failed'
                 step.error = str(exc)[:1024]
-            step.status = outcome
-            if outcome == 'sent':
-                step.sent_at = timezone.now()
-            step.save(update_fields=['status', 'sent_at', 'error', 'updated_at'])
+            if outcome != 'sending':  # a send saved its own row before enqueueing
+                step.status = outcome
+                step.save(update_fields=['status', 'error', 'updated_at'])
         dispatched[outcome] = dispatched.get(outcome, 0) + 1
     return dispatched
 
@@ -80,6 +80,41 @@ _SETTING = {
     'review_request': 'review_request_enabled',
     'nps_survey': 'nps_survey_enabled',
 }
+
+
+#: A step handed to the mail queue that has heard nothing back for this long was
+#: lost (the broker refused it, or its retries ran out): it is queued once more,
+#: then failed. The mail task retries for about 20 minutes.
+STUCK_AFTER = timedelta(hours=1)
+MAX_ATTEMPTS = 2
+
+
+def _retry_stuck(now) -> None:
+    from plugins.installed.post_purchase.models import JourneyStep  # noqa: PLC0415
+
+    for step in JourneyStep.objects.filter(status='sending', updated_at__lt=now - STUCK_AFTER):
+        if int((step.payload or {}).get('attempts', 0)) < MAX_ATTEMPTS:
+            step.status = 'queued'
+        else:
+            step.status, step.error = 'failed', 'not delivered'
+        step.save(update_fields=['status', 'error', 'updated_at'])
+
+
+def on_email_delivered(tag='', reached_inbox=False, **kwargs) -> None:
+    """EMAIL_DELIVERED: a step's email went out, so the step is ``sent``. On a store
+    with no sending email it was printed to the log, which reached nobody."""
+    from plugins.installed.post_purchase.models import JourneyStep  # noqa: PLC0415
+
+    if not str(tag).startswith(_TAG):
+        return
+    rows = JourneyStep.objects.filter(pk=str(tag)[len(_TAG) :], status='sending')
+    if reached_inbox:
+        rows.update(status='sent', sent_at=timezone.now(), error='', updated_at=timezone.now())
+    else:
+        rows.update(status='failed', error='no sending email', updated_at=timezone.now())
+
+
+_TAG = 'journey:'
 
 
 def _skip_in_bulk(cfg: dict, now) -> None:
@@ -134,15 +169,23 @@ def _marketing_reason(step) -> str:
 
 
 def _dispatch_step(step, cfg: dict | None = None) -> str:
-    """Send ``step``'s email: 'sent', or 'skipped' with the reason in ``step.error``."""
+    """Hand ``step``'s email over: 'sending', or 'skipped' with the reason in ``step.error``."""
     from plugins.installed.post_purchase.handlers import _config  # noqa: PLC0415
 
     reason = _skip_reason(step, cfg if cfg is not None else _config())
     if reason:
         step.error = reason
         return 'skipped'
+    # Recorded before the email is handed over: EMAIL_DELIVERED (inline in tests,
+    # later on a worker) moves it to 'sent', and a lost one is retried.
+    step.status, step.error = 'sending', ''
+    step.payload = {
+        **(step.payload or {}),
+        'attempts': int((step.payload or {}).get('attempts', 0)) + 1,
+    }
+    step.save(update_fields=['status', 'error', 'payload', 'updated_at'])
     _SENDERS[step.step](step)
-    return 'sent'
+    return 'sending'
 
 
 def _recipient(order) -> str:
@@ -177,7 +220,7 @@ def _send(step, key: str, subject: str, **extra) -> None:
         ctx['unsubscribe_url'] = unsubscribe.unsubscribe_url(to)
         headers = unsubscribe.headers(to)
     send_templated_email(
-        key, to=to, subject=subject, ctx=ctx, headers=headers, tag=f'journey:{step.pk}'
+        key, to=to, subject=subject, ctx=ctx, headers=headers, tag=f'{_TAG}{step.pk}'
     )
 
 

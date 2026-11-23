@@ -2106,7 +2106,10 @@ pair; the GET page asks, a POST records, because link scanners fetch every GET).
 claimed under a row lock, so overlapping runs send it once, and the steps that can never go (late,
 switched off) are skipped in bulk first, or a store's backlog filled every batch of 100 until the
 steps coming due were late too. The app sets `config_fresh_s`: the worker reads the switches, and
-without a window it kept the ones it first read until the next deploy. The arrival check is queued
+without a window it kept the ones it first read until the next deploy. A step is `sending` once handed to
+the mail queue and `sent` only when `EMAIL_DELIVERED` names its tag (`journey:<pk>`), because
+`send_templated_email` swallows a refused enqueue; one silent for an hour is queued once more, then
+failed. The arrival check is queued
 on `ORDER_DELIVERED` only: counted from shipping it asked "did it arrive?" before the parcel had. The tracking step is dropped: core's
 shipping email carries tracking. Count clicks and orders, never opens: links carry
 `utm_source=post_purchase`. Guarded by `post_purchase/tests/test_journey_emails.py`.

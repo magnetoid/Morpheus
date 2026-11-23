@@ -165,6 +165,73 @@ class ReviewFixTests(_Base):
         self.assertFalse(JourneyStep.objects.filter(status='queued').exists())
 
 
+class DeliveryLedgerTests(_Base):
+    """A step is ``sent`` only once its email went out (EMAIL_DELIVERED), so a
+    broker that refuses the message leaves it to be tried again (Codex, PR #208)."""
+
+    def setUp(self):
+        super().setUp()
+        set_app_settings(self, 'post_purchase', **ALL_ON)
+
+    def refuse_delivery(self):
+        from unittest import mock
+
+        return mock.patch(
+            'core.emails.tasks.deliver_email.delay', side_effect=ConnectionError('broker down')
+        )
+
+    def test_a_refused_email_is_not_recorded_as_sent(self):
+        step = self.due('delivered_followup')
+        with self.refuse_delivery():
+            self.run_due()
+        step.refresh_from_db()
+        self.assertEqual(step.status, 'sending')
+        self.assertIsNone(step.sent_at)
+
+    def test_a_step_stuck_sending_is_tried_again_once(self):
+        step = self.due('delivered_followup')
+        with self.refuse_delivery():
+            self.run_due()
+        JourneyStep.objects.filter(pk=step.pk).update(
+            updated_at=timezone.now() - timedelta(hours=2)
+        )
+        self.run_due()
+        step.refresh_from_db()
+        self.assertEqual(step.status, 'sent')
+        self.assertEqual(len(self.sent('arrive')), 1)
+
+    def test_a_second_failure_marks_it_failed(self):
+        step = self.due('delivered_followup')
+        for _ in range(3):
+            with self.refuse_delivery():
+                self.run_due()
+            JourneyStep.objects.filter(pk=step.pk).update(
+                updated_at=timezone.now() - timedelta(hours=2)
+            )
+        self.run_due()
+        step.refresh_from_db()
+        self.assertEqual((step.status, step.error), ('failed', 'not delivered'))
+        self.assertEqual(mail.outbox, [])
+
+    def test_a_store_without_a_sending_email_records_no_send(self):
+        from core.hooks import MorpheusEvents, hook_registry
+
+        step = self.due('delivered_followup')
+        JourneyStep.objects.filter(pk=step.pk).update(status='sending')
+        hook_registry.fire(
+            MorpheusEvents.EMAIL_DELIVERED, tag=f'journey:{step.pk}', reached_inbox=False
+        )
+        step.refresh_from_db()
+        self.assertEqual((step.status, step.error), ('failed', 'no sending email'))
+
+    def test_delivery_confirms_the_send(self):
+        step = self.due('delivered_followup')
+        self.run_due()
+        step.refresh_from_db()
+        self.assertEqual(step.status, 'sent')
+        self.assertIsNotNone(step.sent_at)
+
+
 class SendTests(_Base):
     def setUp(self):
         super().setUp()

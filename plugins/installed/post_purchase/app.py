@@ -29,6 +29,10 @@ class PostPurchasePlugin(Plugin):
         # Owned, so the bus stops calling them while the app is off.
         self.register_hook(events.ORDER_FULFILLED, on_order_fulfilled, priority=60)
         self.register_hook(events.ORDER_DELIVERED, on_order_delivered, priority=60)
+        from plugins.installed.post_purchase.tasks import on_email_delivered  # noqa: PLC0415
+
+        # A step is 'sent' only once its email went out.
+        self.register_hook(events.EMAIL_DELIVERED, on_email_delivered, priority=50)
         self.register_urls(
             'plugins.installed.post_purchase.urls',
             prefix='post-purchase/',

@@ -20,6 +20,7 @@ STEP_CHOICES = (
 
 STATUS_CHOICES = (
     ('queued', 'Queued'),
+    ('sending', 'Sending'),  # handed to the mail queue; 'sent' once EMAIL_DELIVERED says so
     ('sent', 'Sent'),
     ('skipped', 'Skipped'),
     ('failed', 'Failed'),
