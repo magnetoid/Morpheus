@@ -10,6 +10,7 @@ who did not opt in is ever mailed.
 from __future__ import annotations
 
 import html as html_lib
+import re
 from datetime import UTC, datetime, timedelta
 
 from django.template.loader import render_to_string
@@ -61,6 +62,15 @@ def plain_text(html: str) -> str:
     return html_lib.unescape(strip_tags(spaced)).strip()
 
 
+def absolute_links(html: str) -> str:
+    """Point site-relative links (``href="/products/x/"``) at the store: in an inbox
+    a relative link goes nowhere."""
+    from core.utils.site import site_base_url
+
+    base = site_base_url()
+    return re.sub(r'href="/(?!/)', f'href="{base}', html)
+
+
 def render_campaign(campaign) -> tuple[str, str]:
     """``(text, html)`` in the store layout, with the sentinel for the unsubscribe link.
 
@@ -69,7 +79,7 @@ def render_campaign(campaign) -> tuple[str, str]:
     from core.utils.html import sanitize_richtext
     from core.utils.site import store_name
 
-    body = sanitize_richtext(campaign.html_body or '') or ''
+    body = absolute_links(sanitize_richtext(campaign.html_body or '') or '')
     html = render_to_string(
         'emails/newsletter_campaign.html',
         {

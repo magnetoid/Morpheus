@@ -282,12 +282,15 @@ def newsletter_campaign_send_tool(*, campaign_id: str, send_at: str = '') -> Too
             if when is None or timezone.is_naive(when):
                 raise CampaignError('send_at needs a date, a time and a UTC offset.')
             schedule_campaign(c, when)
-        else:
-            send_campaign_now(c)
+            return ToolResult(
+                output={'id': str(c.id), 'status': 'scheduled', 'send_at': when.isoformat()},
+                display=f'“{c.name}” is scheduled for {when.isoformat()}.',
+            )
+        send_campaign_now(c)
     except CampaignError as e:
         return ToolResult(output={'error': str(e)})
-    c.refresh_from_db()
+    # The worker claims it moments later; reading the row now would still say draft.
     return ToolResult(
-        output={'id': str(c.id), 'status': c.status},
-        display=f'“{c.name}” is {c.status}.',
+        output={'id': str(c.id), 'status': 'queued'},
+        display=f'“{c.name}” is queued for sending.',
     )

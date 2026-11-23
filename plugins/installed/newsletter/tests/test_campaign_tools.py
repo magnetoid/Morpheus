@@ -81,6 +81,16 @@ class CampaignToolTests(TestCase):
         _tool('newsletter.campaign_send').invoke({'campaign_id': str(c.id)})
         self.assertEqual(len(mail.outbox), 1)
 
+    def test_send_reports_queued_before_the_worker_claims_it(self):
+        from unittest import mock
+
+        from plugins.installed.newsletter.tasks import send_campaign
+
+        c = EmailCampaign.objects.create(name='a', subject='b', html_body='<p>c</p>')
+        with mock.patch.object(send_campaign, 'delay'):
+            out = _tool('newsletter.campaign_send').invoke({'campaign_id': str(c.id)}).output
+        self.assertEqual(out['status'], 'queued')
+
     def test_send_refuses_a_sent_campaign_with_a_message(self):
         c = EmailCampaign.objects.create(name='a', subject='b', html_body='<p>c</p>', status='sent')
         out = _tool('newsletter.campaign_send').invoke({'campaign_id': str(c.id)}).output

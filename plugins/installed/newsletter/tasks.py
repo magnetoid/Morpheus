@@ -44,7 +44,7 @@ def _unsubscribe_headers(token: str) -> dict:
 
 
 @shared_task(bind=True, time_limit=600, soft_time_limit=540)
-def send_campaign(self, campaign_id: str) -> dict:
+def send_campaign(self, campaign_id: str, from_schedule: bool = False) -> dict:
     """Start sending a campaign to every confirmed subscriber. Idempotent.
 
     Only a ``draft``/``scheduled`` campaign starts (re-invoking a sending/sent
@@ -71,9 +71,25 @@ def send_campaign(self, campaign_id: str) -> dict:
     # instead of both passing the read-check above and blasting the whole list
     # twice. (A crash after this leaves the campaign 'sending'; the CampaignSend
     # ledger below still de-dupes a manual re-send once it's reset to draft.)
-    claimed = EmailCampaign.objects.filter(
-        pk=campaign.pk, status__in=('draft', 'scheduled')
-    ).update(status='sending')
+    #
+    # The two doors claim different rows. A merchant's Send (and Linda's) takes a
+    # draft only. The beat's message takes the campaign only while it is still
+    # scheduled for a time that has come and is under a day old: the message can
+    # wait in the queue, and a campaign cancelled, moved or gone stale meanwhile
+    # must not go out at the old time.
+    if from_schedule:
+        from plugins.installed.newsletter.campaigns import MISSED_AFTER
+
+        now = timezone.now()
+        claimable = EmailCampaign.objects.filter(
+            pk=campaign.pk,
+            status='scheduled',
+            scheduled_at__lte=now,
+            scheduled_at__gt=now - MISSED_AFTER,
+        )
+    else:
+        claimable = EmailCampaign.objects.filter(pk=campaign.pk, status='draft')
+    claimed = claimable.update(status='sending')
     if not claimed:
         return {'ok': False, 'error': 'already-claimed'}
 
@@ -233,7 +249,7 @@ def send_due_campaigns() -> dict:
     started = 0
     due = EmailCampaign.objects.filter(status='scheduled', scheduled_at__lte=now)
     for pk in due.values_list('pk', flat=True):
-        send_campaign.delay(str(pk))
+        send_campaign.delay(str(pk), from_schedule=True)
         started += 1
     if missed:
         logger.warning('newsletter: %s scheduled campaign(s) missed their time', missed)

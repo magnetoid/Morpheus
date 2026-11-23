@@ -68,6 +68,23 @@ class CampaignRenderTests(TestCase):
         c.refresh_from_db()
         self.assertEqual(c.recipient_count, 1)
 
+    def test_segment_match_ignores_the_subscribers_case_too(self):
+        NewsletterSubscriber.objects.create(email='Reader@Example.com', status='confirmed')
+        user = User.objects.create_user(username='r', email='reader@example.com', password='x')
+        CustomerSegment.objects.create(customer=user, segment='loyal')
+        send_campaign.delay(str(_campaign(audience='loyal').id)).get()
+        self.assertEqual([m.to for m in mail.outbox], [['Reader@Example.com']])
+
+    def test_relative_links_become_absolute(self):
+        from core.utils.site import site_base_url
+
+        NewsletterSubscriber.objects.create(email='r@example.com', status='confirmed')
+        body = '<p><a href="/products/x/">Book</a> <a href="https://a.example/">A</a></p>'
+        send_campaign.delay(str(_campaign(html_body=body).id)).get()
+        html = _html(mail.outbox[0])
+        self.assertIn(f'href="{site_base_url()}products/x/"', html)
+        self.assertIn('href="https://a.example/"', html)
+
     def test_segment_audience_refused_when_nobody_answers(self):
         from core.hooks import hook_registry
         from plugins.installed.newsletter.campaigns import CampaignError, audience_emails

@@ -108,3 +108,59 @@ class ScheduleRulesTests(TestCase):
 
         with self.assertRaises(CampaignError):
             cancel_campaign(_campaign())
+
+
+@override_settings(
+    EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
+    DEFAULT_FROM_EMAIL='shop@example.com',
+)
+class QueuedScheduleTests(TestCase):
+    """The beat's message can wait in the queue; the campaign may change meanwhile."""
+
+    def setUp(self):
+        from unittest import mock
+
+        NewsletterSubscriber.objects.create(email='r@example.com', status='confirmed')
+        self.c = _campaign(status='scheduled', scheduled_at=timezone.now() - timedelta(minutes=1))
+        with mock.patch.object(send_campaign, 'delay') as delay:
+            send_due_campaigns()  # queued, not yet run
+        self.call = delay.call_args
+
+    def _run_queued(self):
+        return send_campaign.apply(args=self.call.args, kwargs=self.call.kwargs).get()
+
+    def test_cancelled_after_queueing_is_not_sent(self):
+        from plugins.installed.newsletter.campaigns import cancel_campaign
+
+        cancel_campaign(self.c)
+        self._run_queued()
+        self.c.refresh_from_db()
+        self.assertEqual(self.c.status, 'draft')
+        self.assertEqual(mail.outbox, [])
+
+    def test_rescheduled_after_queueing_waits_for_the_new_time(self):
+        from plugins.installed.newsletter.campaigns import cancel_campaign, schedule_campaign
+
+        cancel_campaign(self.c)
+        schedule_campaign(self.c, timezone.now() + timedelta(hours=8))
+        self._run_queued()
+        self.c.refresh_from_db()
+        self.assertEqual(self.c.status, 'scheduled')
+        self.assertEqual(mail.outbox, [])
+
+    def test_a_queued_send_past_the_cutoff_is_not_sent(self):
+        EmailCampaign.objects.filter(pk=self.c.pk).update(
+            scheduled_at=timezone.now() - timedelta(hours=25)
+        )
+        self._run_queued()
+        self.assertEqual(mail.outbox, [])
+
+    def test_the_manual_send_never_takes_a_scheduled_campaign(self):
+        send_campaign.delay(str(self.c.pk))
+        self.c.refresh_from_db()
+        self.assertEqual(self.c.status, 'scheduled')
+        self.assertEqual(mail.outbox, [])
+
+    def test_the_queued_send_goes_when_nothing_changed(self):
+        self._run_queued()
+        self.assertEqual(len(mail.outbox), 1)
