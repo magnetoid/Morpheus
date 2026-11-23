@@ -112,6 +112,59 @@ class ScheduleTests(_Base):
         self.assertFalse(JourneyStep.objects.filter(order=self.order).exists())
 
 
+class ReviewFixTests(_Base):
+    """Found by the review before merge (v0.189.0)."""
+
+    def test_the_worker_sees_a_setting_saved_by_another_process(self):
+        from plugins.installed.post_purchase.handlers import _config
+        from plugins.models import PluginConfig
+        from plugins.registry import app_registry
+
+        plugin = app_registry.get('post_purchase')
+        self.addCleanup(plugin.invalidate_config_cache)
+        self.assertFalse(_config()['review_request_enabled'])  # warms this process's copy
+        # The dashboard saves it in a web worker; this process only sees the row.
+        PluginConfig.objects.update_or_create(
+            plugin_name='post_purchase', defaults={'config': {'review_request_enabled': True}}
+        )
+        plugin._config_read_at -= 60
+        self.assertTrue(_config()['review_request_enabled'])
+
+    def test_the_arrival_check_waits_for_the_delivery(self):
+        from plugins.installed.post_purchase.handlers import on_order_delivered, on_order_fulfilled
+
+        set_app_settings(self, 'post_purchase', **ALL_ON)
+        on_order_fulfilled(order=self.order)
+        steps = set(JourneyStep.objects.filter(order=self.order).values_list('step', flat=True))
+        self.assertEqual(steps, {'review_request', 'nps_survey'})
+        on_order_delivered(order=self.order)
+        self.assertTrue(
+            JourneyStep.objects.filter(order=self.order, step='delivered_followup').exists()
+        )
+
+    def test_an_old_backlog_never_holds_up_a_step_that_is_due(self):
+        set_app_settings(self, 'post_purchase', **ALL_ON)
+        Order.objects.filter(pk=self.order.pk).update(
+            metadata={'consent': {'managed': True, 'analytics': False, 'marketing': True}}
+        )
+        old = []
+        for i in range(120):
+            o = Order.objects.create(
+                email=f'old{i}@example.com', subtotal=_usd(1), total=_usd(1), status='shipped'
+            )
+            old.append(
+                JourneyStep(
+                    order=o, step='tracking_sent', due_at=timezone.now() - timedelta(days=90)
+                )
+            )
+        JourneyStep.objects.bulk_create(old)
+        fresh = self.due('delivered_followup')
+        self.run_due()
+        fresh.refresh_from_db()
+        self.assertEqual(fresh.status, 'sent')
+        self.assertFalse(JourneyStep.objects.filter(status='queued').exists())
+
+
 class SendTests(_Base):
     def setUp(self):
         super().setUp()

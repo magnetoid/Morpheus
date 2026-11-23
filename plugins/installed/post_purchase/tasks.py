@@ -35,6 +35,7 @@ def process_due_steps() -> dict:
         return dispatched  # the beat entry outlives a switch-off
     cfg = _config()
     now = timezone.now()
+    _skip_in_bulk(cfg, now)
     qs = JourneyStep.objects.filter(status='queued', due_at__lte=now).order_by('due_at')[
         :BATCH_SIZE
     ]
@@ -79,6 +80,19 @@ _SETTING = {
     'review_request': 'review_request_enabled',
     'nps_survey': 'nps_survey_enabled',
 }
+
+
+def _skip_in_bulk(cfg: dict, now) -> None:
+    """Skip, in two updates, every due step that could never be sent: too late,
+    switched off, or not this app's to send. A store's old backlog (months of
+    orders queued while nothing sent them) otherwise filled each batch, and a
+    step coming due waited behind it until it was late too."""
+    from plugins.installed.post_purchase.models import JourneyStep  # noqa: PLC0415
+
+    due = JourneyStep.objects.filter(status='queued', due_at__lte=now)
+    due.filter(due_at__lt=now - MAX_LATE).update(status='skipped', error='late', updated_at=now)
+    sendable = [step for step, key in _SETTING.items() if cfg.get(key)]
+    due.exclude(step__in=sendable).update(status='skipped', error='switched off', updated_at=now)
 
 
 def _skip_reason(step, cfg: dict) -> str:

@@ -2103,7 +2103,11 @@ step is a setting that starts off (the store's behaviour so far: no email); a st
 does not mail old orders; and the review request and the survey are marketing, sent only when
 `core.consent.allowed('marketing', order=…)` and the address is not in `JourneyOptOut` (RFC 8058
 pair; the GET page asks, a POST records, because link scanners fetch every GET). Each step is
-claimed under a row lock, so overlapping runs send it once. The tracking step is dropped: core's
+claimed under a row lock, so overlapping runs send it once, and the steps that can never go (late,
+switched off) are skipped in bulk first, or a store's backlog filled every batch of 100 until the
+steps coming due were late too. The app sets `config_fresh_s`: the worker reads the switches, and
+without a window it kept the ones it first read until the next deploy. The arrival check is queued
+on `ORDER_DELIVERED` only: counted from shipping it asked "did it arrive?" before the parcel had. The tracking step is dropped: core's
 shipping email carries tracking. Count clicks and orders, never opens: links carry
 `utm_source=post_purchase`. Guarded by `post_purchase/tests/test_journey_emails.py`.
 

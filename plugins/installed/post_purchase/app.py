@@ -16,6 +16,9 @@ class PostPurchasePlugin(Plugin):
         'one product on the order confirmation page.'
     )
     requires = ['orders', 'catalog']
+    # The Celery worker reads these too: without a window it would keep the
+    # settings it first read until the next deploy (sending what was switched off).
+    config_fresh_s = 30.0
 
     def ready(self) -> None:
         from plugins.installed.post_purchase.handlers import (  # noqa: PLC0415
@@ -89,7 +92,7 @@ class PostPurchasePlugin(Plugin):
                     'default': 24,
                     'minimum': 1,
                     'maximum': 720,
-                    'title': 'Hours after delivery',
+                    'title': 'Hours after the order is marked delivered',
                 },
                 'review_request_enabled': {
                     'type': 'boolean',

@@ -23,6 +23,7 @@ surfaced in **Dashboard → Settings → Version & updates**.
 - The review request and the survey are marketing: they go only to a customer who accepted marketing at checkout when your store asks for consent, and carry a one-click unsubscribe. The arrival check is about the order and goes to everyone.
 - An email more than three days past its time is skipped, not sent late, so switching one on never mails customers from old orders. A cancelled or refunded order, or an exchange sent for a return, gets nothing.
 - The emails are editable under Emails like every other, signed with your store's name and sent to the order's address. Their links are tagged, so the Attribution report counts the visits and orders they bring (source post_purchase); opens are not counted.
+- The arrival check goes once the order is marked delivered; the review request and the survey count from delivery, or from shipping when no delivery is recorded.
 - The separate tracking email is gone: the store's own shipping email already carries tracking for every parcel.
 
 ## v0.188.1 — 2026-11-23
