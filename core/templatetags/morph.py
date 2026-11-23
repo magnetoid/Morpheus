@@ -99,7 +99,9 @@ def business_days(value) -> str:
         return ''
     if lo == hi:
         return ngettext('%(n)s business day', '%(n)s business days', hi) % {'n': hi}
-    return ngettext('%(min)s–%(max)s business day', '%(min)s–%(max)s business days', hi) % {
+    # A range is plural in English whatever its last number ("0–1 business days");
+    # languages that agree with the last number (sr, hr) choose by it.
+    return ngettext('%(min)s–%(max)s business days', '%(min)s–%(max)s business days', hi) % {
         'min': lo,
         'max': hi,
     }

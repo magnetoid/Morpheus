@@ -5131,7 +5131,7 @@ msgstr[2] "%(n)s radnih dana"
 
 #: core/templatetags/morph.py
 #, python-format
-msgid "%(min)s–%(max)s business day"
+msgid "%(min)s–%(max)s business days"
 msgid_plural "%(min)s–%(max)s business days"
 msgstr[0] "%(min)s–%(max)s radni dan"
 msgstr[1] "%(min)s–%(max)s radna dana"

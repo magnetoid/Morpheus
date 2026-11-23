@@ -292,6 +292,9 @@ def estimate_shown() -> bool:
     return _shipping_config().get('show_delivery_estimate') is True
 
 
+MAX_ESTIMATE_DAYS = 365
+
+
 def delivery_estimate(days_min, days_max) -> dict | None:
     """Business days from order to door for a rate: the handling time plus the
     rate's transit days, the same numbers the graph publishes. None when the
@@ -300,7 +303,12 @@ def delivery_estimate(days_min, days_max) -> dict | None:
     if transit is None:
         return None
     handling = handling_days() or (0, 0)
-    return {'min': handling[0] + transit[0], 'max': handling[1] + transit[1]}
+    lo, hi = handling[0] + transit[0], handling[1] + transit[1]
+    # Past a year the order would not keep it (orders.clean_delivery_estimate),
+    # so checkout never shows a promise the order page and email then drop.
+    if hi > MAX_ESTIMATE_DAYS:
+        return None
+    return {'min': lo, 'max': hi}
 
 
 def _transit_period(rate) -> dict | None:

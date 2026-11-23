@@ -111,6 +111,12 @@ class DeliveryEstimateTests(TestCase):
         self.assertNotIn('estimate', self._rate_dict(rate))
         self.assertNotIn('delivery_estimate', self._breakdown(rate=rate)['meta'])
 
+    def test_a_range_the_order_cannot_keep_is_not_shown(self):
+        _config(show_delivery_estimate=True, handling_days_min=10, handling_days_max=10)
+        rate = self._rate(350, 360, name='Very slow')
+        self.assertNotIn('estimate', self._rate_dict(rate))
+        self.assertNotIn('delivery_estimate', self._breakdown(rate=rate)['meta'])
+
     def test_free_shipping_still_stamps(self):
         _config(show_delivery_estimate=True)
         out = self._breakdown(meta={'free_shipping': True})

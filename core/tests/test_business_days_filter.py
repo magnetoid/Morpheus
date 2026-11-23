@@ -26,6 +26,9 @@ class BusinessDaysTests(SimpleTestCase):
     def test_one_day(self):
         self.assertEqual(render({'min': 1, 'max': 1}), '1 business day')
 
+    def test_a_range_ending_in_one_is_plural(self):
+        self.assertEqual(render({'min': 0, 'max': 1}), '0–1 business days')
+
     def test_unusable_values_print_nothing(self):
         for value in (
             None,
