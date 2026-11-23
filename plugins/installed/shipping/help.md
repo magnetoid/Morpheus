@@ -4,16 +4,16 @@ summary: Sets shipping zones and costs, including live carrier rates and carrier
 
 ## What it's for
 
-This app sets the countries and regions you ship to and what shipping costs in each, and adds that cost to the order at checkout. Connect Shippo or EasyPost and it can quote a live carrier rate and buy a parcel's label from the order page.
+This app sets where you ship and what it costs, and adds that cost to the order at checkout. Connect Shippo or EasyPost and it can quote a live carrier rate and buy a parcel's label from the order page.
 
 ## Set it up
 
-Add at least one [shipping zone](page:zones) with the countries or regions it covers, then add a rate to it. A rate can be a flat price, a price that turns free once the cart reaches an amount, a table of tiers by weight or by order total, or pickup, where the customer collects the order (free, or the fee you enter). Every amount is in your store's currency. To quote live rates or buy labels, add the carrier's key and your origin address on the same page. A label is bought at the cheapest rate, the fastest, or the carrier and service you name there. Enter your handling time there too: the days you take to send an order and the hour after which it waits a day. Until then, search engines hear nothing about it.
+Add at least one [shipping zone](page:zones) with the countries or regions it covers, then add a rate to it. A rate can be a flat price, a price that turns free once the cart reaches an amount, a table of tiers by weight or by order total, or pickup, where the customer collects the order (free, or the fee you enter). Every amount is in your store's currency. To quote live rates or buy labels, add the carrier's key and your origin address on the same page. A label is bought at the cheapest rate, the fastest, or the carrier and service you name there. Enter your handling time there too: the days you take to send an order, and the hour after which it waits a day. Tick Show delivery estimate at checkout to show that time plus each rate's delivery days under the shipping choices; the order page and email repeat it.
 
 ## Common tasks
 
-- Add or edit a zone, its countries and its rates on [Shipping zones](page:zones); the rates table says what each one charges.
-- A rate takes up to ten tiers; the first starts at 0, so every cart gets a price.
+- Add or edit a zone, its countries and its rates on [Shipping zones](page:zones).
+- A rate takes up to ten tiers, the first starting at 0.
 - Buy a label for a parcel from the Shipping labels panel on an order, or ship everything left on the order with one label in one step.
 - Ask Linda to list your zones, change a rate or the handling time, or buy a label; she asks for your yes first.
 
