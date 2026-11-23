@@ -5120,3 +5120,19 @@ msgstr "Ako se broj porudžbine i imejl poklapaju sa porudžbinom, potvrda prije
 
 msgid "No email within an hour? Check the order number and email and send it again, or contact us."
 msgstr "Nema imejla u roku od sat vremena? Provjerite broj porudžbine i imejl i pošaljite ponovo ili nam se javite."
+
+#: core/templatetags/morph.py
+#, python-format
+msgid "%(n)s business day"
+msgid_plural "%(n)s business days"
+msgstr[0] "%(n)s radni dan"
+msgstr[1] "%(n)s radna dana"
+msgstr[2] "%(n)s radnih dana"
+
+#: core/templatetags/morph.py
+#, python-format
+msgid "%(min)s–%(max)s business day"
+msgid_plural "%(min)s–%(max)s business days"
+msgstr[0] "%(min)s–%(max)s radni dan"
+msgstr[1] "%(min)s–%(max)s radna dana"
+msgstr[2] "%(min)s–%(max)s radnih dana"
