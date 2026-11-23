@@ -1,0 +1,8 @@
+{% autoescape off %}We hope order #{{ order.order_number }} arrived safely and as expected.
+
+If anything is missing or not right, reply to this email and we'll put it right.
+
+{{ shop_url }}
+
+— {{ store_name }}
+{% endautoescape %}

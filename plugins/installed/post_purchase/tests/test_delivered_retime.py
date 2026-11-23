@@ -13,10 +13,20 @@ from django.test import TestCase
 from django.utils import timezone
 from djmoney.money import Money
 
+from plugins.testing import set_app_settings
+
 
 class DeliveredRetimeTests(TestCase):
     def setUp(self):
         from plugins.installed.orders.models import Order
+
+        set_app_settings(
+            self,
+            'post_purchase',
+            delivered_followup_enabled=True,
+            review_request_enabled=True,
+            nps_survey_enabled=True,
+        )
 
         self.order = Order.objects.create(
             email='b@example.com',

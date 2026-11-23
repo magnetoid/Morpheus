@@ -12,4 +12,5 @@ urlpatterns = [
     # Every customer who submitted a score saw that instead of a thank-you.
     path('nps/thanks/', views.nps_thanks, name='nps_thanks'),
     path('nps/<str:token>/', views.nps_form, name='nps_form'),
+    path('unsubscribe/<str:token>/', views.unsubscribe, name='unsubscribe'),
 ]

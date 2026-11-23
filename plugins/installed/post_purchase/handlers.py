@@ -1,13 +1,11 @@
 """Hook subscribers for the post-purchase journey.
 
-These events drive the entire chain:
-  - ORDER_PLACED      → schedule the tracking_sent step (fires when
-                        shipment is created; the orders/shipping
-                        plugin handles the actual email).
-  - ORDER_FULFILLED   → schedule the three follow-up steps
-                        (delivered_followup, review_request,
-                        nps_survey) at their configured offsets.
-  - ORDER_DELIVERED   → count those offsets again from the delivery.
+These events drive the entire chain (each step only while its setting is on;
+every step starts off):
+  - ORDER_FULFILLED   → schedule the review request and the survey at
+                        their configured offsets (a guess at delivery).
+  - ORDER_DELIVERED   → schedule the arrival check, and count every
+                        offset again from the delivery.
 
 Each step is recorded as a JourneyStep row with `due_at` set to when
 the email should fire. The Celery beat task (tasks.py) picks them up
@@ -19,61 +17,38 @@ from __future__ import annotations
 import logging
 from datetime import timedelta
 
-from django.conf import settings
 from django.utils import timezone
 
 logger = logging.getLogger('morpheus.post_purchase.handlers')
 
 
-def on_order_placed(*, order=None, **_) -> None:
-    """Schedule the tracking_sent step when shipment is created.
+def _followup_schedule(cfg: dict, anchor, *, delivered: bool) -> list[tuple]:
+    """``[(step, due_at)]`` for the switched-on follow-ups, counted from ``anchor``.
 
-    For Phase 1 we register the step at order-placed time with a
-    due_at = order.placed_at; the tracking step will fire as soon as
-    a tracking number is attached (we read it from the order at send
-    time). This avoids needing a separate SHIPMENT_CREATED hook.
+    The arrival check only once the order is delivered: counted from shipping it
+    asked "did it arrive?" before the parcel had.
     """
-    if order is None:
-        return
-    cfg = _config()
-    if not cfg.get('tracking_email_enabled', True):
-        return
-
-    try:
-        from plugins.installed.post_purchase.models import JourneyStep  # noqa: PLC0415
-
-        JourneyStep.objects.get_or_create(
-            order=order,
-            step='tracking_sent',
-            defaults={'due_at': timezone.now()},
-        )
-    except Exception:  # noqa: BLE001
-        logger.exception('post_purchase: scheduling tracking step failed')
-
-
-def _followup_schedule(cfg: dict, anchor) -> list[tuple]:
-    """``[(step, due_at)]`` for the switched-on follow-ups, counted from ``anchor``."""
     schedule = []
-    if cfg.get('delivered_followup_enabled', True):
+    if delivered and cfg.get('delivered_followup_enabled'):
         hours = int(cfg.get('delivered_followup_delay_hours', 24))
         schedule.append(('delivered_followup', anchor + timedelta(hours=hours)))
-    if cfg.get('review_request_enabled', True):
+    if cfg.get('review_request_enabled'):
         days = int(cfg.get('review_request_delay_days', 14))
         schedule.append(('review_request', anchor + timedelta(days=days)))
-    if cfg.get('nps_survey_enabled', True):
+    if cfg.get('nps_survey_enabled'):
         days = int(cfg.get('nps_survey_delay_days', 30))
         schedule.append(('nps_survey', anchor + timedelta(days=days)))
     return schedule
 
 
 def on_order_fulfilled(*, order=None, **_) -> None:
-    """Schedule the three follow-up steps at their configured delays."""
+    """Schedule the review request and the survey at their configured delays."""
     if order is None:
         return
     try:
         from plugins.installed.post_purchase.models import JourneyStep  # noqa: PLC0415
 
-        for step, due in _followup_schedule(_config(), timezone.now()):
+        for step, due in _followup_schedule(_config(), timezone.now(), delivered=False):
             JourneyStep.objects.get_or_create(order=order, step=step, defaults={'due_at': due})
     except Exception:  # noqa: BLE001
         logger.exception('post_purchase: scheduling fulfilled steps failed')
@@ -91,7 +66,7 @@ def on_order_delivered(*, order=None, **_) -> None:
     try:
         from plugins.installed.post_purchase.models import JourneyStep  # noqa: PLC0415
 
-        for step, due in _followup_schedule(_config(), timezone.now()):
+        for step, due in _followup_schedule(_config(), timezone.now(), delivered=True):
             row, created = JourneyStep.objects.get_or_create(
                 order=order, step=step, defaults={'due_at': due}
             )
@@ -103,13 +78,11 @@ def on_order_delivered(*, order=None, **_) -> None:
 
 
 def _config() -> dict:
-    """Resolve PluginConfig['post_purchase']['config'] with sane defaults."""
-    try:
-        from plugins.models import PluginConfig  # noqa: PLC0415
+    """The app's settings over the schema's defaults (every step starts off)."""
+    from plugins.registry import app_registry  # noqa: PLC0415
 
-        row = PluginConfig.objects.filter(plugin_name='post_purchase').first()
-        if row and isinstance(row.config, dict):
-            return row.config
-    except Exception:  # noqa: BLE001, S110
-        pass
-    return getattr(settings, 'POST_PURCHASE_DEFAULTS', {})
+    plugin = app_registry.get('post_purchase')
+    if plugin is None:
+        return {}
+    props = (plugin.get_config_schema() or {}).get('properties') or {}
+    return {key: plugin.get_config_value(key, prop.get('default')) for key, prop in props.items()}

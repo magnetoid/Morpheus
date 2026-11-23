@@ -2094,6 +2094,26 @@ dicts so its webhook payload serialises. Guarded by `orders/tests/test_returnabl
 `test_return_emails.py`, `inventory/tests/test_exchange_stock.py` and
 `admin_dashboard/tests/test_return_close_form.py`.
 
+**Landmine — a queue nothing drains looks like a feature, and draining it mails the backlog
+(v0.189.0).** post_purchase queued a tracking, delivery, review and survey step for every order on
+every store for months, while `post_purchase.process_due_steps` was never in the beat schedule, so
+nothing went out and the guide said so. It is scheduled now, and three rules keep that safe: every
+step is a setting that starts off (the store's behaviour so far: no email); a step more than
+`tasks.MAX_LATE` (3 days) past its time is skipped (`error='late'`), never sent, so switching one on
+does not mail old orders; and the review request and the survey are marketing, sent only when
+`core.consent.allowed('marketing', order=…)` and the address is not in `JourneyOptOut` (RFC 8058
+pair; the GET page asks, a POST records, because link scanners fetch every GET). Each step is
+claimed under a row lock, so overlapping runs send it once, and the steps that can never go (late,
+switched off) are skipped in bulk first, or a store's backlog filled every batch of 100 until the
+steps coming due were late too. The app sets `config_fresh_s`: the worker reads the switches, and
+without a window it kept the ones it first read until the next deploy. A step is `sending` once handed to
+the mail queue and `sent` only when `EMAIL_DELIVERED` names its tag (`journey:<pk>`), because
+`send_templated_email` swallows a refused enqueue; one silent for an hour is queued once more, then
+failed. The arrival check is queued
+on `ORDER_DELIVERED` only: counted from shipping it asked "did it arrive?" before the parcel had. The tracking step is dropped: core's
+shipping email carries tracking. Count clicks and orders, never opens: links carry
+`utm_source=post_purchase`. Guarded by `post_purchase/tests/test_journey_emails.py`.
+
 **Landmine — `CART_CALCULATE_BREAKDOWN` priority IS the money order; a *tender*
 must run after tax+shipping.** The filter runs handlers lowest-priority-first
 (`core/hooks.py`). Each handler sees only the fields earlier ones have set, so a

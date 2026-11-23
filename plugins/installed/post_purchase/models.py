@@ -20,6 +20,7 @@ STEP_CHOICES = (
 
 STATUS_CHOICES = (
     ('queued', 'Queued'),
+    ('sending', 'Sending'),  # handed to the mail queue; 'sent' once EMAIL_DELIVERED says so
     ('sent', 'Sent'),
     ('skipped', 'Skipped'),
     ('failed', 'Failed'),
@@ -109,3 +110,22 @@ class NPSResponse(models.Model):
         if self.score >= 7:
             return 'passive'
         return 'detractor'
+
+
+class JourneyOptOut(models.Model):
+    """An address that unsubscribed from the post-purchase marketing emails.
+
+    The review request and the survey are marketing; the delivery follow-up is
+    service and still goes out. Written only by the one-click unsubscribe
+    (``unsubscribe.py``), keyed on the address so a guest can opt out too.
+    """
+
+    email = models.EmailField(unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'post_purchase_opt_out'
+        verbose_name = 'Post-purchase opt-out'
+
+    def __str__(self) -> str:
+        return self.email

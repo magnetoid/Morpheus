@@ -1,0 +1,10 @@
+{% extends "emails/_layout.html" %}
+{% block title %}Quick survey{% endblock %}
+{% block storename %}{{ store_name }}{% endblock %}
+{% block preheader %}One question, one click.{% endblock %}
+{% block body %}
+  <p>On a scale of 0 to 10, how likely are you to recommend {{ store_name }} to a friend?</p>
+  <p><a class="btn" href="{{ nps_url }}">Answer in one click</a></p>
+  <p>No sign-in needed.</p>
+{% endblock %}
+{% block footer %}{{ store_name }}. You get this because you ordered from us. <a href="{{ unsubscribe_url }}">Unsubscribe</a> from review requests and surveys.{% endblock %}

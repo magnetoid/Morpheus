@@ -1,0 +1,8 @@
+{% autoescape off %}On a scale of 0 to 10, how likely are you to recommend {{ store_name }} to a friend?
+
+Answer in one click (no sign-in needed): {{ nps_url }}
+
+— {{ store_name }}
+
+You get this because you ordered from us. Unsubscribe from review requests and surveys: {{ unsubscribe_url }}
+{% endautoescape %}
