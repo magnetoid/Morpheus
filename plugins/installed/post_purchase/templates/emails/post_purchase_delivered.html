@@ -1,0 +1,10 @@
+{% extends "emails/_layout.html" %}
+{% block title %}Did your order arrive?{% endblock %}
+{% block storename %}{{ store_name }}{% endblock %}
+{% block preheader %}A quick check on order #{{ order.order_number }}.{% endblock %}
+{% block body %}
+  <p>We hope order <strong>#{{ order.order_number }}</strong> arrived safely and as expected.</p>
+  <p>If anything is missing or not right, reply to this email and we'll put it right.</p>
+  <p><a class="btn" href="{{ shop_url }}">Visit {{ store_name }}</a></p>
+{% endblock %}
+{% block footer %}{{ store_name }}. Reply to this email if you need anything.{% endblock %}

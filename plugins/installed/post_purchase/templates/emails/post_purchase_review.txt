@@ -1,0 +1,10 @@
+{% autoescape off %}How was order #{{ order.order_number }}? A few honest words help other customers choose.
+{% if review_lines %}
+{% for line in review_lines %}- Review {{ line.name }}: {{ line.url }}
+{% endfor %}{% endif %}
+Thank you.
+
+— {{ store_name }}
+
+You get this because you ordered from us. Unsubscribe from review requests and surveys: {{ unsubscribe_url }}
+{% endautoescape %}

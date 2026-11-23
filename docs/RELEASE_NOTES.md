@@ -15,6 +15,16 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.189.0 — 2026-11-23
+
+**Emails after an order, when you switch them on**
+
+- After an order arrives, the store can email the customer three times: a check that it arrived, a request to review each product and a short NPS survey. Each email starts off; switch it on and set its timing under Post-purchase. Until now these emails were scheduled for every order but never sent.
+- The review request and the survey are marketing: they go only to a customer who accepted marketing at checkout when your store asks for consent, and carry a one-click unsubscribe. The arrival check is about the order and goes to everyone.
+- An email more than three days past its time is skipped, not sent late, so switching one on never mails customers from old orders. A cancelled or refunded order, or an exchange sent for a return, gets nothing.
+- The emails are editable under Emails like every other, signed with your store's name and sent to the order's address. Their links are tagged, so the Attribution report counts the visits and orders they bring (source post_purchase); opens are not counted.
+- The separate tracking email is gone: the store's own shipping email already carries tracking for every parcel.
+
 ## v0.188.1 — 2026-11-23
 
 **No fallen snow under Dawnchild's header**

@@ -103,7 +103,8 @@ class OwnedHookTests(TestCase):
         from plugins.installed.post_purchase import handlers
 
         self.assertEqual(
-            self._owners(MorpheusEvents.ORDER_PLACED, handlers.on_order_placed), {'post_purchase'}
+            self._owners(MorpheusEvents.ORDER_DELIVERED, handlers.on_order_delivered),
+            {'post_purchase'},
         )
         self.assertEqual(
             self._owners(MorpheusEvents.ORDER_FULFILLED, handlers.on_order_fulfilled),

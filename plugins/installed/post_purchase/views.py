@@ -10,8 +10,10 @@ from __future__ import annotations
 import logging
 
 from django.core.signing import BadSignature, SignatureExpired, TimestampSigner
-from django.http import HttpRequest, HttpResponse
+from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
+from django.views.decorators.cache import never_cache
+from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 logger = logging.getLogger('morpheus.post_purchase.views')
@@ -80,3 +82,36 @@ def _resolve_order_or_none(token: str):
     except Exception:  # noqa: BLE001
         logger.exception('post_purchase: order lookup failed for token')
         return None
+
+
+@csrf_exempt
+@never_cache
+@require_http_methods(['GET', 'POST'])
+def unsubscribe(request: HttpRequest, token: str) -> HttpResponse:
+    """GET asks; POST (the button, or a mail client's one-click) records it.
+
+    No CSRF token: a mail client posts with none, the signed token is the
+    authority, and the only thing a POST can do is add this one address.
+    """
+    from morpheus.app.views import render as page  # noqa: PLC0415
+    from plugins.installed.post_purchase.unsubscribe import (  # noqa: PLC0415
+        email_from_token,
+        opt_out,
+    )
+
+    email = email_from_token(token)
+    if email is None:
+        raise Http404('Unknown unsubscribe link')
+    done = request.method == 'POST'
+    if done:
+        opt_out(email)
+    return page(
+        request,
+        'post_purchase/unsubscribe.html',
+        {
+            'email': email,
+            'done': done,
+            'seo_title': 'Unsubscribe',
+            'seo_noindex_reason': 'an unsubscribe page',
+        },
+    )

@@ -1,0 +1,18 @@
+{% extends "storefront/base.html" %}
+{% block content %}
+<section style="padding: 5rem 0; text-align:center;">
+  <div class="wrap" style="max-width: 500px;">
+    {% if done %}
+      <h1 class="display display-l">You're unsubscribed<span class="text-accent">.</span></h1>
+      <p class="lede">{{ email }} won't get review requests or surveys about orders any more. Emails about an order itself, like its delivery, still come.</p>
+    {% else %}
+      <h1 class="display display-l">Unsubscribe<span class="text-accent">?</span></h1>
+      <p class="lede">Stop review requests and surveys about your orders to {{ email }}.</p>
+      <form method="post" action="">
+        <button type="submit" class="btn btn-primary">Unsubscribe</button>
+      </form>
+    {% endif %}
+    <p><a href="/">Back to the store</a></p>
+  </div>
+</section>
+{% endblock %}

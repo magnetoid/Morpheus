@@ -10,10 +10,11 @@ and the row's status moves queued → sent | skipped | failed.
 from __future__ import annotations
 
 import logging
+from datetime import timedelta
 
 from celery import shared_task
-from django.conf import settings
 from django.core.signing import TimestampSigner
+from django.db import transaction
 from django.urls import reverse
 from django.utils import timezone
 
@@ -25,184 +26,211 @@ BATCH_SIZE = 100
 @shared_task(name='post_purchase.process_due_steps')
 def process_due_steps() -> dict:
     """Pick up every JourneyStep where due_at <= now and dispatch."""
+    from plugins.installed.post_purchase.handlers import _config  # noqa: PLC0415
     from plugins.installed.post_purchase.models import JourneyStep  # noqa: PLC0415
+    from plugins.registry import app_registry  # noqa: PLC0415
 
+    dispatched = {'sent': 0, 'skipped': 0, 'failed': 0}
+    if not app_registry.is_active('post_purchase'):
+        return dispatched  # the beat entry outlives a switch-off
+    cfg = _config()
     now = timezone.now()
-    qs = JourneyStep.objects.filter(status='queued', due_at__lte=now).select_related('order')[
+    qs = JourneyStep.objects.filter(status='queued', due_at__lte=now).order_by('due_at')[
         :BATCH_SIZE
     ]
 
-    dispatched = {'sent': 0, 'skipped': 0, 'failed': 0}
-    for step in qs:
-        try:
-            outcome = _dispatch_step(step)
-        except Exception as exc:  # noqa: BLE001 — never break the batch on one failure
-            logger.exception('post_purchase: step dispatch raised for %s', step.pk)
-            step.status = 'failed'
-            step.error = str(exc)[:1024]
-            step.save(update_fields=['status', 'error', 'updated_at'])
-            dispatched['failed'] += 1
-            continue
-        step.status = outcome
-        if outcome == 'sent':
-            step.sent_at = timezone.now()
-        step.save(update_fields=['status', 'sent_at', 'updated_at'])
+    for pk in qs.values_list('pk', flat=True):
+        # Claimed under a row lock, so two overlapping runs never send one step
+        # twice; the email itself is enqueued when this commits.
+        with transaction.atomic():
+            step = (
+                JourneyStep.objects.select_for_update(skip_locked=True, of=('self',))
+                .select_related('order')
+                .filter(pk=pk, status='queued')
+                .first()
+            )
+            if step is None:
+                continue
+            try:
+                with transaction.atomic():
+                    outcome = _dispatch_step(step, cfg)
+            except Exception as exc:  # noqa: BLE001 — never break the batch on one failure
+                logger.exception('post_purchase: step dispatch raised for %s', step.pk)
+                outcome = 'failed'
+                step.error = str(exc)[:1024]
+            step.status = outcome
+            if outcome == 'sent':
+                step.sent_at = timezone.now()
+            step.save(update_fields=['status', 'sent_at', 'error', 'updated_at'])
         dispatched[outcome] = dispatched.get(outcome, 0) + 1
     return dispatched
 
 
-def _dispatch_step(step) -> str:
-    """Return 'sent' | 'skipped' on success, raise on failure."""
-    if step.step == 'tracking_sent':
-        return _send_tracking(step)
-    if step.step == 'delivered_followup':
-        return _send_delivered_followup(step)
-    if step.step == 'review_request':
-        return _send_review_request(step)
-    if step.step == 'nps_survey':
-        return _send_nps_survey(step)
-    return 'skipped'
+#: A step this far past its due time is skipped, never sent: switching a step on
+#: must not mail every order the store queued while it was off (or before C1, when
+#: nothing sent them at all).
+MAX_LATE = timedelta(days=3)
+
+#: The steps that are marketing: consent-gated, with a one-click unsubscribe.
+MARKETING = frozenset({'review_request', 'nps_survey'})
+
+_SETTING = {
+    'delivered_followup': 'delivered_followup_enabled',
+    'review_request': 'review_request_enabled',
+    'nps_survey': 'nps_survey_enabled',
+}
 
 
-# ---------------------------------------------------------------------------
-# Per-step senders. Phase 1 wires the audit + queue layer; the actual
-# email templates live in the existing notifications plugin and reuse
-# the order-confirmation transport.
-# ---------------------------------------------------------------------------
-
-
-def _send_tracking(step) -> str:
+def _skip_reason(step, cfg: dict) -> str:
+    """Why ``step`` is not sent, or '' when it may go."""
     order = step.order
-    tracking_number = (
-        (order.metadata or {}).get('tracking_number') if hasattr(order, 'metadata') else None
-    )
-    if not tracking_number:
-        # Skip until tracking number is available; a later run will catch it.
+    if step.step not in _SETTING:
+        return 'not sent by this app'  # tracking: core's shipping email carries it
+    if not cfg.get(_SETTING[step.step]):
+        return 'switched off'
+    if step.due_at < timezone.now() - MAX_LATE:
+        return 'late'
+    reason = _order_reason(order)
+    if reason:
+        return reason
+    return _marketing_reason(step) if step.step in MARKETING else ''
+
+
+def _order_reason(order) -> str:
+    if order.status in ('cancelled', 'refunded') or order.payment_status == 'refunded':
+        return 'order cancelled'
+    if (order.metadata or {}).get('exchange_of'):
+        return 'exchange order'  # the order it replaces had its own journey
+    if not _recipient(order):
+        return 'no email address'
+    return ''
+
+
+def _marketing_reason(step) -> str:
+    """A marketing step goes only with the order's consent, and never to an
+    address that unsubscribed."""
+    from core.consent import allowed  # noqa: PLC0415
+    from plugins.installed.post_purchase.unsubscribe import opted_out  # noqa: PLC0415
+
+    if not allowed('marketing', order=step.order):
+        return 'no consent'
+    if opted_out(_recipient(step.order)):
+        return 'opted out'
+    return ''
+
+
+def _dispatch_step(step, cfg: dict | None = None) -> str:
+    """Send ``step``'s email: 'sent', or 'skipped' with the reason in ``step.error``."""
+    from plugins.installed.post_purchase.handlers import _config  # noqa: PLC0415
+
+    reason = _skip_reason(step, cfg if cfg is not None else _config())
+    if reason:
+        step.error = reason
         return 'skipped'
-    _send_email(
-        order=order,
-        subject=f'Your order #{order.order_number} is on its way',
-        body=(
-            f'Hi,\n\nYour order #{order.order_number} has shipped. '
-            f'Tracking number: {tracking_number}.\n'
-        ),
-        kind='tracking_sent',
-    )
+    _SENDERS[step.step](step)
     return 'sent'
 
 
-def _send_delivered_followup(step) -> str:
+def _recipient(order) -> str:
+    return (getattr(order, 'email', '') or '').strip() or (
+        getattr(getattr(order, 'customer', None), 'email', '') or ''
+    ).strip()
+
+
+def _tagged(url: str, step: str) -> str:
+    """``url`` with the campaign tags the Attribution report counts visits and
+    orders by (no open pixel: an open says nothing)."""
+    sep = '&' if '?' in url else '?'
+    return f'{url}{sep}utm_source=post_purchase&utm_medium=email&utm_campaign={step}'
+
+
+def _send(step, key: str, subject: str, **extra) -> None:
+    from core.emails.handlers import send_templated_email  # noqa: PLC0415
+    from core.utils.site import site_base_url, store_name  # noqa: PLC0415
+
     order = step.order
-    _send_email(
-        order=order,
-        subject=f'Did order #{order.order_number} arrive safely?',
-        body=(
-            f'Hi,\n\nWe hope order #{order.order_number} arrived as expected. '
-            f"If anything is off, just reply to this email and we'll make it right.\n"
-        ),
-        kind='delivered_followup',
+    to = _recipient(order)
+    ctx = {
+        'order': order,
+        'store_name': store_name(),
+        'shop_url': _tagged(f'{site_base_url().rstrip("/")}/', step.step),
+        **extra,
+    }
+    headers = None
+    if step.step in MARKETING:
+        from plugins.installed.post_purchase import unsubscribe  # noqa: PLC0415
+
+        ctx['unsubscribe_url'] = unsubscribe.unsubscribe_url(to)
+        headers = unsubscribe.headers(to)
+    send_templated_email(
+        key, to=to, subject=subject, ctx=ctx, headers=headers, tag=f'journey:{step.pk}'
     )
-    return 'sent'
+
+
+def _send_delivered_followup(step) -> None:
+    order = step.order
+    _send(
+        step,
+        'post_purchase_delivered',
+        f'Did order #{order.order_number} arrive safely?',
+    )
+
+
+def _review_lines(order) -> list[dict]:
+    """``[{'name', 'url'}]``: each product's review form, tagged. Empty while the
+    reviews app is off (its route is not mounted)."""
+    from core.utils.site import site_base_url  # noqa: PLC0415
+
+    base = site_base_url().rstrip('/')
+    lines, seen = [], set()
+    for item in order.items.select_related('product'):
+        pid = getattr(item, 'product_id', None)
+        if not pid or pid in seen:
+            continue
+        try:
+            url = base + reverse('reviews:add', kwargs={'product_id': pid})
+        except Exception:  # noqa: BLE001, S112 — reviews off: no route, no line
+            continue
+        seen.add(pid)
+        name = item.product_name or getattr(item.product, 'name', '') or 'your item'
+        lines.append({'name': name, 'url': _tagged(url, 'review_request')})
+    return lines
 
 
 def _review_links(order) -> str:
-    """One 'Title — <review URL>' line per book on the order.
-
-    Deep-links straight to each product's review form (`reviews:add`) so the
-    reader lands one click from writing. Wrapped so a disabled reviews plugin
-    (no mounted URL) degrades to an empty list rather than erroring.
-    """
-    from morpheus.core import site_base_url  # noqa: PLC0415
-
-    base = site_base_url().rstrip('/')
-    lines = []
-    for item in order.items.all():
-        pid = getattr(item, 'product_id', None)
-        if not pid:
-            continue
-        name = (
-            getattr(item, 'product_name', '')
-            or (getattr(item.product, 'name', '') if getattr(item, 'product', None) else '')
-            or 'your book'
-        )
-        try:
-            url = base + reverse('reviews:add', kwargs={'product_id': pid})
-        except Exception:  # noqa: BLE001, S112 — reviews disabled / no route: skip line
-            continue
-        lines.append(f'• {name} — {url}')
-    return '\n'.join(lines)
+    """One 'name — url' line per product (the plain-text form of the links)."""
+    return '\n'.join(f'• {line["name"]} — {line["url"]}' for line in _review_lines(order))
 
 
-def _send_review_request(step) -> str:
+def _send_review_request(step) -> None:
     order = step.order
-    links = _review_links(order)
-    body = (
-        f"Hi,\n\nWe'd love your honest review of your recent order "
-        f'#{order.order_number}. A few words help other readers choose.\n'
+    _send(
+        step,
+        'post_purchase_review',
+        f'How was order #{order.order_number}?',
+        review_lines=_review_lines(order),
     )
-    if links:
-        body += '\nReview your books:\n' + links + '\n'
-    body += '\nThank you,\nThe dot books team\n'
-    _send_email(
-        order=order,
-        subject=f'How was order #{order.order_number}?',
-        body=body,
-        kind='review_request',
-    )
-    return 'sent'
 
 
-def _send_nps_survey(step) -> str:
+def _send_nps_survey(step) -> None:
+    from core.utils.site import site_base_url  # noqa: PLC0415
+
     order = step.order
-    token = _nps_token(order)
-    nps_path = reverse('post_purchase:nps_form', kwargs={'token': token})
-    nps_url = f'{_site_url()}{nps_path}'
-    _send_email(
-        order=order,
-        subject='Quick 30-second survey?',
-        body=(
-            f'Hi,\n\nOn a scale of 0-10, how likely are you to recommend our shop '
-            f'to a friend or colleague?\n\n{nps_url}\n\nOne click. No login required.\n'
-        ),
-        kind='nps_survey',
+    path = reverse('post_purchase:nps_form', kwargs={'token': _nps_token(order)})
+    _send(
+        step,
+        'post_purchase_nps',
+        'Quick 30-second survey?',
+        nps_url=_tagged(f'{site_base_url().rstrip("/")}{path}', 'nps_survey'),
     )
-    return 'sent'
 
 
-# ---------------------------------------------------------------------------
-# Plumbing
-# ---------------------------------------------------------------------------
-
-
-def _send_email(*, order, subject: str, body: str, kind: str) -> None:
-    """Thin shim over Django's send_mail. The notifications plugin can
-    later override `post_purchase.notify` via a hook if shops want
-    branded HTML templates.
-    """
-    from django.core.mail import send_mail  # noqa: PLC0415
-
-    recipient = getattr(order, 'customer_email', None) or getattr(
-        getattr(order, 'customer', None), 'email', None
-    )
-    if not recipient:
-        logger.warning('post_purchase: no recipient on order %s; skipping %s', order.pk, kind)
-        return
-    send_mail(
-        subject=subject,
-        message=body,
-        from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', 'shop@localhost'),
-        recipient_list=[recipient],
-        fail_silently=False,
-    )
+_SENDERS = {
+    'delivered_followup': _send_delivered_followup,
+    'review_request': _send_review_request,
+    'nps_survey': _send_nps_survey,
+}
 
 
 def _nps_token(order) -> str:
     return TimestampSigner(salt='post_purchase.nps').sign(str(order.pk))
-
-
-def _site_url() -> str:
-    base = getattr(settings, 'SITE_URL', '')
-    if base:
-        return base.rstrip('/')
-    hosts = getattr(settings, 'ALLOWED_HOSTS', ['localhost']) or ['localhost']
-    return f'https://{hosts[0].lstrip(".")}'

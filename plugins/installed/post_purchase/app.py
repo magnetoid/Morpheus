@@ -11,9 +11,9 @@ class PostPurchasePlugin(Plugin):
     label = 'Post-purchase journey'
     version = '1.0.0'
     description = (
-        'Schedules a tracking, delivered, review-request and NPS step per order, '
-        'runs the NPS survey and report, and suggests one product on the order '
-        'confirmation page.'
+        'Emails a delivery check, a review request and an NPS survey after each '
+        'order, as you switch them on, runs the survey and its report, and suggests '
+        'one product on the order confirmation page.'
     )
     requires = ['orders', 'catalog']
 
@@ -21,17 +21,20 @@ class PostPurchasePlugin(Plugin):
         from plugins.installed.post_purchase.handlers import (  # noqa: PLC0415
             on_order_delivered,
             on_order_fulfilled,
-            on_order_placed,
         )
 
         # Owned, so the bus stops calling them while the app is off.
-        self.register_hook(events.ORDER_PLACED, on_order_placed, priority=60)
         self.register_hook(events.ORDER_FULFILLED, on_order_fulfilled, priority=60)
         self.register_hook(events.ORDER_DELIVERED, on_order_delivered, priority=60)
         self.register_urls(
             'plugins.installed.post_purchase.urls',
             prefix='post-purchase/',
             namespace='post_purchase',
+        )
+        # Sends the steps that are due (registered name, not the module path).
+        self.register_celery_beat(
+            'post_purchase:process_due_steps',
+            {'task': 'post_purchase.process_due_steps', 'schedule': 15 * 60},
         )
 
     def contribute_dashboard_cards(self) -> list:
@@ -72,11 +75,48 @@ class PostPurchasePlugin(Plugin):
         ]
 
     def get_config_schema(self) -> dict:
-        # The journey's timing runs on the defaults in handlers.py: nothing sends
-        # its emails yet, so the page offers no controls for them.
+        # Every email starts off: until v0.189.0 none was ever sent.
         return {
             'type': 'object',
             'properties': {
+                'delivered_followup_enabled': {
+                    'type': 'boolean',
+                    'default': False,
+                    'title': 'Ask whether the order arrived',
+                },
+                'delivered_followup_delay_hours': {
+                    'type': 'integer',
+                    'default': 24,
+                    'minimum': 1,
+                    'maximum': 720,
+                    'title': 'Hours after delivery',
+                },
+                'review_request_enabled': {
+                    'type': 'boolean',
+                    'default': False,
+                    'title': 'Ask for a review',
+                    'description': "Marketing: sent only with the customer's consent.",
+                },
+                'review_request_delay_days': {
+                    'type': 'integer',
+                    'default': 14,
+                    'minimum': 1,
+                    'maximum': 365,
+                    'title': 'Days after delivery',
+                },
+                'nps_survey_enabled': {
+                    'type': 'boolean',
+                    'default': False,
+                    'title': 'Send the NPS survey',
+                    'description': "Marketing: sent only with the customer's consent.",
+                },
+                'nps_survey_delay_days': {
+                    'type': 'integer',
+                    'default': 30,
+                    'minimum': 1,
+                    'maximum': 365,
+                    'title': 'Days after delivery',
+                },
                 'post_order_upsell_slug': {
                     'type': 'string',
                     'default': '',
@@ -94,6 +134,40 @@ class PostPurchasePlugin(Plugin):
         return SettingsPanel(
             label='Post-purchase',
             category='marketing',
-            description='The one product suggested on the order confirmation page.',
+            description=(
+                'The emails after an order (each starts off) and the one product '
+                'suggested on the order confirmation page.'
+            ),
             schema=self.get_config_schema(),
         )
+
+    def contribute_email_templates(self) -> list:
+        from morpheus.app import EmailTemplateDef  # noqa: PLC0415
+
+        return [
+            EmailTemplateDef(
+                key='post_purchase_delivered',
+                label='Did your order arrive?',
+                default_subject='Did order #{{ order.order_number }} arrive safely?',
+                group='Orders',
+                description='Asks after delivery whether the order arrived, and invites '
+                'a reply if anything is wrong.',
+            ),
+            EmailTemplateDef(
+                key='post_purchase_review',
+                label='Review request',
+                default_subject='How was order #{{ order.order_number }}?',
+                group='Marketing',
+                description='Asks for a review of each product on the order. Sent only '
+                "with the customer's consent, with an unsubscribe link.",
+            ),
+            EmailTemplateDef(
+                key='post_purchase_nps',
+                label='NPS survey',
+                default_subject='Quick 30-second survey?',
+                group='Marketing',
+                description='Asks how likely the customer is to recommend the shop, '
+                "from 0 to 10. Sent only with the customer's consent, with an "
+                'unsubscribe link.',
+            ),
+        ]
