@@ -1,0 +1,66 @@
+{% extends "storefront/base.html" %}
+{% load i18n %}
+{% comment %}
+returns_portal (C4): ask for a return or an exchange. Lists only the lines that may come
+back (orders.returns.returnable_lines); the others show why not.
+{% endcomment %}
+{% block content %}
+<section style="padding: 3rem 0 5rem;">
+  <div class="wrap" style="max-width: 640px;">
+    <p class="meta"><a href="/account/orders/{{ order.order_number }}/" style="color: var(--muted);">← {% blocktrans with number=order.order_number %}Order #{{ number }}{% endblocktrans %}</a></p>
+    <h1 class="display display-l" style="margin: .5rem 0 1rem;">{% trans "Return or exchange" %}</h1>
+    {% if error %}<p role="alert" style="border: 1px solid var(--rule); border-radius: 6px; padding: .75rem 1rem; margin-bottom: 1.25rem;">{{ error }}</p>{% endif %}
+    {% if returnable %}
+    <form method="post" data-return-form style="display: grid; gap: 1.25rem;">
+      {% csrf_token %}
+      <fieldset style="border: 1px solid var(--rule); border-radius: 6px; padding: 1rem;">
+        <legend class="meta">{% trans "What are you sending back?" %}</legend>
+        {% for row in returnable %}
+        <div data-return-line="{{ row.item.pk }}" style="display: grid; gap: .5rem; padding: .65rem 0; border-bottom: 1px solid var(--rule);">
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem;">
+            <label for="qty-{{ row.item.pk }}">{{ row.item.product_name }}{% if row.item.variant_name %} · {{ row.item.variant_name }}{% endif %}</label>
+            <input id="qty-{{ row.item.pk }}" type="number" name="qty_{{ row.item.pk }}" min="0" max="{{ row.units }}" value="{% if returnable|length == 1 %}1{% else %}0{% endif %}" style="width: 80px; height: 36px; padding: 0 .5rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper);">
+          </div>
+          {% if row.line.window_ends %}<p class="meta">{% blocktrans with day=row.line.window_ends|date:"j F Y" %}You can send it back until {{ day }}.{% endblocktrans %}</p>{% endif %}
+          {% if 'exchange' in offered and row.editions %}
+          <label class="meta" for="edition-{{ row.item.pk }}">{% trans "For an exchange, the edition you want instead" %}</label>
+          <select id="edition-{{ row.item.pk }}" name="edition_{{ row.item.pk }}" style="height: 40px; padding: 0 .75rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper);">
+            <option value="">{% trans "Choose an edition" %}</option>
+            {% for edition in row.editions %}<option value="{{ edition.pk }}">{{ edition.name }}</option>{% endfor %}
+          </select>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </fieldset>
+      <fieldset style="border: 0; padding: 0; display: grid; gap: .5rem;">
+        <legend class="meta">{% trans "How would you like it resolved?" %}</legend>
+        {% for key in offered %}
+        <label><input type="radio" name="outcome" value="{{ key }}"{% if forloop.first %} checked{% endif %}>
+          {% if key == 'refund' %}{% trans "Refund" %}{% elif key == 'store_credit' %}{% trans "Store credit" %}{% else %}{% trans "Exchange for another edition" %}{% endif %}
+          {% if key == 'exchange' and exchange_fee.amount > 0 %}<span class="meta">({% blocktrans with fee=exchange_fee %}a fee of {{ fee }}{% endblocktrans %})</span>{% elif key != 'exchange' and return_fee.amount > 0 %}<span class="meta">({% blocktrans with fee=return_fee %}a return fee of {{ fee }} comes off it{% endblocktrans %})</span>{% endif %}
+        </label>
+        {% endfor %}
+      </fieldset>
+      <div>
+        <label class="meta" for="return-reason" style="display:block; margin-bottom: .35rem;">{% trans "Reason" %}</label>
+        <select id="return-reason" name="reason" style="width:100%; height:44px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper);">
+          {% for key, label in reasons %}<option value="{{ key }}">{% trans label %}</option>{% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="meta" for="return-note" style="display:block; margin-bottom: .35rem;">{% trans "Anything we should know? (optional)" %}</label>
+        <textarea id="return-note" name="note" rows="4" style="width:100%; padding: .75rem 1rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper); resize: vertical;"></textarea>
+      </div>
+      <div><button type="submit" class="btn btn-primary">{% trans "Send my request" %}</button></div>
+    </form>
+    {% else %}
+    <p class="lede">{% trans "Nothing from this order can be returned right now." %}</p>
+    {% endif %}
+    {% if rows %}
+    <ul class="meta" style="margin-top: 1.5rem; list-style: none; padding: 0;">
+      {% for row in rows %}{% if not row.units %}<li>{{ row.item.product_name }}: {% trans row.why_not %}</li>{% endif %}{% endfor %}
+    </ul>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

@@ -37,6 +37,26 @@
       {% else %}<p class="text-[color:var(--text-muted)]">No line items recorded.</p>{% endif %}
     </div>
 
+    {% if resolution %}
+    <div class="card card-padded" data-return-resolution="{{ resolution.outcome }}">
+      <h2 class="font-semibold mb-2">The customer asked for</h2>
+      <p class="mb-2"><strong>{{ resolution.label }}</strong></p>
+      {% if exchanges %}
+      <table class="morph-table">
+        <thead><tr><th>Sent back</th><th>Wants instead</th></tr></thead>
+        <tbody>
+          {% for ex in exchanges %}
+          <tr>
+            <td>{{ ex.order_item.product_name }}{% if ex.order_item.variant_name %} · {{ ex.order_item.variant_name }}{% endif %}</td>
+            <td>{% if ex.variant %}{{ ex.variant.name }}{% else %}<span class="text-[color:var(--text-muted)]">No longer available</span>{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+    </div>
+    {% endif %}
+
     <div class="card card-padded">
       <h2 class="font-semibold mb-2">Customer note</h2>
       <pre class="whitespace-pre-wrap text-sm" style="font-family:inherit;">{{ rr.customer_note|default:"(none)" }}</pre>
@@ -78,11 +98,23 @@
     </div>
     {% elif rr.state == 'approved' or rr.state == 'received' %}
     <div class="card card-padded">
-      <h2 class="font-semibold mb-3">Close the return</h2>
-      <form method="post" class="space-y-2">
+      <h2 class="font-semibold mb-3">Mark received and close</h2>
+      <form method="post" class="space-y-3">
         {% csrf_token %}
-        <button type="submit" name="action" value="refund_money" class="btn btn-primary w-full">Refund to original payment</button>
-        <button type="submit" name="action" value="refund_credit" class="btn w-full">Issue store credit</button>
+        <fieldset class="space-y-1">
+          <legend class="text-sm font-medium mb-1">Outcome</legend>
+          <label class="flex items-center gap-2 text-sm"><input type="radio" name="outcome" value="refund"{% if chosen == 'refund' %} checked{% endif %}> Refund to the original payment</label>
+          {% if can_credit %}<label class="flex items-center gap-2 text-sm"><input type="radio" name="outcome" value="store_credit"{% if chosen == 'store_credit' %} checked{% endif %}> Store credit</label>{% endif %}
+          {% if can_exchange %}<label class="flex items-center gap-2 text-sm"><input type="radio" name="outcome" value="exchange"{% if chosen == 'exchange' %} checked{% endif %}> Exchange: send the chosen edition</label>{% endif %}
+        </fieldset>
+        <label class="block text-sm">
+          <span class="font-medium">Fee ({{ currency }})</span>
+          <input class="input w-full mt-1" type="text" inputmode="decimal" name="fee" value="{{ fee_value }}" placeholder="0.00">
+          <span class="text-xs text-[color:var(--text-muted)]">Taken off the refund or credit. On an exchange it comes off any difference first, and the customer pays the rest by a link. Leave it empty for none.</span>
+        </label>
+        <input type="hidden" name="prefill_outcome" value="{{ chosen }}">
+        <input type="hidden" name="prefill_fee" value="{{ fee_value }}">
+        <button type="submit" name="action" value="close" class="btn btn-primary w-full">Mark received and close</button>
       </form>
       <p class="text-xs text-[color:var(--text-muted)] mt-3">Store credit can be redeemed at checkout on a future order — no money moves through the gateway.</p>
     </div>

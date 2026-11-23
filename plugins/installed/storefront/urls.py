@@ -63,11 +63,6 @@ urlpatterns = [
         name='account_order_detail',
     ),
     path(
-        'account/orders/<str:order_number>/return/',
-        views.account_order_return,
-        name='account_order_return',
-    ),
-    path(
         'account/orders/<str:order_number>/cancel/',
         views.account_order_cancel,
         name='account_order_cancel',
@@ -83,10 +78,6 @@ urlpatterns = [
         'account/addresses/<uuid:address_id>/delete/',
         views.account_address_delete,
         name='account_address_delete',
-    ),
-    path('account/returns/', views.account_returns, name='account_returns'),
-    path(
-        'account/returns/<uuid:rma_id>/', views.account_return_status, name='account_return_status'
     ),
     path('account/credits/', views.account_credits, name='account_credits'),
     # /account/points/ (loyalty_points) and /account/downloads/ (digital_products)

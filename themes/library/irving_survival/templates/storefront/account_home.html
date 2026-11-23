@@ -21,10 +21,12 @@
         <p class="title">Addresses</p>
         <p class="meta" style="margin-top: .35rem;">Saved shipping &amp; billing addresses.</p>
       </a>
+      {% plugin_enabled "returns_portal" as returns_on %}{% if returns_on %}
       <a href="/account/returns/" class="book" style="display: block; padding: 1.25rem 1.5rem; border: 1px solid var(--rule); border-radius: 6px;">
         <p class="title">Returns{% if summary.pending_returns %} <span style="color:var(--muted); font-weight:400;">({{ summary.pending_returns }} open)</span>{% endif %}</p>
         <p class="meta" style="margin-top: .35rem;">Open and past return requests.</p>
       </a>
+      {% endif %}
       {% if summary.store_credit_balance or summary.gift_card_count %}
       <a href="/account/credits/" class="book" style="display: block; padding: 1.25rem 1.5rem; border: 1px solid var(--rule); border-radius: 6px;">
         <p class="title">Store credit &amp; gift cards</p>

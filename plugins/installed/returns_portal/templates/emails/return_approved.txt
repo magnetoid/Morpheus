@@ -1,0 +1,16 @@
+{% autoescape off %}Your return is approved.
+
+Order: #{{ order.order_number }}
+Return: {{ rma.rma_number }}
+
+{% for line in lines %}- {{ line.quantity }}× {{ line.item.product_name }}{% if line.item.variant_name %} ({{ line.item.variant_name }}){% endif %}
+{% endfor %}{% if instructions %}
+How to send it back:
+{{ instructions }}
+{% endif %}
+Please write the return number, {{ rma.rma_number }}, on the parcel. Once it arrives we close the return and write to you again.
+
+See your return: {{ status_url }}
+
+— The team
+{% endautoescape %}

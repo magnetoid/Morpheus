@@ -212,12 +212,17 @@ class InventoryPlugin(Plugin):
 
         InventoryService.release_reservation(order)
 
-    def on_return_refunded(self, return_request=None, **kwargs):
+    def on_return_refunded(self, return_request=None, exchange_order=None, **kwargs):
         """Restock the variant rows for items in a refunded return —
-        without this, returned merchandise becomes phantom stock."""
+        without this, returned merchandise becomes phantom stock. A free exchange
+        order is paid without ORDER_PAID, so its reservation becomes a sale here
+        (a charged one waits for its payment)."""
         if return_request is None:
             return
         from plugins.installed.inventory.services import InventoryService  # noqa: PLC0415
+
+        if exchange_order is not None and exchange_order.payment_status == 'paid':
+            InventoryService.commit_for_order(exchange_order)
 
         try:
             InventoryService.restock_for_return(return_request)

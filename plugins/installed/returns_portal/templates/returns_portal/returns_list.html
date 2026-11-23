@@ -1,0 +1,23 @@
+{% extends "storefront/base.html" %}
+{% load i18n %}
+{% comment %}returns_portal (C4): a signed-in customer's returns.{% endcomment %}
+{% block content %}
+<section style="padding: 3rem 0 5rem;">
+  <div class="wrap" style="max-width: 640px;">
+    <p class="meta"><a href="/account/" style="color: var(--muted);">← {% trans "Your account" %}</a></p>
+    <h1 class="display display-l" style="margin: .5rem 0 1.5rem;">{% trans "Returns" %}</h1>
+    {% if returns %}
+    <ul style="list-style: none; padding: 0; display: grid; gap: .75rem;">
+      {% for rr in returns %}
+      <li data-return-row="{{ rr.rma_number }}" style="border: 1px solid var(--rule); border-radius: 6px; padding: 1rem;">
+        <a href="/account/returns/{{ rr.pk }}/">{{ rr.rma_number }}</a>
+        <p class="meta">{% blocktrans with number=rr.order.order_number %}Order #{{ number }}{% endblocktrans %} · {{ rr.get_state_display }} · {{ rr.created_at|date:"j M Y" }}</p>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="lede">{% trans "You have no returns. To send something back, start from the order." %}</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

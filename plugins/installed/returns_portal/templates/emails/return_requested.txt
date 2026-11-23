@@ -1,0 +1,13 @@
+{% autoescape off %}We received your return request.
+
+Order: #{{ order.order_number }}
+Return: {{ rma.rma_number }}
+
+{% for line in lines %}- {{ line.quantity }}× {{ line.item.product_name }}{% if line.item.variant_name %} ({{ line.item.variant_name }}){% endif %}
+{% endfor %}
+We will look at it and write to you again. Please don't send anything back until we have approved it.
+
+See your return: {{ status_url }}
+
+— The team
+{% endautoescape %}

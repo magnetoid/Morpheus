@@ -63,6 +63,10 @@ class OrdersPlugin(Plugin):
         from plugins.installed.orders.models import Order  # noqa: PLC0415
 
         self.register_hook(events.ORDER_CANCELLED, customer_totals.on_order_cancelled, priority=90)
+        # An exchange order cancelled unpaid refunds its return instead (C4, v0.188.0).
+        from plugins.installed.orders import exchange  # noqa: PLC0415
+
+        self.register_hook(events.ORDER_CANCELLED, exchange.on_order_cancelled, priority=60)
         post_save.connect(
             customer_totals.on_order_saved, sender=Order, dispatch_uid='orders.totals_after_save'
         )
