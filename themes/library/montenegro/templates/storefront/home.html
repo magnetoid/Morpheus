@@ -13,7 +13,7 @@
   <div class="absolute inset-0 overflow-hidden">
     <picture>
       <source type="image/webp" srcset="{% static 'montenegro/hero-kotor-800.webp' %} 800w, {% static 'montenegro/hero-kotor.webp' %} 1600w" sizes="100vw">
-      <img src="{% static 'montenegro/hero-kotor.jpg' %}" srcset="{% static 'montenegro/hero-kotor-800.jpg' %} 800w, {% static 'montenegro/hero-kotor.jpg' %} 1600w" sizes="100vw" alt="The Bay of Kotor, Montenegro" width="1600" height="900" fetchpriority="high" decoding="async" class="w-full h-full object-cover">
+      <img src="{% static 'montenegro/hero-kotor.jpg' %}" srcset="{% static 'montenegro/hero-kotor-800.jpg' %} 800w, {% static 'montenegro/hero-kotor.jpg' %} 1600w" sizes="100vw" alt="{% trans 'The Bay of Kotor, Montenegro' %}" width="1600" height="900" fetchpriority="high" decoding="async" class="w-full h-full object-cover">
     <div class="absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-black/60"></div>
   </div>
   <div class="container mx-auto px-4 relative z-10">

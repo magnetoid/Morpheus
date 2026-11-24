@@ -461,7 +461,7 @@ step here: a class it never saw does not exist, so new rules live in refresh.css
         <input type="hidden" name="language" value="{% if CUR_LANG == 'sr' %}en{% else %}sr{% endif %}">
         <button type="submit" class="flex items-center gap-2 text-sm font-medium text-foreground hover:text-primary">
           <svg class="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10Z"/></svg>
-          {% if CUR_LANG == 'sr' %}🇬🇧 English{% else %}🇷🇸 Srpski{% endif %}
+          {% if CUR_LANG == 'sr' %}<span lang="en">🇬🇧 English</span>{% else %}<span lang="sr">🇷🇸 Srpski</span>{% endif %}
         </button>
       </form>
     </nav>
@@ -536,9 +536,9 @@ step here: a class it never saw does not exist, so new rules live in refresh.css
           {% csrf_token %}
           <input type="hidden" name="next" value="{{ request.path }}">
           <svg class="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10Z"/></svg>
-          <button type="submit" name="language" value="en" class="{% if CUR_LANG != 'sr' %}text-foreground{% else %}text-muted-foreground hover:text-foreground{% endif %} transition-colors">English</button>
+          <button type="submit" name="language" value="en" lang="en" class="{% if CUR_LANG != 'sr' %}text-foreground{% else %}text-muted-foreground hover:text-foreground{% endif %} transition-colors">English</button>
           <span class="text-muted-foreground">·</span>
-          <button type="submit" name="language" value="sr" class="{% if CUR_LANG == 'sr' %}text-foreground{% else %}text-muted-foreground hover:text-foreground{% endif %} transition-colors">Srpski</button>
+          <button type="submit" name="language" value="sr" lang="sr" class="{% if CUR_LANG == 'sr' %}text-foreground{% else %}text-muted-foreground hover:text-foreground{% endif %} transition-colors">Srpski</button>
         </form>
         <span class="text-muted-foreground">€ EUR</span>
         {% comment %}Social icons only for a profile the store has (Settings → store

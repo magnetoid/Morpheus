@@ -375,10 +375,18 @@ def _path_of(request) -> str:
 
 
 def _is_private(path: str) -> bool:
-    bare = (path or '').split('?', 1)[0].rstrip('/')
-    if bare in _PRIVATE_PATHS:
+    """Whether `path` is a private surface, in any language's tree.
+
+    `/sr/cart/` is the cart too: matched with its prefix, it was `index, follow`
+    with a canonical and hreflang on montenegro-experience.me while `/cart/`
+    said `noindex, nofollow`.
+    """
+    from core.i18n_links import split_language_prefix
+
+    _language, path = split_language_prefix((path or '').split('?', 1)[0])
+    if path.rstrip('/') in _PRIVATE_PATHS:
         return True
-    return any((path or '').startswith(prefix) for prefix in _PRIVATE_PREFIXES)
+    return any(path.startswith(prefix) for prefix in _PRIVATE_PREFIXES)
 
 
 def _og_type_for(kind: str) -> str:

@@ -1,11 +1,9 @@
 {% extends "storefront/base.html" %}
 {% load morph %}{% load caching %}{% load i18n %}
-
-
 {% block content %}
 <section style="padding: 4rem 0 2.5rem;">
   <div class="wrap">
-    <nav aria-label="Breadcrumb" class="breadcrumb" style="margin-bottom: 1.5rem;">
+    <nav aria-label="{% trans 'Breadcrumb' %}" class="breadcrumb" style="margin-bottom: 1.5rem;">
       {% for item in breadcrumb_items %}
         {% if forloop.last %}
           <span aria-current="page">{{ item.name }}</span>
@@ -15,17 +13,19 @@
         {% endif %}
       {% endfor %}
     </nav>
-    <p class="eyebrow">The marketplace</p>
+    <p class="eyebrow">{% trans "The marketplace" %}</p>
     <h1 class="display display-xl" style="margin: 1rem 0 1.25rem; max-width: 18ch;">
-      A marketplace of independent hosts<span class="text-accent">.</span>
+      {% trans "A marketplace of independent hosts" %}<span class="text-accent">.</span>
     </h1>
     <p class="lede" style="max-width: 64ch;">
-      Curated by locals. Run by independent guides, hosts and small operators.
-      Every host here was vetted by the Montenegro Experience team before going live.
+      {% blocktrans trimmed with name=STORE_NAME %}
+        Curated by locals. Run by independent guides, hosts and small operators.
+        Every host here was vetted by the {{ name }} team before going live.
+      {% endblocktrans %}
     </p>
     <div style="margin-top: 2rem; display: flex; gap: 0.75rem; flex-wrap: wrap;">
-      <a href="/vendors/" class="btn btn-primary">Browse every shop</a>
-      <a href="/products/" class="btn btn-ghost">Or browse all experiences</a>
+      <a href="/vendors/" class="btn btn-primary">{% trans "Browse every host" %}</a>
+      <a href="/bookings/" class="btn btn-ghost">{% trans "Or browse all experiences" %}</a>
     </div>
   </div>
 </section>
@@ -36,15 +36,11 @@
     <div class="mp-numbers__row">
       <div class="mp-numbers__cell">
         <p class="mp-numbers__big tabular-nums">{{ vendor_count }}</p>
-        <p class="eyebrow">{{ vendor_count|pluralize:"host,hosts" }}</p>
+        <p class="eyebrow">{% blocktrans count counter=vendor_count %}host{% plural %}hosts{% endblocktrans %}</p>
       </div>
       <div class="mp-numbers__cell">
         <p class="mp-numbers__big tabular-nums">{{ active_product_count }}</p>
-        <p class="eyebrow">{{ active_product_count|pluralize:"experience,experiences" }} listed</p>
-      </div>
-      <div class="mp-numbers__cell">
-        <p class="mp-numbers__big tabular-nums">{{ titles_in_stock_now }}</p>
-        <p class="eyebrow">in stock right now</p>
+        <p class="eyebrow">{% blocktrans count counter=active_product_count %}experience listed{% plural %}experiences listed{% endblocktrans %}</p>
       </div>
     </div>
     <hr class="rule">
@@ -55,11 +51,10 @@
 <section style="padding: 1.5rem 0 4rem;">
   <div class="wrap">
     <div class="mp-section-head">
-      <p class="eyebrow">Featured shops</p>
-      <h2 class="display display-l" style="margin: 0.5rem 0 0;">Recently arrived<span class="text-accent">.</span></h2>
+      <p class="eyebrow">{% trans "Featured hosts" %}</p>
+      <h2 class="display display-l" style="margin: 0.5rem 0 0;">{% trans "Recently arrived" %}<span class="text-accent">.</span></h2>
       <p class="lede" style="max-width: 56ch; margin-top: 0.85rem;">
-        A few of the hosts that joined most recently.
-        Click into a shop to see the full list they keep with us.
+        {% trans "A few of the hosts that joined most recently. Open a host to see everything they offer with us." %}
       </p>
     </div>
     <div class="mp-grid">
@@ -67,7 +62,7 @@
       <a href="/vendor/{{ v.obj.slug }}/" class="mp-card">
         <div class="mp-card__head">
           {% if v.obj.logo %}
-            <img src="{{ v.obj.logo.url }}" alt="{{ v.obj.name }} logo"
+            <img src="{{ v.obj.logo.url }}" alt="{% blocktrans with name=v.obj.name %}{{ name }} logo{% endblocktrans %}"
                  loading="{% caching_img_loading_attr %}" decoding="async"
                  class="mp-card__logo">
           {% else %}
@@ -76,20 +71,20 @@
           <div>
             <h3 class="mp-card__name">{{ v.obj.name }}</h3>
             <p class="mp-card__count">
-              {{ v.product_count }} title{{ v.product_count|pluralize }}
-              {% if v.obj.created_at %}· Since {{ v.obj.created_at|date:"F Y" }}{% endif %}
+              {% blocktrans count counter=v.product_count %}{{ counter }} listing{% plural %}{{ counter }} listings{% endblocktrans %}
+              {% if v.obj.created_at %} · {% blocktrans with since=v.obj.created_at|date:"Y" %}Since {{ since }}{% endblocktrans %}{% endif %}
             </p>
           </div>
         </div>
         {% if v.obj.description %}
         <p class="mp-card__desc">{{ v.obj.description|truncatechars:200 }}</p>
         {% endif %}
-        <p class="mp-card__cta">Visit shop <span aria-hidden="true">&rarr;</span></p>
+        <p class="mp-card__cta">{% trans "Visit host" %} <span aria-hidden="true">&rarr;</span></p>
       </a>
       {% endfor %}
     </div>
     <p style="text-align: center; margin-top: 2.5rem;">
-      <a href="/vendors/" class="btn btn-ghost">See every shop</a>
+      <a href="/vendors/" class="btn btn-ghost">{% trans "See every host" %}</a>
     </p>
   </div>
 </section>
@@ -99,20 +94,19 @@
   <div class="wrap">
     <div class="mp-sell__inner">
       <div>
-        <p class="eyebrow">Sell with us</p>
+        <p class="eyebrow">{% trans "Host with us" %}</p>
         <h2 class="display display-l" style="margin: 0.5rem 0 1rem; max-width: 20ch;">
-          Bring your experiences to Montenegro Experience<span class="text-accent">.</span>
+          {% blocktrans with name=STORE_NAME %}Bring your experiences to {{ name }}{% endblocktrans %}<span class="text-accent">.</span>
         </h2>
         <p class="lede" style="max-width: 52ch; margin-bottom: 1.5rem;">
-          A three-step onboarding. Transparent commission. Your own dashboard
-          for listings, orders, and payouts. No corporate decks, no algorithmic dumpsters.
+          {% trans "A three-step onboarding, a transparent commission and your own dashboard for listings, bookings and payouts." %}
         </p>
         <ul class="mp-sell__steps">
-          <li><span class="mp-sell__num">1</span> Tell us about your shop.</li>
-          <li><span class="mp-sell__num">2</span> We try it ourselves.</li>
-          <li><span class="mp-sell__num">3</span> List your first experience.</li>
+          <li><span class="mp-sell__num">1</span> {% trans "Tell us about what you offer." %}</li>
+          <li><span class="mp-sell__num">2</span> {% trans "We review your application." %}</li>
+          <li><span class="mp-sell__num">3</span> {% trans "List your first experience." %}</li>
         </ul>
-        <a href="/vendor/apply/" class="btn btn-primary" style="margin-top: 1.75rem;">Apply to sell</a>
+        <a href="/vendor/apply/" class="btn btn-primary" style="margin-top: 1.75rem;">{% trans "Become a host" %}</a>
       </div>
     </div>
   </div>
@@ -120,8 +114,8 @@
 
 <section style="padding: 3rem 0 5rem;">
   <div class="wrap">
-    <p class="eyebrow">Questions readers ask</p>
-    <h2 class="display display-m" style="margin: 0.5rem 0 1.5rem;">A few of the obvious ones<span class="text-accent">.</span></h2>
+    <p class="eyebrow">{% trans "Questions travellers ask" %}</p>
+    <h2 class="display display-m" style="margin: 0.5rem 0 1.5rem;">{% trans "A few of the obvious ones" %}<span class="text-accent">.</span></h2>
     <div class="mp-faq">
       {% if faqs %}
         {% for f in faqs %}
@@ -132,20 +126,20 @@
         {% endfor %}
       {% else %}
         <details class="mp-faq__item">
-          <summary>Who decides which shops join the marketplace?</summary>
-          <p>We do, by hand. Each application is read at the desk. We look for shops with a clear voice and a list that lives somewhere — not on a spreadsheet of dropshipping.</p>
+          <summary>{% trans "Who decides which hosts join the marketplace?" %}</summary>
+          <p>{% trans "We do, by hand. Each application is read by a person before a host goes live." %}</p>
         </details>
         <details class="mp-faq__item">
-          <summary>How are orders shipped?</summary>
-          <p>Each shop fulfills its own orders. If your basket pulls from three shops, you'll get three parcels — most arrive in a week or so.</p>
+          <summary>{% trans "Who runs the experience I book?" %}</summary>
+          <p>{% trans "The host does. Each listing belongs to one of them, and their name is on its page." %}</p>
         </details>
         <details class="mp-faq__item">
-          <summary>What about returns?</summary>
-          <p>Same cancellation policy across every host. Cancel up to 24h before for a full refund to the original card.</p>
+          <summary>{% trans "What if I need to cancel?" %}</summary>
+          <p>{% trans "Each listing shows its own cancellation terms before you book." %}</p>
         </details>
         <details class="mp-faq__item">
-          <summary>Is Montenegro Experience a host itself?</summary>
-          <p>No. We're the marketplace. The hosts run the experiences. Each listing here belongs to one of them.</p>
+          <summary>{% blocktrans with name=STORE_NAME %}Is {{ name }} a host itself?{% endblocktrans %}</summary>
+          <p>{% trans "No. We run the marketplace; the hosts run the experiences." %}</p>
         </details>
       {% endif %}
     </div>
@@ -155,11 +149,11 @@
 <section style="padding: 0 0 5rem;">
   <div class="wrap">
     <div style="border-top: 1px solid var(--rule); padding-top: 2rem; max-width: 60ch;">
-      <p class="eyebrow">Recommend our shop</p>
+      <p class="eyebrow">{% trans "Recommend us" %}</p>
       <p class="lede" style="margin: .5rem 0 1rem;">
-        If you write about travel — earn a commission on every booking tracked through your link.
+        {% trans "If you write about travel, earn a commission on every booking tracked through your link." %}
       </p>
-      <a href="/affiliates/apply/" class="btn-link">Join our affiliate program</a>
+      <a href="/affiliates/apply/" class="btn-link">{% trans "Join our affiliate program" %}</a>
     </div>
   </div>
 </section>
@@ -167,7 +161,7 @@
 <style>
 .mp-numbers__row {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 1.5rem;
   padding: 2.5rem 0;
   text-align: center;

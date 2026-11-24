@@ -1151,8 +1151,20 @@ carry books we haven't read", "free shipping over $40"). Lazy labels must be
 `LocationFeatureSpecification`, the region breadcrumb). `makemessages` cuts
 `{% trans "…\"…" %}` at the escaped quote, so measure coverage with the template
 engine, not its output. Auth (`/auth/`) is deliberately outside the language tree
-and stays English. Django's own `sr` catalog is Cyrillic: `|date` day and month names render "суб." and "Окт." on the Latin `/sr/` pages (the booking widget still does), so a visitor-facing date is formatted with Babel's `sr_Latn_ME` (`search_page.date_label`) and, in the browser, `Intl` with `sr-Latn-ME`. Guarded by `core/tests/test_localized_links.py` and
-`booking_marketplace/tests/test_serbian_catalog.py`.
+and stays English. Django's own `sr` catalog is Cyrillic: `|date` day and month names render "суб." and "Окт." on the Latin `/sr/` pages (the booking widget still does), so a visitor-facing date is formatted with Babel's `sr_Latn_ME` (`search_page.date_label`) and, in the browser, `Intl` with `sr-Latn-ME`.
+A page also renders other apps' blocks, and until v0.190.2 the cookie banner, support chat, legal
+footer, language switcher and story card wrote their English straight into the markup: `/sr/` showed
+it on every page while the catalog test, which reads only the theme's and the app's templates, was
+green. `SerbianPagesTests` renders each page in both languages and fails on text the two share that
+is not stored content, and on any Cyrillic; text in another language carries `lang` (the switcher,
+an English citation). `locale/sr` gives Django's own strings (form errors, `timesince`, language
+names) in Latin. The seo app treats a prefixed path as the same page: the private-path check,
+robots.txt (`Disallow: /sr/cart/` beside `/cart/`) and a redirect's target (prefixed only when it is
+in the tree) ask `core.i18n_links` (`split_language_prefix`, `language_routed`), so `/sr/cart/` is no
+longer `index, follow`. A prefixed chrome route (`/sr/auth/login/`) 301s to its one address, and a 404
+that APPEND_SLASH turns into a 301 is not logged. Guarded by `core/tests/test_localized_links.py`,
+`booking_marketplace/tests/test_serbian_catalog.py`, `seo/tests/test_language_trees.py` and
+`seo/tests/test_redirects_engine.py`.
 
 **Landmine — a machine-readable file is read for what it IMPLIES, and all of
 this shipped as valid syntax.** Three defects on one live store, none visible in

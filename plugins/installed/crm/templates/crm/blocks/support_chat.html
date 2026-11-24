@@ -1,20 +1,20 @@
-<div id="crm-chat" data-authed="{{ request.user.is_authenticated|yesno:'1,0' }}">
-  <button type="button" id="crm-chat-toggle" aria-label="Chat with us">
+{% load i18n %}<div id="crm-chat" data-authed="{{ request.user.is_authenticated|yesno:'1,0' }}">
+  <button type="button" id="crm-chat-toggle" aria-label="{% translate 'Chat with us' %}">
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
   </button>
   <div id="crm-chat-panel" hidden>
     <div class="crm-chat__head">
-      <span>Chat with us</span>
-      <button type="button" id="crm-chat-close" aria-label="Close">&times;</button>
+      <span>{% translate "Chat with us" %}</span>
+      <button type="button" id="crm-chat-close" aria-label="{% translate 'Close' %}">&times;</button>
     </div>
     <div id="crm-chat-log" class="crm-chat__log">
-      <p class="crm-chat__hint">Hi! Ask us anything — we'll reply right here.</p>
+      <p class="crm-chat__hint">{% translate "Hi! Ask us anything — we'll reply right here." %}</p>
     </div>
     <form id="crm-chat-form" class="crm-chat__form">
-      <input type="email" id="crm-chat-email" placeholder="Your email (so we can follow up)" {% if request.user.is_authenticated %}hidden{% endif %} />
+      <input type="email" id="crm-chat-email" placeholder="{% translate 'Your email (so we can follow up)' %}" {% if request.user.is_authenticated %}hidden{% endif %} />
       <div class="crm-chat__row">
-        <input type="text" id="crm-chat-input" placeholder="Type a message…" autocomplete="off" required />
-        <button type="submit" aria-label="Send">→</button>
+        <input type="text" id="crm-chat-input" placeholder="{% translate 'Type a message…' %}" autocomplete="off" required />
+        <button type="submit" aria-label="{% translate 'Send' %}">→</button>
       </div>
     </form>
   </div>

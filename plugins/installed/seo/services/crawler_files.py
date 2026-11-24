@@ -195,10 +195,33 @@ def _robots_document():
             pass
 
     try:
-        return hook_registry.filter(MorpheusEvents.SEO_ROBOTS_RULES, doc) or doc
+        doc = hook_registry.filter(MorpheusEvents.SEO_ROBOTS_RULES, doc) or doc
     except Exception:  # noqa: BLE001 — a broken subscriber costs its lines, not the file
         logger.warning('seo: SEO_ROBOTS_RULES contribution failed', exc_info=True)
-        return doc
+    _disallow_in_every_language(doc)
+    return doc
+
+
+def _disallow_in_every_language(doc) -> None:
+    """`Disallow: /sr/cart/` beside `/cart/`, for each path a language tree also has.
+
+    Owners disallow the address they route, and a language-routed page has one
+    per language: robots.txt blocked `/cart/` and left `/sr/cart/` open. A chrome
+    path (`/auth/`) has no prefixed form and gets no copy; patterns are left as
+    written.
+    """
+    try:
+        from core.i18n_links import language_routed, prefixed_languages
+
+        languages = prefixed_languages()
+        for path in doc.disallowed:
+            if not path.startswith('/') or any(ch in path for ch in '*$?'):
+                continue
+            for language in languages:
+                if language_routed(language, path):
+                    doc.disallow(f'/{language}{path}')
+    except Exception:  # noqa: BLE001 — the copies cost themselves, not the file
+        logger.warning('seo: language copies of robots.txt rules failed', exc_info=True)
 
 
 def render_llms_txt(*, full: bool = False) -> str:  # noqa: PLR0912, PLR0915 — linear llms.txt section builder

@@ -1,5 +1,5 @@
-{% load i18n %}
-{% get_available_languages as LANGS %}
+{% load i18n language_bar %}
+{% store_language_choices as LANGS %}
 {% if LANGS|length > 1 %}
 {% get_current_language as CUR_LANG %}
 <form action="{% url 'set_language' %}" method="post" class="morph-lang-switcher" style="display:inline-flex;align-items:center;gap:.4rem">
@@ -9,7 +9,7 @@
   <select name="language" id="morph-lang-select"
           aria-label="{% translate 'Language' %}" style="padding:.2rem .4rem;border-radius:6px">
     {% for code, name in LANGS %}
-    <option value="{{ code }}" {% if code == CUR_LANG %}selected{% endif %}>{{ name }}</option>
+    <option value="{{ code }}" lang="{{ code }}" {% if code == CUR_LANG %}selected{% endif %}>{{ name }}</option>
     {% endfor %}
   </select>
   <noscript><button type="submit">{% translate "Go" %}</button></noscript>

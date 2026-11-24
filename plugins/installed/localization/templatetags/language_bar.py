@@ -43,3 +43,17 @@ def bar_data() -> dict | None:
 @register.simple_tag
 def language_bar_data():
     return bar_data()
+
+
+@register.simple_tag
+def store_language_choices() -> list[tuple[str, str]]:
+    """`(code, name)` for each routable language, each named in its own language.
+
+    `{% get_available_languages %}` runs every name through gettext, so on `/sr/`
+    the switcher offered "енглески": Django's Serbian name for English, in
+    Cyrillic. A language is chosen by its own name, never one translated into the
+    page's.
+    """
+    from django.conf import settings
+
+    return [(code, language_name(code)) for code, _name in settings.LANGUAGES]

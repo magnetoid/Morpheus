@@ -5202,3 +5202,194 @@ msgstr[2] "%(min)s–%(max)s radnih dana"
 #: themes/library/*/templates/storefront/account_order_detail.html
 msgid "Estimated delivery"
 msgstr "Očekivana isporuka"
+
+# ── Other apps' storefront blocks, the marketplace page, plurals ──
+
+msgid "Chat with us"
+msgstr "Pišite nam"
+
+msgid "Hi! Ask us anything — we'll reply right here."
+msgstr "Bok! Pitajte nas bilo što — odgovorit ćemo ovdje."
+
+msgid "Your email (so we can follow up)"
+msgstr "Vaš e-mail (da vam možemo odgovoriti)"
+
+msgid "Type a message…"
+msgstr "Napišite poruku…"
+
+msgid "Cookie consent"
+msgstr "Privola za kolačiće"
+
+msgid "We use cookies for the cart, login, and to understand how the shop is used. Necessary cookies are always on."
+msgstr "Kolačiće koristimo za košaricu, prijavu i da bismo razumjeli kako se stranica koristi. Nužni kolačići uvijek su uključeni."
+
+msgid "Necessary"
+msgstr "Nužni"
+
+msgid "Marketing"
+msgstr "Marketinški"
+
+msgid "Functional"
+msgstr "Funkcionalni"
+
+msgid "Reject all"
+msgstr "Odbij sve"
+
+msgid "Save preferences"
+msgstr "Spremi postavke"
+
+msgid "Accept all"
+msgstr "Prihvati sve"
+
+msgid "Privacy Policy"
+msgstr "Pravila privatnosti"
+
+msgid "Terms & Conditions"
+msgstr "Uvjeti korištenja"
+
+msgid "Cookie Policy"
+msgstr "Pravila o kolačićima"
+
+msgid "Imprint"
+msgstr "Impresum"
+
+msgid "Accessibility"
+msgstr "Pristupačnost"
+
+msgid "Cookie preferences"
+msgstr "Postavke kolačića"
+
+msgid "Language"
+msgstr "Jezik"
+
+msgid "Go"
+msgstr "Idi"
+
+msgid "The marketplace"
+msgstr "Tržnica"
+
+msgid "A marketplace of independent hosts"
+msgstr "Tržnica neovisnih domaćina"
+
+msgid "Browse every host"
+msgstr "Pogledajte sve domaćine"
+
+msgid "Or browse all experiences"
+msgstr "Ili pogledajte sva iskustva"
+
+msgid "Featured hosts"
+msgstr "Istaknuti domaćini"
+
+msgid "Recently arrived"
+msgstr "Nedavno pristigli"
+
+msgid "A few of the hosts that joined most recently. Open a host to see everything they offer with us."
+msgstr "Nekoliko domaćina koji su nam se nedavno pridružili. Otvorite domaćina da vidite sve što nudi kod nas."
+
+msgid "Visit host"
+msgstr "Posjetite domaćina"
+
+msgid "See every host"
+msgstr "Svi domaćini"
+
+msgid "Host with us"
+msgstr "Postanite naš domaćin"
+
+msgid "A three-step onboarding, a transparent commission and your own dashboard for listings, bookings and payouts."
+msgstr "Prijava u tri koraka, jasna provizija i vaša nadzorna ploča za ponude, rezervacije i isplate."
+
+msgid "Tell us about what you offer."
+msgstr "Recite nam što nudite."
+
+msgid "We review your application."
+msgstr "Pregledamo vašu prijavu."
+
+msgid "List your first experience."
+msgstr "Objavite svoje prvo iskustvo."
+
+msgid "Questions travellers ask"
+msgstr "Pitanja putnika"
+
+msgid "A few of the obvious ones"
+msgstr "Nekoliko očitih"
+
+msgid "Who decides which hosts join the marketplace?"
+msgstr "Tko odlučuje koji domaćini ulaze na tržnicu?"
+
+msgid "We do, by hand. Each application is read by a person before a host goes live."
+msgstr "Mi, ručno. Svaku prijavu pročita čovjek prije nego što domaćin postane vidljiv."
+
+msgid "Who runs the experience I book?"
+msgstr "Tko vodi iskustvo koje rezerviram?"
+
+msgid "The host does. Each listing belongs to one of them, and their name is on its page."
+msgstr "Domaćin. Svaka ponuda pripada jednome od njih, a njegovo ime stoji na njezinoj stranici."
+
+msgid "What if I need to cancel?"
+msgstr "Što ako moram otkazati?"
+
+msgid "Each listing shows its own cancellation terms before you book."
+msgstr "Svaka ponuda prije rezervacije prikazuje svoje uvjete otkazivanja."
+
+msgid "No. We run the marketplace; the hosts run the experiences."
+msgstr "Ne. Mi vodimo tržnicu, a domaćini vode iskustva."
+
+msgid "Recommend us"
+msgstr "Preporučite nas"
+
+msgid "If you write about travel, earn a commission on every booking tracked through your link."
+msgstr "Ako pišete o putovanjima, zaradite proviziju na svaku rezervaciju preko vaše poveznice."
+
+msgid "Join our affiliate program"
+msgstr "Pridružite se partnerskom programu"
+
+msgid "Curated by locals. Run by independent guides, hosts and small operators. Every host here was vetted by the %(name)s team before going live."
+msgstr "Odabrali lokalni stanovnici. Vode ih neovisni vodiči, domaćini i mali operateri. Svakog domaćina ovdje je provjerio tim %(name)s prije objave."
+
+msgid "host"
+msgid_plural "hosts"
+msgstr[0] "domaćin"
+msgstr[1] "domaćina"
+msgstr[2] "domaćina"
+
+msgid "experience listed"
+msgid_plural "experiences listed"
+msgstr[0] "objavljeno iskustvo"
+msgstr[1] "objavljena iskustva"
+msgstr[2] "objavljenih iskustava"
+
+msgid "%(name)s logo"
+msgstr "Logotip: %(name)s"
+
+msgid "Bring your experiences to %(name)s"
+msgstr "Ponudite svoja iskustva na %(name)s"
+
+msgid "Is %(name)s a host itself?"
+msgstr "Je li %(name)s i sam domaćin?"
+
+msgid "Gross (%(counter)s booking)"
+msgid_plural "Gross (%(counter)s bookings)"
+msgstr[0] "Bruto (%(counter)s rezervacija)"
+msgstr[1] "Bruto (%(counter)s rezervacije)"
+msgstr[2] "Bruto (%(counter)s rezervacija)"
+
+msgid "%(counter)s experience"
+msgid_plural "%(counter)s experiences"
+msgstr[0] "%(counter)s iskustvo"
+msgstr[1] "%(counter)s iskustva"
+msgstr[2] "%(counter)s iskustava"
+
+msgid "Story preview"
+msgstr "Pregled priče"
+
+msgid "Tap to flip through the photos and the key points."
+msgstr "Dodirnite da prelistate fotografije i ključne točke."
+
+msgid "%(name)s: story poster"
+msgstr "%(name)s: naslovna slika priče"
+
+msgid "View product"
+msgstr "Pogledajte ponudu"
+
+msgid "About this book"
+msgstr "O knjizi"

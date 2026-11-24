@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from django.test import override_settings
 
-SERBIAN = ('sr', 'Српски')
+SERBIAN = ('sr', 'Srpski')
 
 
 def serbian_enabled(cls):

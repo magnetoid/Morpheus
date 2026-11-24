@@ -42,6 +42,35 @@ def _language_routed(language: str, path: str) -> bool:
     return True
 
 
+def language_routed(language: str, path: str) -> bool:
+    """Whether `path` exists in `language`'s tree (`/sr/cart/` for `('sr', '/cart/')`).
+
+    False for chrome routes (`/auth/`, `/dashboard/`, files), which have one
+    unprefixed address in every language.
+    """
+    return _language_routed(language, path)
+
+
+def prefixed_languages() -> tuple[str, ...]:
+    """The routed languages served under a prefix: every language but the core one."""
+    from django.conf import settings
+
+    default = (getattr(settings, 'LANGUAGE_CODE', '') or '').split('-')[0].lower()
+    codes = (code.split('-')[0].lower() for code, _ in (getattr(settings, 'LANGUAGES', None) or []))
+    return tuple(dict.fromkeys(code for code in codes if code and code != default))
+
+
+def split_language_prefix(path: str) -> tuple[str, str]:
+    """`('sr', '/cart/')` for `/sr/cart/`, `('', path)` for a path with no language prefix."""
+    from django.conf import settings
+
+    codes = {code.split('-')[0].lower() for code, _ in (getattr(settings, 'LANGUAGES', None) or [])}
+    head, _, rest = (path or '').lstrip('/').partition('/')
+    if head.lower() in codes:
+        return head.lower(), f'/{rest}'
+    return '', path or ''
+
+
 def localize_url(url: str, language: str, host: str = '') -> str:
     """`url` in `language`'s tree when it names a language-routed page.
 
