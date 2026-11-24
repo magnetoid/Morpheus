@@ -13,7 +13,12 @@ import re
 
 from django.test import TestCase, override_settings
 
-from core.i18n_links import localize_links
+from core.i18n_links import (
+    language_routed,
+    localize_links,
+    prefixed_languages,
+    split_language_prefix,
+)
 
 _LANGUAGES = [('en', 'English'), ('sr', 'Srpski')]
 
@@ -125,3 +130,24 @@ class LocalizedPageTests(TestCase):
     def test_the_default_language_is_untouched(self):
         body = self.client.get('/').content.decode()
         self.assertFalse(any(h.startswith('/sr/') for h in self._HREF.findall(body)))
+
+
+@override_settings(LANGUAGES=_LANGUAGES, LANGUAGE_CODE='en')
+class LanguageTreeTests(TestCase):
+    """The three questions the seo app asks of a path: its tree, its bare form, its copies."""
+
+    def test_the_prefix_is_split_from_the_path(self):
+        self.assertEqual(split_language_prefix('/sr/cart/'), ('sr', '/cart/'))
+        self.assertEqual(split_language_prefix('/sr/'), ('sr', '/'))
+        self.assertEqual(split_language_prefix('/sr'), ('sr', '/'))
+        self.assertEqual(split_language_prefix('/cart/'), ('', '/cart/'))
+        self.assertEqual(split_language_prefix('/srpski/'), ('', '/srpski/'))
+
+    def test_only_the_other_languages_are_prefixed(self):
+        self.assertEqual(prefixed_languages(), ('sr',))
+
+    def test_a_page_is_in_the_tree_and_a_chrome_route_is_not(self):
+        self.assertTrue(language_routed('sr', '/products/'))
+        self.assertTrue(language_routed('sr', '/cart/'))
+        self.assertFalse(language_routed('sr', '/auth/login/'))
+        self.assertFalse(language_routed('sr', '/dashboard/'))

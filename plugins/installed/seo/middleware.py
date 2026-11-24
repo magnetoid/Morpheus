@@ -98,7 +98,15 @@ class SeoRedirectMiddleware:
 
     def _passthrough(self, request, path: str):
         response = self.get_response(request)
-        if response.status_code == 404 and not _is_pagination_404(request):
+        if response.status_code == 404:
+            moved = _chrome_redirect(request, path)
+            if moved is not None:
+                return moved
+        if (
+            response.status_code == 404
+            and not _is_pagination_404(request)
+            and not _slash_would_fix(request)
+        ):
             try:
                 from plugins.installed.seo.services import record_404
 
@@ -135,6 +143,52 @@ def _is_pagination_404(request) -> bool:
             return False
         return True
     except Exception:  # noqa: BLE001 — never let this decide the response
+        return False
+
+
+def _chrome_redirect(request, path: str):
+    """301 `/sr/auth/login/` to `/auth/login/`: a chrome route has no language tree.
+
+    Sign-in, the wishlist and the dashboard answer at one address in every
+    language, so their prefixed form is a 404 a visitor reaches by typing or
+    following an old link. Only when the prefixed path is no page of that
+    language's tree and the bare one is a route: a listing whose view 404s
+    (`/sr/bookings/gone/`) stays a 404.
+    """
+    if request.method not in ('GET', 'HEAD'):
+        return None
+    try:
+        from django.urls import Resolver404, resolve
+        from django.utils import translation
+
+        from core.i18n_links import language_routed, split_language_prefix
+
+        language, bare = split_language_prefix(path)
+        if not language or language_routed(language, bare):
+            return None
+        with translation.override(None):
+            try:
+                resolve(bare)
+            except Resolver404:
+                return None
+    except Exception:  # noqa: BLE001 — never let this decide the response
+        return None
+    query = request.META.get('QUERY_STRING', '')
+    return HttpResponsePermanentRedirect(f'{bare}?{query}' if query else bare)
+
+
+def _slash_would_fix(request) -> bool:
+    """A 404 that CommonMiddleware turns into a 301 to the slashed path.
+
+    This middleware sits inside CommonMiddleware, so it saw `/bookings` answer
+    404 before APPEND_SLASH redirected it: the 404 log filled with addresses
+    that work.
+    """
+    try:
+        from django.middleware.common import CommonMiddleware
+
+        return bool(CommonMiddleware(lambda r: None).should_redirect_with_slash(request))
+    except Exception:  # noqa: BLE001
         return False
 
 
@@ -187,9 +241,13 @@ def _safe_target(to_path: str, *, prefix: str, query: str) -> str:
         return ''
     if not target.startswith('/'):
         target = '/' + target
-    # Keep the visitor in the language they were browsing.
-    if prefix and not target.startswith(f'{prefix}/'):
-        target = f'{prefix}{target}'
+    # Keep the visitor in the language they were browsing, when the target is a
+    # page of that language's tree: `/sr/vendor/apply/` does not exist, since a
+    # chrome route has one address in every language.
+    if prefix:
+        from core.i18n_links import localize_url
+
+        target = localize_url(target, prefix.lstrip('/'))
     if query and '?' not in target:
         target = f'{target}?{query}'
     return target

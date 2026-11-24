@@ -15,6 +15,17 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.190.2 — 2026-11-24
+
+**Montenegro's Serbian pages read in Serbian, and private pages stay private in every language**
+
+- Every /sr/ page showed English from other apps' blocks (cookie banner, support chat, legal footer, language switcher, story card); they are translated now, in Serbian and Croatian.
+- Django's own Serbian (form errors, time spans, language names) reads in Latin script, not Cyrillic.
+- The marketplace page carried the bookshop's English copy; it is travel copy in both travel themes now.
+- /sr/cart/ and /sr/checkout/ are noindex and blocked in robots.txt, like /cart/ and /checkout/.
+- A language-prefixed address of a page outside the language tree (/sr/auth/login/) redirects to its one address instead of a 404, and a redirect target keeps the visitor's language only when the page exists in it.
+- The 404 log no longer lists addresses that only lack a closing slash.
+
 ## v0.190.1 — 2026-11-24
 
 **Delivery estimate at checkout**

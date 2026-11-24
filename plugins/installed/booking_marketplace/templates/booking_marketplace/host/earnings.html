@@ -16,7 +16,7 @@
         <p style="font-family:var(--serif); font-size:1.9rem; margin:.25rem 0 0;">€{{ fees|floatformat:2 }}</p>
       </div>
       <div style="padding:1.25rem; border:1px solid var(--rule); border-radius:var(--radius);">
-        <p class="meta" style="margin:0;">Gross ({{ count }} booking{{ count|pluralize }})</p>
+        <p class="meta" style="margin:0;">{% blocktrans count counter=count %}Gross ({{ counter }} booking){% plural %}Gross ({{ counter }} bookings){% endblocktrans %}</p>
         <p style="font-family:var(--serif); font-size:1.9rem; margin:.25rem 0 0;">€{{ gross|floatformat:2 }}</p>
       </div>
     </div>

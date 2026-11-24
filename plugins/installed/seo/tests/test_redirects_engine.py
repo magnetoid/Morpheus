@@ -212,11 +212,70 @@ class MiddlewareBehaviourTests(TestCase):
     def test_a_language_prefixed_request_matches_an_unprefixed_rule(self):
         """LocaleMiddleware leaves /fr/ in path_info, so a rule stored as
         /old/ never fired for anyone browsing in another language."""
-        Redirect.objects.create(from_path='/old/', to_path='/new/')
+        Redirect.objects.create(from_path='/old/', to_path='/products/')
         response = self.client.get('/fr/old/')
         self.assertEqual(response.status_code, 301)
-        self.assertEqual(response['Location'], '/fr/new/')
+        self.assertEqual(response['Location'], '/fr/products/')
+
+    def test_a_target_outside_the_language_tree_keeps_its_one_address(self):
+        """A chrome route has no `/fr/` form: the prefix sent visitors to a 404."""
+        Redirect.objects.create(from_path='/old-login/', to_path='/auth/login/')
+        response = self.client.get('/fr/old-login/')
+        self.assertEqual(response.status_code, 301)
+        self.assertEqual(response['Location'], '/auth/login/')
+
+    def test_a_target_in_the_language_tree_keeps_the_visitor_there(self):
+        Redirect.objects.create(from_path='/old-shop/', to_path='/products/')
+        response = self.client.get('/fr/old-shop/', {'utm_source': 'x'})
+        self.assertEqual(response['Location'], '/fr/products/?utm_source=x')
 
     def test_the_dashboard_is_never_redirected(self):
         Redirect.objects.create(from_path='/dashboard/products/', to_path='/nope/')
         self.assertNotEqual(self.client.get('/dashboard/products/').status_code, 301)
+
+
+@override_settings(LANGUAGES=[('en', 'English'), ('fr', 'French')], LANGUAGE_CODE='en')
+class LanguagePrefixedChromeTests(TestCase):
+    """`/sr/auth/login/` and `/sr/wishlist/` answered 404 on montenegro-experience.me.
+
+    Sign-in and the wishlist answer at one address in every language, so their
+    prefixed form never existed; a visitor who types it, or an old link, now
+    lands on it.
+    """
+
+    def setUp(self):
+        cache.clear()
+
+    def test_a_prefixed_chrome_route_moves_to_its_one_address(self):
+        response = self.client.get('/fr/auth/login/', {'next': '/fr/'})
+        self.assertEqual(response.status_code, 301)
+        self.assertEqual(response['Location'], '/auth/login/?next=%2Ffr%2F')
+
+    def test_a_missing_page_stays_a_404(self):
+        for path in ('/fr/no-such-page/', '/fr/products/no-such-product/'):
+            with self.subTest(path=path):
+                self.assertEqual(self.client.get(path).status_code, 404)
+
+    def test_a_post_is_never_redirected(self):
+        self.assertNotEqual(self.client.post('/fr/auth/login/').status_code, 301)
+
+
+class NotFoundLogTests(TestCase):
+    def setUp(self):
+        cache.clear()
+
+    def test_a_path_append_slash_fixes_is_not_logged(self):
+        """The middleware sits inside CommonMiddleware and saw `/products` answer 404
+        before APPEND_SLASH sent it to `/products/`: the log filled with addresses
+        that work."""
+        from plugins.installed.seo.models import NotFoundLog
+
+        response = self.client.get('/products')
+        self.assertEqual(response.status_code, 301)
+        self.assertFalse(NotFoundLog.objects.filter(path='/products').exists())
+
+    def test_a_real_404_is_logged(self):
+        from plugins.installed.seo.models import NotFoundLog
+
+        self.assertEqual(self.client.get('/no-such-page/').status_code, 404)
+        self.assertTrue(NotFoundLog.objects.filter(path='/no-such-page/').exists())
