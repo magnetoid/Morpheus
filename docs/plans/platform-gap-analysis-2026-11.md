@@ -26,7 +26,7 @@ Where that default leaves a store outside a rule that may bind it, the setup che
 - **Already in v0.176.0** (checked while planning, so not rows):
   - one-click unsubscribe headers (RFC 8058) on newsletter, cart-abandonment and core marketing mail;
   - an accessibility page among gdpr's legal pages;
-  - a shipping rate's estimated days (a dashboard field, read by structured data). Checkout does not show them; that is F5.
+  - a shipping rate's estimated days (a dashboard field, read by structured data). Since v0.190.1 (F5) checkout shows them, with the handling time, when the merchant switches it on.
 
 **The order.** One release in flight. Each starts from a fresh worktree off `origin/main`, is versioned with `manage.py release`, and merges only on the owner's yes.
 
@@ -282,7 +282,7 @@ Each row is an option inside Morpheus for any store. Its owner app is named belo
 | F2 | Claims and legal copy check | generic green-claim check in the site audit; eco_impact copy; legal-guarantee notice; accessibility statement | M 2 | — | v0.178.0, live 2026-11-18 |
 | F3 | Online withdrawal function | an order-keyed, guest-reachable "Withdraw from contract here" with a timestamped acknowledgement | M 3 | A10a | v0.181.0, live |
 | F4 | Regional card gateway app | cards for stores whose entity Stripe does not serve; Monri first | M 3–4 | — | planned, order #11 |
-| F5 | Delivery estimate at checkout | the rate's estimated days at checkout and in the order email | S 1 | — | planned, order #12 |
+| F5 | Delivery estimate at checkout | the rate's estimated days at checkout and in the order email | S 1 | — | shipped v0.190.1 |
 | F6 | Subscription cancel and pause by the customer | self-serve in the account | S–M 2 | — | planned, order #14 |
 | F7 | Origin and HS code | customs data on products; an import-charges notice | S–M 2 | — | later |
 

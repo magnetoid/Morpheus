@@ -101,7 +101,7 @@
           <label style="display:flex; align-items:center; gap:.75rem; padding:.75rem; border:1px solid var(--rule); border-radius:6px; margin-bottom:.5rem; cursor:pointer;">
             <input type="radio" name="shipping_rate_id" value="{{ r.id }}"
                    {% if r.id|stringformat:'s' == selected_rate_id or forloop.first and not selected_rate_id %}checked{% endif %}>
-            <span style="flex:1;">{{ r.label }}</span>
+            <span style="flex:1;">{{ r.label }}{% if r.estimate %}<span class="meta" data-delivery-estimate style="display:block;">{{ r.estimate|business_days }}</span>{% endif %}</span>
             <span class="meta">{{ r|money }}</span>
           </label>
           {% endfor %}

@@ -32,6 +32,7 @@ from django import template
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 from django.utils.safestring import mark_safe
+from django.utils.translation import ngettext
 
 logger = logging.getLogger('morpheus.templatetags')
 
@@ -74,6 +75,36 @@ def first_sentence(text) -> str:
         break
     out = s[:end] if end else s
     return out.strip()[:180]
+
+
+def _days(value) -> int | None:
+    """A whole, non-negative day count (a bool is not a number of days)."""
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        return None
+    return value
+
+
+@register.filter
+def business_days(value) -> str:
+    """A delivery range like "3–7 business days" ("3 business days" when both
+    ends match) from ``{'min': int, 'max': int}``; '' for anything else.
+
+    Shipping puts it on each checkout choice and orders keeps it on the order
+    (F5); both print it through this filter, so the words never differ.
+    """
+    if not isinstance(value, dict):
+        return ''
+    lo, hi = _days(value.get('min')), _days(value.get('max'))
+    if lo is None or hi is None or hi < lo:
+        return ''
+    if lo == hi:
+        return ngettext('%(n)s business day', '%(n)s business days', hi) % {'n': hi}
+    # A range is plural in English whatever its last number ("0–1 business days");
+    # languages that agree with the last number (sr, hr) choose by it.
+    return ngettext('%(min)s–%(max)s business days', '%(min)s–%(max)s business days', hi) % {
+        'min': lo,
+        'max': hi,
+    }
 
 
 @register.simple_tag

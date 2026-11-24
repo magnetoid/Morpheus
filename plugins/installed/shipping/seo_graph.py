@@ -272,13 +272,43 @@ def _days(lo, hi) -> dict:
     }
 
 
-def _transit_days(rate) -> tuple[int, int] | None:
-    lo, hi = rate.estimated_days_min, rate.estimated_days_max
+def _span(lo, hi) -> tuple[int, int] | None:
+    """A rate's (fastest, slowest) days; a lone end stands for both."""
     if lo is None and hi is None:
         return None
     lo = lo if lo is not None else hi
     hi = hi if hi is not None else lo
     return int(lo), int(hi)
+
+
+def _transit_days(rate) -> tuple[int, int] | None:
+    return _span(rate.estimated_days_min, rate.estimated_days_max)
+
+
+def estimate_shown() -> bool:
+    """Whether the merchant switched on the delivery estimate at checkout (F5)."""
+    from plugins.installed.shipping.services import _shipping_config
+
+    return _shipping_config().get('show_delivery_estimate') is True
+
+
+MAX_ESTIMATE_DAYS = 365
+
+
+def delivery_estimate(days_min, days_max) -> dict | None:
+    """Business days from order to door for a rate: the handling time plus the
+    rate's transit days, the same numbers the graph publishes. None when the
+    rate states no transit days."""
+    transit = _span(days_min, days_max)
+    if transit is None:
+        return None
+    handling = handling_days() or (0, 0)
+    lo, hi = handling[0] + transit[0], handling[1] + transit[1]
+    # Past a year the order would not keep it (orders.clean_delivery_estimate),
+    # so checkout never shows a promise the order page and email then drop.
+    if hi > MAX_ESTIMATE_DAYS:
+        return None
+    return {'min': lo, 'max': hi}
 
 
 def _transit_period(rate) -> dict | None:

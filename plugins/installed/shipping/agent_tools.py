@@ -12,7 +12,9 @@ from morpheus.core import ToolError, ToolResult, tool
         'store states to search engines (days before a parcel leaves, and the same-day '
         "cut-off). Change the handling time with settings.set on the 'shipping' app: "
         'handling_days_min, handling_days_max (whole days, 0-30) and handling_cutoff_time '
-        '(HH:MM); blank states none.'
+        '(HH:MM); blank states none. show_delivery_estimate (true/false) shows the '
+        "handling time plus each rate's delivery days under the shipping choices at "
+        'checkout, and keeps it on the order.'
     ),
     scopes=['shipping.read'],
     schema={'type': 'object', 'properties': {}},

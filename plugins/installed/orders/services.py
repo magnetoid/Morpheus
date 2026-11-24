@@ -19,7 +19,13 @@ from djmoney.money import Money
 from core.pricing import apply_price_filter
 from morpheus.core import MorpheusEvents, hook_registry
 from plugins.installed.catalog.models import Product, ProductVariant
-from plugins.installed.orders.models import Cart, CartItem, Order, OrderItem
+from plugins.installed.orders.models import (
+    Cart,
+    CartItem,
+    Order,
+    OrderItem,
+    clean_delivery_estimate,
+)
 
 logger = logging.getLogger('morpheus.orders')
 
@@ -381,6 +387,10 @@ def _order_metadata(visitor_id: str, breakdown: dict, consent: dict | None = Non
     if included:
         # Tax already inside the prices (Order.tax_included_lines).
         metadata['tax_included'] = included
+    estimate = clean_delivery_estimate((breakdown.get('meta') or {}).get('delivery_estimate'))
+    if estimate:
+        # The delivery estimate the shopper chose (Order.delivery_estimate).
+        metadata['delivery_estimate'] = estimate
     gifts = [
         {
             'product_id': str(g.get('product_id') or ''),

@@ -32,6 +32,7 @@ links to the return flow and the orders list, unchanged.{% endcomment %}
         <span class="inline-flex items-center h-6 px-2.5 rounded-full text-xs font-medium bg-muted text-primary capitalize">{{ order.status }}</span>
         {% endif %}
       </p>
+    {% if order.delivery_estimate %}<p class="text-sm text-muted-foreground mt-1" data-delivery-estimate>{% trans "Estimated delivery" %}: {{ order.delivery_estimate|business_days }}</p>{% endif %}
     </div>
 
     <!-- Status timeline (highlights the step matching order.status) -->
