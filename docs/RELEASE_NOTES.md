@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.190.1 — 2026-11-24
+
+**Delivery estimate at checkout**
+
+- Under each shipping choice at checkout, a range of business days: the handling time plus the rate's fastest and slowest delivery days, the same numbers the structured data publishes. A shipping setting, off by default (Shipping page, or Linda through settings.set).
+- The order keeps the estimate the shopper chose: the thank-you page, the account's order page and the order email show it, whatever the rate says later.
+- All six themes, both checkout forms; Serbian and Croatian wording.
+
 ## v0.190.0 — 2026-11-23
 
 **Email campaigns**
