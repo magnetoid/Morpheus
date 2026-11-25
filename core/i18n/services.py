@@ -16,17 +16,90 @@ write its translation into the default-language columns.
 A reviewed translation that began as an AI draft keeps `is_machine_translated`
 until a person changes its text, and the instance remembers which shown fields
 those are (`ai_translated`), so the page can mark them (EU AI Act Art. 50).
+
+A field is plain text, HTML, or a list kept in a JSON column: `lines` (a list of
+strings, one per line) or `pairs:<a>,<b>` (a list of two-key objects, such as an
+FAQ's question and answer: one entry per block, separated by a blank line, its
+first line the first key and the rest the second). A translator edits a list as
+that text, and a page shows it as the list again (`to_text` / `from_text`).
+
+An object is written in the store's default language unless its spec names a
+`language_field` that says otherwise (a journal article written in Serbian). It
+can be translated into every other store language, and a page about it exists in
+its own language always (`source_language`, `translatable_into`).
 """
 
 from __future__ import annotations
 
 import logging
+import re
 from collections import defaultdict
 
 logger = logging.getLogger('morpheus.i18n')
 
 FIELD_TEXT = 'text'
 FIELD_HTML = 'html'
+FIELD_LINES = 'lines'
+FIELD_PAIRS = 'pairs'  # written 'pairs:<first key>,<second key>'
+
+
+def pair_keys(kind: str) -> tuple[str, str] | None:
+    """`('q', 'a')` for `'pairs:q,a'`; None for any other kind."""
+    if not isinstance(kind, str) or not kind.startswith(FIELD_PAIRS + ':'):
+        return None
+    keys = [k.strip() for k in kind.split(':', 1)[1].split(',')]
+    return (keys[0], keys[1]) if len(keys) == 2 and all(keys) else None
+
+
+def is_list_kind(kind: str) -> bool:
+    return kind == FIELD_LINES or pair_keys(kind) is not None
+
+
+def _one_line(value) -> str:
+    return ' '.join(str(value or '').split())
+
+
+def to_text(kind: str, raw) -> str:
+    """A field's stored value as a translator edits it."""
+    if kind == FIELD_LINES:
+        items = raw if isinstance(raw, (list, tuple)) else []
+        return '\n'.join(line for line in (_one_line(i) for i in items) if line)
+    keys = pair_keys(kind)
+    if keys is not None:
+        items = raw if isinstance(raw, (list, tuple)) else []
+        blocks = []
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            first = _one_line(item.get(keys[0]))
+            second = '\n'.join(
+                line.strip() for line in str(item.get(keys[1]) or '').splitlines() if line.strip()
+            )
+            if first or second:
+                blocks.append(f'{first}\n{second}'.rstrip())
+        return '\n\n'.join(blocks)
+    return '' if raw is None else str(raw)
+
+
+def from_text(kind: str, text: str, original=None):
+    """The value a page shows for `text` in a field of this kind.
+
+    A pair keeps every other key of the original entry at the same position (an
+    itinerary step's time), so only the words change.
+    """
+    text = (text or '').replace('\r\n', '\n')
+    if kind == FIELD_LINES:
+        return [line.strip() for line in text.splitlines() if line.strip()]
+    keys = pair_keys(kind)
+    if keys is None:
+        return text
+    originals = original if isinstance(original, (list, tuple)) else []
+    out = []
+    for i, block in enumerate(b for b in re.split(r'\n\s*\n', text) if b.strip()):
+        lines = [line.strip() for line in block.strip().splitlines() if line.strip()]
+        base = originals[i] if i < len(originals) and isinstance(originals[i], dict) else {}
+        out.append({**base, keys[0]: lines[0], keys[1]: '\n'.join(lines[1:])})
+    return out
 
 
 def _ct(obj_or_model):
@@ -90,6 +163,24 @@ def active_language() -> str:
     return _configured(get_language() or '') or default_language()
 
 
+def source_language(obj) -> str:
+    """The language `obj`'s own text is written in: its spec's `language_field`, else the default."""
+    spec = spec_for(obj)
+    field = (spec or {}).get('language_field')
+    code = _configured(str(getattr(obj, field, '') or '')) if field else ''
+    return code or default_language()
+
+
+def translatable_into(obj) -> list[str]:
+    """The languages `obj` can be translated into: the target languages but its own.
+
+    A page written in a target language (a Serbian article) is shown in that
+    language only; it is not translated back into the default.
+    """
+    own = source_language(obj)
+    return [code for code in target_languages() if code != own]
+
+
 # -- which content is translatable --------------------------------------------
 def translatable_specs() -> list[dict]:
     """The registered content kinds (`TRANSLATABLE_CONTENT`), each well formed.
@@ -147,9 +238,12 @@ def clean_value(model, field: str, kind: str, value: str) -> str:
     """A translation as it may be stored: sanitised HTML, or plain text cut to its column."""
     from django.utils.html import strip_tags
 
-    value = (value or '').strip()
+    value = (value or '').replace('\r\n', '\n').strip()
     if not value:
         return ''
+    if is_list_kind(kind):
+        # A list's text, each entry plain: the page builds the list from its lines.
+        return to_text(kind, from_text(kind, strip_tags(value)))
     if kind == FIELD_HTML:
         from core.utils.html import sanitize_richtext
 
@@ -186,7 +280,7 @@ def source_values(obj, spec: dict | None = None) -> dict[str, str]:
     if missing and obj.pk is not None:
         row = type(obj)._base_manager.filter(pk=obj.pk).values(*missing).first() or {}
         out.update({field: row.get(field) or '' for field in missing})
-    return {field: str(out.get(field) or '') for field in fields}
+    return {field: to_text(spec['fields'][field], out.get(field) or '') for field in fields}
 
 
 def filled_fields(values: dict[str, str]) -> set[str]:
@@ -250,10 +344,32 @@ def content_languages(obj) -> set[str] | None:
     spec = spec_for(obj)
     if spec is None or getattr(obj, 'pk', None) is None or not _applies(spec, obj):
         return None
-    languages = {default_language()}
-    targets = target_languages()
-    if not targets:
-        return languages
+    languages = {source_language(obj)}
+    targets = translatable_into(obj)
+    if targets:
+        languages.update(_translated_into(obj, spec, targets))
+    # A page shows more than this object's text (an experience: its product's too):
+    # it exists only in the languages every part of it is in.
+    for other in _with(spec, obj):
+        theirs = content_languages(other)
+        if theirs is not None:
+            languages &= theirs
+    return languages
+
+
+def _with(spec: dict, obj) -> list:
+    related = spec.get('with')
+    if not callable(related):
+        return []
+    try:
+        return [o for o in (related(obj) or []) if o is not None]
+    except Exception:  # noqa: BLE001 — unsure means the page stays in its own language
+        logger.warning('i18n: with() failed for %s', spec.get('key'), exc_info=True)
+        return []
+
+
+def _translated_into(obj, spec: dict, targets: list[str]) -> set[str]:
+    """The target languages `obj` has a reviewed translation in of every field it fills."""
     needed = filled_fields(source_values(obj, spec))
     from core.i18n.models import Translation
 
@@ -268,8 +384,7 @@ def content_languages(obj) -> set[str] | None:
     for language, field, value in rows:
         if (value or '').strip():
             have[language].add(field)
-    languages.update(lang for lang in targets if needed <= have[lang])
-    return languages
+    return {lang for lang in targets if needed <= have[lang]}
 
 
 # -- showing a translation ----------------------------------------------------
@@ -283,11 +398,19 @@ def overlay(obj, values: dict[str, str], language: str, *, ai_fields=()) -> None
         return
     originals = obj.__dict__.get('_morph_untranslated') or {}
     spec = spec_for(obj)
+    kinds = spec['fields'] if spec is not None else {}
     source = source_values(obj, spec) if spec is not None else {}
     for field, value in values.items():
+        kind = kinds.get(field, FIELD_TEXT)
         if field not in originals:
-            originals[field] = source.get(field, getattr(obj, field, ''))
-        setattr(obj, field, value)
+            # A list keeps its stored shape, so a save puts back exactly what was there.
+            originals[field] = (
+                getattr(obj, field, None)
+                if is_list_kind(kind)
+                else source.get(field, getattr(obj, field, ''))
+            )
+        shown = from_text(kind, value, originals[field]) if is_list_kind(kind) else value
+        setattr(obj, field, shown)
     obj.__dict__['_morph_untranslated'] = originals
     obj.__dict__['_morph_translated'] = language
     shown_ai = set(obj.__dict__.get('_morph_ai_translated') or ())
@@ -341,7 +464,7 @@ def overlay_translation(obj_or_objs, language: str = ''):
         rows = _reviewed_rows(group, language)
         for obj in group:
             got = rows.get(str(obj.pk)) or {}
-            if not got or not _applies(spec, obj):
+            if not got or not _applies(spec, obj) or source_language(obj) == language:
                 continue
             source = source_values(obj, spec)
             needed = filled_fields(source)
@@ -511,7 +634,11 @@ def object_statuses(spec: dict, language: str) -> dict[str, str]:
 
     fields = list(spec['fields'])
     try:
-        rows = list(spec['queryset']().values_list('pk', *fields))
+        qs = spec['queryset']()
+        if spec.get('language_field'):
+            # Written in this language already: nothing to translate.
+            qs = qs.exclude(**{spec['language_field']: language})
+        rows = list(qs.values_list('pk', *fields))
     except Exception:  # noqa: BLE001 — an owner's queryset that fails lists nothing
         logger.warning('i18n: queryset failed for %s', spec.get('key'), exc_info=True)
         return {}
@@ -525,7 +652,9 @@ def object_statuses(spec: dict, language: str) -> dict[str, str]:
     out: dict[str, str] = {}
     for row in rows:
         pk = str(row[0])
-        needed = {f for f, v in zip(fields, row[1:], strict=True) if str(v or '').strip()}
+        needed = {
+            f for f, v in zip(fields, row[1:], strict=True) if to_text(spec['fields'][f], v).strip()
+        }
         if needed <= reviewed[pk]:
             out[pk] = STATUS_TRANSLATED
         elif drafts[pk] - reviewed[pk]:

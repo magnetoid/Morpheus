@@ -207,13 +207,17 @@ def _iter_cms_page_entries(base: str) -> Iterable[dict]:
         from plugins.installed.cms.models import Page
 
         now = timezone.now()
+        from core.utils.i18n import path_in_language
+
         for p in Page.objects.filter(state='published').only(
-            'slug', 'updated_at', 'publish_at', 'metadata', 'body'
+            'slug', 'updated_at', 'publish_at', 'metadata', 'body', 'language'
         ):
             if p.publish_at and p.publish_at > now:
                 continue
             entry = {
-                'loc': urljoin(base, cms_page_path(p)),
+                # A page written in another store language: its own tree's address,
+                # the one its canonical names.
+                'loc': urljoin(base, path_in_language(cms_page_path(p), p.language)),
                 'lastmod': p.updated_at.isoformat() if p.updated_at else '',
                 'changefreq': 'monthly',
                 'priority': '0.5',
@@ -783,6 +787,10 @@ def render_news_sitemap_xml() -> str:
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" '
         'xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">',
     ]
+    from django.conf import settings
+
+    from core.utils.i18n import path_in_language
+
     try:
         from plugins.installed.cms.models import Page
     except Exception as exc:  # noqa: BLE001 — cms plugin not installed
@@ -802,14 +810,15 @@ def render_news_sitemap_xml() -> str:
         pub_at = post.publish_at or post.updated_at or post.created_at
         if pub_at is None:
             continue
-        url = f'{base}/journal/{post.slug}/'
+        url = f'{base}{path_in_language(f"/journal/{post.slug}/", post.language)}'
+        language = (post.language or settings.LANGUAGE_CODE or 'en').split('-')[0]
         pub = pub_at.replace(microsecond=0).isoformat()
         parts.append('<url>')
         parts.append(f'<loc>{escape(url)}</loc>')
         parts.append('<news:news>')
         parts.append('<news:publication>')
         parts.append(f'<news:name>{escape(pub_name)}</news:name>')
-        parts.append('<news:language>en</news:language>')
+        parts.append(f'<news:language>{escape(language)}</news:language>')
         parts.append('</news:publication>')
         parts.append(f'<news:publication_date>{escape(pub)}</news:publication_date>')
         parts.append(f'<news:title>{escape(post.title)}</news:title>')

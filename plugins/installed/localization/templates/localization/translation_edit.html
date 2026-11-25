@@ -45,11 +45,13 @@
       </div>
       <div>
         <div style="font-size:.72rem; color: var(--text-subtle); margin-bottom:.25rem;">{{ language_name }}</div>
-        {% if field.html or field.source|length > 120 %}
-        <textarea id="f-{{ field.name }}" name="f-{{ field.name }}" rows="{% if field.html %}10{% else %}4{% endif %}" style="width:100%; padding:.5rem .6rem; border:1px solid var(--border); border-radius:6px; background: var(--surface); color: var(--text); font-size:.85rem;">{{ field.value }}</textarea>
+        {% if field.html or field.list or field.source|length > 120 %}
+        <textarea id="f-{{ field.name }}" name="f-{{ field.name }}" rows="{% if field.html or field.list %}10{% else %}4{% endif %}" style="width:100%; padding:.5rem .6rem; border:1px solid var(--border); border-radius:6px; background: var(--surface); color: var(--text); font-size:.85rem;">{{ field.value }}</textarea>
         {% else %}
         <input id="f-{{ field.name }}" name="f-{{ field.name }}" type="text" value="{{ field.value }}" style="width:100%; padding:.5rem .6rem; border:1px solid var(--border); border-radius:6px; background: var(--surface); color: var(--text); font-size:.85rem;">
         {% endif %}
+        {% if field.pairs %}<p style="margin:.3rem 0 0; font-size:.75rem; color: var(--text-subtle);">One entry per block: its first line, then the rest. Leave a blank line between entries, as in the original.</p>
+        {% elif field.list %}<p style="margin:.3rem 0 0; font-size:.75rem; color: var(--text-subtle);">One entry per line, as in the original.</p>{% endif %}
       </div>
     </div>
   </div>

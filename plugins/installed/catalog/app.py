@@ -42,8 +42,9 @@ class CatalogPlugin(Plugin):
         from plugins.installed.catalog import signals  # noqa - register signals
 
     def on_translatable_content(self, value, **kwargs):
-        """TRANSLATABLE_CONTENT — a product's text, an experience's included (a service Product)."""
-        from plugins.installed.catalog.models import Product
+        """TRANSLATABLE_CONTENT — a product's text (an experience's included, a service
+        Product) and a category's."""
+        from plugins.installed.catalog.models import Category, Product
 
         return [
             *(value or []),
@@ -60,6 +61,20 @@ class CatalogPlugin(Plugin):
                 },
                 'queryset': lambda: Product.objects.filter(status='active'),
                 'url': lambda product: f'/products/{product.slug}/',
+            },
+            {
+                'key': 'catalog.category',
+                'model': Category,
+                'label': 'Categories',
+                'fields': {
+                    'name': 'text',
+                    'description': 'text',
+                    'long_description': 'html',
+                    'meta_title': 'text',
+                    'meta_description': 'text',
+                },
+                'queryset': lambda: Category.objects.filter(is_active=True),
+                'url': lambda category: f'/category/{category.slug}/',
             },
         ]
 

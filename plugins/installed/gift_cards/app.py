@@ -17,9 +17,15 @@ class GiftCardsPlugin(Plugin):
         'currency math. Storefront redemption hooks into checkout.'
     )
     has_models = True
+    # A gift card is sold as a catalog product (the banner's offer reads it).
+    requires = ['catalog']
 
     def ready(self) -> None:
+        from plugins.installed.gift_cards.context_processors import gift_card_offer
+
         self.register_hook(events.DASHBOARD_SEARCH, self.on_dashboard_search)
+        # The gift card a shopper can buy, for a theme's banner (gone when this app is off).
+        self.register_context_processor(gift_card_offer)
         self.register_urls(
             'plugins.installed.gift_cards.urls',
             prefix='dashboard/gift-cards/',

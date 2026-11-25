@@ -6626,3 +6626,18 @@ msgstr "Pogledajte ponudu"
 
 msgid "About this book"
 msgstr "O knjizi"
+
+#: plugins/installed/cms/services.py
+msgid "%(n)s min read"
+msgid_plural "%(n)s min read"
+msgstr[0] "%(n)s minut čitanja"
+msgstr[1] "%(n)s minuta čitanja"
+msgstr[2] "%(n)s minuta čitanja"
+
+#: themes/library/montenegro/templates/storefront/home.html
+msgid "From %(low)s to %(high)s"
+msgstr "Od %(low)s do %(high)s"
+
+#: themes/library/montenegro/templates/storefront/home.html
+msgid "From %(low)s"
+msgstr "Od %(low)s"

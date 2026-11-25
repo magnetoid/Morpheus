@@ -8,7 +8,7 @@ This app issues gift cards, keeps a running record of every balance change, and 
 
 ## Set it up
 
-To sell gift cards on the storefront, create a product whose SKU is one of the values in [](field:gift_cards.sellable_skus) under [Gift cards](settings:gift_cards) settings — the default is GIFT-CARD. Once an order containing that product is paid, a card is issued automatically for each unit and emailed to the buyer; the email's wording can be edited from the store's email template list.
+To sell gift cards on the storefront, create a product whose SKU is one of the values in [](field:gift_cards.sellable_skus) under [Gift cards](settings:gift_cards) settings — the default is GIFT-CARD. Once an order containing that product is paid, a card is issued automatically for each unit and emailed to the buyer; the email's wording can be edited from the store's email template list. A theme with a gift-card banner on its home page shows it only while such a product is for sale, links to it, and prints its lowest and highest price.
 
 ## Common tasks
 

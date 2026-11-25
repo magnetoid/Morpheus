@@ -80,9 +80,12 @@ def _category(raw):
     raw = (raw or '').strip()
     if not raw:
         return None
-    return Category.objects.filter(
+    from core.i18n.services import overlay_translation
+
+    found = Category.objects.filter(
         Q(slug__iexact=raw) | Q(name__iexact=raw), is_active=True
     ).first()
+    return overlay_translation(found)
 
 
 def _guests(raw) -> int | None:

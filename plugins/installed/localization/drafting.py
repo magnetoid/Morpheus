@@ -78,8 +78,10 @@ def _prompt(source_language: str, target_language: str, target_code: str) -> str
         f'{target_language}. You get a JSON object of fields; answer with a JSON object '
         'with the same keys, each value translated, and nothing else. Keep every HTML '
         'tag and attribute exactly as it is and translate only the text between them. '
-        'Keep the names of places, hotels, businesses and brands as people there write '
-        f'them. Do not add or leave out information.{script}'
+        'Keep every line break and blank line where it is: a value with several lines '
+        'is a list, one entry per line or per block. Keep the names of places, hotels, '
+        f'businesses and brands as people there write them. Do not add or leave out '
+        f'information.{script}'
     )
 
 
@@ -104,10 +106,10 @@ def draft_object(spec: dict, obj, language: str) -> int:
     """
     from core.agents.llm import LLMMessage, get_llm_provider, is_degraded_response
     from core.i18n.services import (
-        default_language,
         language_name,
         reviewed_values,
         set_translation,
+        source_language,
         source_values,
     )
 
@@ -125,7 +127,7 @@ def draft_object(spec: dict, obj, language: str) -> int:
                 LLMMessage(
                     role='system',
                     content=_prompt(
-                        language_name(default_language()), language_name(language), language
+                        language_name(source_language(obj)), language_name(language), language
                     ),
                 ),
                 LLMMessage(role='user', content=json.dumps(todo, ensure_ascii=False)),

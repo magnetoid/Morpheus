@@ -146,6 +146,24 @@ def _meta_list_text(value) -> str:
     return str(value) if value else ''
 
 
+def _language_choices() -> list[tuple[str, str]]:
+    """The store's languages, the default first as ''; empty for a one-language store."""
+    from core.i18n import services as i18n
+
+    codes = i18n.store_languages()
+    if len(codes) < 2:
+        return []
+    return [('' if code == codes[0] else code, i18n.language_name(code)) for code in codes]
+
+
+def _posted_language(post, page) -> str:
+    """The language the form says the page is written in; kept when the form has no such field."""
+    if 'language' not in post:
+        return getattr(page, 'language', '') or ''
+    value = (post.get('language') or '').strip().lower()
+    return value if value in {code for code, _name in _language_choices()} else ''
+
+
 def _page_form_context(request, page, *, creating):
     from plugins.installed.cms.models import Page
 
@@ -155,6 +173,7 @@ def _page_form_context(request, page, *, creating):
         'creating': creating,
         'state_choices': Page.STATE_CHOICES,
         'layout_choices': Page.LAYOUT_CHOICES,
+        'language_choices': _language_choices(),
         'form_action': request.path,
         'active_nav': 'cms',
         'cover_image': meta.get('cover', ''),
@@ -235,6 +254,7 @@ def page_edit(request, page_id=None):  # noqa: PLR0912, PLR0915 — flat validat
                 messages.error(request, err)
             draft = page or Page()
             draft.title, draft.slug, draft.excerpt = title, slug, excerpt
+            draft.language = _posted_language(request.POST, page)
             draft.body, draft.state, draft.layout, draft.publish_at = (
                 body,
                 state,
@@ -254,6 +274,7 @@ def page_edit(request, page_id=None):  # noqa: PLR0912, PLR0915 — flat validat
             page = Page()
             if request.user.is_authenticated:
                 page.author = request.user
+        page.language = _posted_language(request.POST, page)
         page.title, page.slug, page.excerpt = title, slug, excerpt
         page.body, page.state, page.layout, page.publish_at = body, state, layout, publish_at
         # Cover image (journal OG/cover) + editorial fields live in metadata.
@@ -296,6 +317,7 @@ def page_duplicate(request, page_id):
         slug=slug,
         excerpt=src.excerpt,
         body=src.body,
+        language=src.language,
         layout=src.layout,
         state='draft',
         metadata=dict(src.metadata or {}),

@@ -27,6 +27,9 @@ def editor_url(kind: str, pk, language: str) -> str:
 def _label(spec: dict, obj) -> str:
     from core.i18n.services import source_values
 
+    title = spec.get('title_field')
+    if title:
+        return (str(getattr(obj, title, '') or '') or str(obj))[:120]
     values = source_values(obj, spec)
     first = next(iter(spec['fields']), '')
     return (values.get(first) or str(obj))[:120]
@@ -97,7 +100,7 @@ def translations_index(request):
     if spec is not None:
         statuses = i18n.object_statuses(spec, language)
         ids = [pk for pk, s in statuses.items() if not status or s == status]
-        first = next(iter(spec['fields']))
+        first = spec.get('title_field') or next(iter(spec['fields']))
         qs = spec['model']._base_manager.filter(pk__in=ids)
         page, paging_ctx = paginate_and_sort(
             request, qs, default_sort=first, allowed_sorts=(first,)
@@ -155,7 +158,8 @@ def translation_edit(request, kind: str, pk: str, language: str):
         obj = spec['model']._base_manager.filter(pk=pk).first()
     except (ValidationError, ValueError) as e:
         raise Http404('No such object.') from e
-    if obj is None:
+    if obj is None or language not in i18n.translatable_into(obj):
+        # Written in this language already: there is nothing to translate.
         raise Http404('No such object.')
     rows = {
         r.field: r
@@ -202,6 +206,8 @@ def translation_edit(request, kind: str, pk: str, language: str):
             'name': field,
             'label': field.replace('_', ' ').capitalize(),
             'html': field_kind == i18n.FIELD_HTML,
+            'list': i18n.is_list_kind(field_kind),
+            'pairs': i18n.pair_keys(field_kind) is not None,
             'source': source.get(field, ''),
             'value': rows[field].value if field in rows else '',
             'draft': field in rows and not rows[field].reviewed,
@@ -218,7 +224,7 @@ def translation_edit(request, kind: str, pk: str, language: str):
             'spec_label': str(spec.get('label') or kind),
             'object_label': _label(spec, obj),
             'language_name': i18n.language_name(language),
-            'default_name': i18n.language_name(i18n.default_language()),
+            'default_name': i18n.language_name(i18n.source_language(obj)),
             'fields': fields,
             'has_draft': any(f['draft'] for f in fields),
             'last_run': last_run(kind, language),

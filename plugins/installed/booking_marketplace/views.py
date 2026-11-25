@@ -20,6 +20,7 @@ from django.utils.dates import MONTHS
 from django.utils.translation import gettext as _
 from django.utils.translation import ngettext
 
+from core.i18n.services import overlay_translation
 from core.text import clip, plain_text
 from core.utils.i18n import localized_path
 from core.utils.pagination import paginate_or_404
@@ -500,13 +501,15 @@ def region_detail(request, region):
             ).select_related('vendor', 'category')
         )
     )
+    counted = landing.category_counts().get(region, [])
+    overlay_translation([category for category, _count in counted])
     region_categories = [
         {
             'name': category.name,
             'count': count,
             'url': localized_path(request, f'/regions/{region}/{category.slug}/'),
         }
-        for category, count in landing.category_counts().get(region, [])
+        for category, count in counted
     ]
     return render(
         request,
@@ -567,7 +570,7 @@ def region_category(request, region, category):
     from plugins.installed.catalog.models import Category
 
     label = _region_label(region)
-    cat = Category.objects.filter(slug=category, is_active=True).first()
+    cat = overlay_translation(Category.objects.filter(slug=category, is_active=True).first())
     if cat is None:
         raise Http404('Unknown category')
     # Paged before translations are applied: a broad parent category can hold every
@@ -674,6 +677,8 @@ def service_detail(request, slug):
     # The head reads the Product's SEO (title, description, social image), so the
     # page shows what the product editor's SEO panel says, not the listing's copy.
     ctx['seo_object'] = product or service
+    # Its languages are the listing's: its details and its Product's text (`with`).
+    ctx['seo_content_object'] = service
     ctx['web_story'] = story if story is not None and story.is_published else None
     # The destination guides of this experience's region: the hub-and-spoke links the
     # stay pages already carry (stays.nearby_places).

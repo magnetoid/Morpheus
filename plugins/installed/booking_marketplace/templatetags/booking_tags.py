@@ -14,6 +14,26 @@ from django.conf import settings
 register = template.Library()
 
 
+@register.filter
+def booking_day(day, with_year: str = '') -> str:
+    """A departure date in the visitor's language: 'Wed 25 Nov 2026', 'sre 25. nov 2026.'.
+
+    Django's `|date` names Serbian months from its own Cyrillic catalog and capitalises
+    them ('Nov.'), so the booking form formats with Babel (`search_page.date_locale`).
+    Pass any argument to leave the year out.
+    """
+    if day is None:
+        return ''
+    from plugins.installed.booking_marketplace.search_page import date_locale
+
+    try:
+        from babel.dates import format_skeleton
+
+        return format_skeleton('MMMEd' if with_year else 'yMMMEd', day, locale=date_locale()[0])
+    except Exception:  # noqa: BLE001 — a label never fails a page
+        return day.isoformat()
+
+
 @register.simple_tag
 def featured_experiences(limit=8):
     """Top active experiences — bestsellers first, then by rating / reviews."""
@@ -120,7 +140,8 @@ def home_categories():
     return [
         {
             'label': c['name'],
-            'icon': _CAT_ICONS.get(slugify(c['name']), _CAT_ICON_DEFAULT),
+            'icon': _CAT_ICONS.get(c['slug'])
+            or _CAT_ICONS.get(slugify(c['name']), _CAT_ICON_DEFAULT),
             'count': c['count'],
             'href': _cat_href(c['slug']),
         }

@@ -1337,7 +1337,9 @@ def category_detail(request, slug):
 
     # Active only: a deactivated category answered 200, indexable, under a
     # canonical naming itself — a page the merchant had taken down.
-    category = Category.objects.filter(slug=slug, is_active=True).first()
+    from core.i18n.services import overlay_translation
+
+    category = overlay_translation(Category.objects.filter(slug=slug, is_active=True).first())
     if category is None:
         # Old genre-categories were migrated to /genre/<slug>/ — 301 so indexed
         # /category/<slug>/ URLs + bookmarks keep their link equity. Only to a

@@ -309,11 +309,11 @@ review_summary, reviews, can_review. Same POST actions as the plugin default.{% 
         <form method="post" action="/bookings/{{ service.slug }}/" id="booking-form" data-unit="{{ service.price.amount }}" class="grid gap-2.5 mt-3">
           {% csrf_token %}
           <select name="booking_date" aria-label="{% trans 'Date' %}" required class="h-11 rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring">
-            {% for d in dates %}<option value="{{ d.date|date:'Y-m-d' }}">{{ d.date|date:'D j M Y' }} — {{ d.remaining }} {% trans "left" %}</option>{% endfor %}
+            {% for d in dates %}<option value="{{ d.date|date:'Y-m-d' }}">{{ d.date|booking_day }} — {{ d.remaining }} {% trans "left" %}</option>{% endfor %}
           </select>
           {% if sessions %}
           <select name="time_slot" aria-label="{% trans 'Time' %}" class="h-11 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring">
-            {% for s in sessions %}{% for t in s.times %}<option value="{{ t.time|default:'' }}">{{ s.date|date:'D j M' }}{% if t.time %} · {{ t.time }}{% endif %} — {{ t.remaining }} {% trans "left" %}</option>{% endfor %}{% endfor %}
+            {% for s in sessions %}{% for t in s.times %}<option value="{{ t.time|default:'' }}">{{ s.date|booking_day:'no year' }}{% if t.time %} · {{ t.time }}{% endif %} — {{ t.remaining }} {% trans "left" %}</option>{% endfor %}{% endfor %}
           </select>
           {% endif %}
           {% if tiers %}
