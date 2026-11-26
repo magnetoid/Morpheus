@@ -5,3 +5,7 @@ User-supplied approved logo. Original is retained; WebP only trims outer white m
 This Montenegro-only theme uses /media/store/montenegro-experience-logo.webp in header and footer. StoreSettings.logo on the Montenegro deployment points at that same persistent media asset, covering consumers of the existing branding settings (including publisher metadata). Provision this file into the instance media storage when creating a fresh deployment; do not set other stores to this logo. Other theme files are unchanged.
 
 Live update applied to Montenegro only; this source branch must be incorporated into the next deployed source before rebuilding that instance, otherwise the template change will revert. The media file and StoreSettings value persist independently. No main-branch merge or cross-store deployment is implied.
+
+
+## Transparent correction
+Use transparent-v2 artwork, not the original opaque WebP. Header/footer and theme icons now use versioned media URLs. Instance-only PWA template/manifest references were also corrected on Montenegro. Before the next rebuild, integrate a configurable PWA brand-icon setting in the PWA plugin (preserve defaults on other stores); the live PWA correction is not yet represented in shared plugin source. Do not redeploy from an older source and assume these hotfixes persist.

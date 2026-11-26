@@ -23,7 +23,7 @@ which is exactly what this theme was relying on before it adopted the contract.{
 {% endblock %}
 
 {# Legacy favicon.ico — pwa plugin injects manifest/SVG/apple-touch below body; this covers /favicon.ico (was 404). #}
-<link rel="icon" href="{% static 'montenegro/favicon.ico' %}" sizes="32x32">
+
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -87,6 +87,7 @@ step here: a class it never saw does not exist, so new rules live in refresh.css
   @media (prefers-reduced-motion: reduce) { *, ::before, ::after { animation-duration: .001ms !important; transition-duration: .001ms !important; } }
 </style>
 {% block extra_head %}{% endblock %}
+<link rel="icon" href="/media/store/montenegro-experience-favicon-v2.ico"><link rel="apple-touch-icon" href="/media/store/montenegro-experience-icon-v2.png">
 </head>
 <body class="bg-background text-foreground antialiased min-h-screen flex flex-col">
 {% include "storefront/_admin_bar.html" %}
@@ -99,7 +100,7 @@ step here: a class it never saw does not exist, so new rules live in refresh.css
     <div class="flex items-center justify-between h-[72px]">
       <!-- Logo -->
       <a href="/" class="flex items-center shrink-0" aria-label="Montenegro Experience">
-        <img class="me-brand-logo" src="/media/store/montenegro-experience-logo.webp" alt="Montenegro Experience" width="1146" height="317" fetchpriority="high" decoding="async" style="display:block;width:clamp(145px,19vw,220px);height:auto;object-fit:contain;max-height:62px">
+        <img class="me-brand-logo" src="/media/store/montenegro-experience-logo-transparent-v2.webp" alt="Montenegro Experience" width="1146" height="317" fetchpriority="high" decoding="async" style="display:block;width:clamp(145px,19vw,220px);height:auto;object-fit:contain;max-height:62px">
       </a>
 
       <!-- Desktop Navigation — Megamenu -->
@@ -474,7 +475,7 @@ step here: a class it never saw does not exist, so new rules live in refresh.css
   <div class="container mx-auto px-4 py-12">
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 pb-8 items-start">
       <div class="max-w-md">
-        <a href="/" aria-label="Montenegro Experience"><img src="/media/store/montenegro-experience-logo.webp" alt="Montenegro Experience" width="1146" height="317" loading="lazy" decoding="async" style="display:block;width:260px;max-width:100%;height:auto;object-fit:contain;margin-bottom:16px"></a>
+        <a href="/" aria-label="Montenegro Experience"><img src="/media/store/montenegro-experience-logo-transparent-v2.webp" alt="Montenegro Experience" width="1146" height="317" loading="lazy" decoding="async" style="display:block;width:260px;max-width:100%;height:auto;object-fit:contain;margin-bottom:16px"></a>
         <p class="text-sm text-muted-foreground">{% trans "Discover the beauty of Montenegro through unique, handcrafted experiences." %}</p>
       </div>
       <div class="w-full">
