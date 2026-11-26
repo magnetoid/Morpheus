@@ -106,9 +106,17 @@ def _cluster_tools() -> list:
         if cluster is not None:
             names = cluster.get('names')
             if names is None:  # admin — all tools, plus the door to Janus (janus.ask/reply)
+                from morpheus.core import agent_registry
                 from plugins.installed.agent_mcp.janus_door import door_tools
+                from plugins.installed.agent_mcp.servers import ADMIN_REGISTRY_TOOLS
 
-                return [*all_tools, *door_tools()]
+                have = {t.name for t in all_tools}
+                extra = [
+                    t
+                    for t in (agent_registry.get_tool(n) for n in sorted(ADMIN_REGISTRY_TOOLS))
+                    if t is not None and t.name not in have
+                ]
+                return [*all_tools, *extra, *door_tools()]
             # Resolve each whitelisted name from Linda's catalog first, then fall
             # back to the plugin registry. Buyer-agent cart/checkout tools live
             # in agentic_checkout (registered via contribute_agent_tools) and are

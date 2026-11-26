@@ -15,6 +15,16 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.192.0 — 2026-11-26
+
+**Translate the store from an outside tool over MCP**
+
+- An API token with the translation scopes now reaches the translation tools on /mcp/admin/v1/, so a tool such as ChatGPT can translate the store directly. Before, only a Janus turn could reach them there.
+- New i18n.source_text gives an object's text to translate, field by field, with each field's format (plain text, HTML, one item per line, or question-and-answer blocks), the stored translation and what is missing.
+- New i18n.set_translations writes several fields of one object in one approved call and says what is still missing and whether the page now appears in that language.
+- i18n.translation_status names each object by kind, content type and address, and every translation tool takes either.
+- A translation the page would never show (a field it does not display, or a page's own language) is refused with the reason, over MCP and GraphQL, instead of being stored silently.
+
 ## v0.191.0 — 2026-11-25
 
 **Travel pages read in their own language**

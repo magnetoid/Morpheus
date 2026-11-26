@@ -1935,7 +1935,12 @@ Two list kinds hold JSON lists as text a translator edits: `lines` (one item per
 `pairs:<a>,<b>` (a blank line between entries; the first line is `a`, the rest `b`). The overlay
 shows them as lists that keep each entry's other keys (an itinerary step's time), so templates keep
 their loops. A visitor-facing date is `core.i18n.dates.format_day` or booking's `|booking_day`,
-never `|date`. Guarded by `core/i18n/tests/test_list_fields.py`,
+never `|date`. An outside translator (an API token on `/mcp/admin/v1/`, v0.192.0) works through
+`i18n.translation_status` → `i18n.source_text` → `i18n.set_translations`. A token there sees Linda's
+built-in list plus `agent_mcp/servers.py:ADMIN_REGISTRY_TOOLS`, never the whole registry. A
+registered object refuses a field or language its page would never show
+(`services.translation_problem`), over MCP and GraphQL alike. Guarded by
+`core/i18n/tests/test_translator_tools.py`, `core/i18n/tests/test_list_fields.py`,
 `booking_marketplace/tests/test_experience_details_translation.py` and
 `cms/tests/test_page_language.py`.
 
