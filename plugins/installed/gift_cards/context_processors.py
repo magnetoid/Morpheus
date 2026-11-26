@@ -35,10 +35,14 @@ def _offer() -> dict | None:
     skus = sellable_skus()
     if not skus:
         return None
-    variants = ProductVariant.objects.filter(sku__in=skus).values_list('product_id', flat=True)
+    # In any case, as `issue_for_order` matches an order line's SKU.
+    by_sku = Q(pk__in=[])
+    for sku in skus:
+        by_sku |= Q(sku__iexact=sku)
+    variants = ProductVariant.objects.filter(by_sku).values_list('product_id', flat=True)
     product = (
         Product.objects.shoppable()
-        .filter(Q(sku__in=skus) | Q(pk__in=variants))
+        .filter(by_sku | Q(pk__in=variants))
         .order_by('created_at')
         .first()
     )

@@ -32,14 +32,20 @@ def path_in_language(path: str, language: str) -> str:
     """
     from django.conf import settings
 
-    language = (language or '').split('-')[0].lower()
-    default = (getattr(settings, 'LANGUAGE_CODE', '') or '').split('-')[0]
-    codes = {code.split('-')[0] for code, _ in (getattr(settings, 'LANGUAGES', None) or [])}
-    if not path.startswith('/') or path.startswith('//') or not language:
+    if not language or not path.startswith('/') or path.startswith('//'):
         return path
-    if language == default or language not in codes or path.startswith(f'/{language}/'):
+    codes = [code for code, _name in (getattr(settings, 'LANGUAGES', None) or [])]
+    wanted = language.lower()
+    # The code as LANGUAGES writes it (`zh-hans` stays `zh-hans`), else its base.
+    code = next((c for c in codes if c.lower() == wanted), '') or next(
+        (c for c in codes if c.lower() == wanted.split('-')[0]), ''
+    )
+    default = (getattr(settings, 'LANGUAGE_CODE', '') or '').lower()
+    if not code or code.lower() in (default, default.split('-')[0]):
         return path
-    return f'/{language}{path}'
+    if path.startswith(f'/{code}/'):
+        return path
+    return f'/{code}{path}'
 
 
 def localized_path(request, path: str) -> str:

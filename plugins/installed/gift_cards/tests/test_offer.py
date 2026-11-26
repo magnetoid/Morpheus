@@ -65,3 +65,15 @@ class GiftCardOfferTests(TestCase):
             status='draft',
         )
         self.assertIsNone(_offer())
+
+
+class GiftCardSkuCaseTests(TestCase):
+    def test_a_lower_case_sku_still_sells_gift_cards(self):
+        Product.objects.create(
+            name='Gift card',
+            slug='gift-card',
+            sku='gift-card',
+            price=Money(50, 'EUR'),
+            status='active',
+        )
+        self.assertEqual(_offer()['url'], '/products/gift-card/')

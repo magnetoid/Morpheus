@@ -85,3 +85,15 @@ class PathInLanguageTests(SimpleTestCase):
         self.assertEqual(path_in_language('/journal/x/', 'de'), '/journal/x/')
         self.assertEqual(path_in_language('/sr/journal/x/', 'sr'), '/sr/journal/x/')
         self.assertEqual(path_in_language('https://x.test/a/', 'sr'), 'https://x.test/a/')
+
+
+@override_settings(
+    LANGUAGE_CODE='en-us', LANGUAGES=[('en', 'English'), ('zh-hans', 'Chinese'), ('sr', 'Srpski')]
+)
+class PathInLanguageCodeTests(SimpleTestCase):
+    def test_a_hyphenated_code_keeps_its_whole_prefix(self):
+        self.assertEqual(path_in_language('/journal/x/', 'zh-hans'), '/zh-hans/journal/x/')
+        self.assertEqual(path_in_language('/journal/x/', 'ZH-Hans'), '/zh-hans/journal/x/')
+        self.assertEqual(path_in_language('/journal/x/', 'sr-latn'), '/sr/journal/x/')
+        self.assertEqual(path_in_language('/journal/x/', 'en'), '/journal/x/')
+        self.assertEqual(path_in_language('/zh-hans/journal/x/', 'zh-hans'), '/zh-hans/journal/x/')
