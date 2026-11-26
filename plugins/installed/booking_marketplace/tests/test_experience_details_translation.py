@@ -265,3 +265,54 @@ class DetailsEditorTests(TestCase):
             service.faqs,
             [{'q': 'Treba li iskustvo?', 'a': 'Ne.'}, {'q': 'Koliko traje?', 'a': 'Dva sata.'}],
         )
+
+
+@override_settings(**BILINGUAL)
+class TranslatorToolsExperienceTests(MontenegroThemeMixin, TestCase):
+    """An outside translator translates an experience in two calls (v0.192.0)."""
+
+    def test_read_the_details_write_them_back_and_the_page_is_serbian(self):
+        from core.i18n.agent_tools import set_translations_tool, source_text_tool
+        from plugins.installed.booking_marketplace.products import ensure_product
+
+        service = BookableService.objects.create(
+            vendor=_vendor(),
+            name='Bay Kayak Tour',
+            slug='bay-kayak-tour',
+            short_description='Paddle the bay.',
+            price=Money(50, 'EUR'),
+            faqs=[{'q': 'Do I need experience?', 'a': 'No.'}],
+            is_active=True,
+        )
+        product = ensure_product(service)
+        src = source_text_tool.handler(
+            content_type='booking_marketplace.experience',
+            object_id=str(service.pk),
+            language_code='sr',
+        ).output
+        self.assertEqual(src['fields']['faqs']['format'], 'pairs')
+        self.assertIn('first line is the q', src['fields']['faqs']['how_to_write'])
+        self.assertEqual(src['fields']['faqs']['source'], 'Do I need experience?\nNo.')
+        values = {
+            f: ('Treba li iskustvo?\nNe.' if f == 'faqs' else f'Srpski {f}') for f in src['fields']
+        }
+        set_translations_tool.handler(
+            content_type='booking_marketplace.experience',
+            object_id=str(service.pk),
+            language_code='sr',
+            values=values,
+        )
+        product_src = source_text_tool.handler(
+            content_type='catalog.product', object_id=str(product.pk), language_code='sr'
+        ).output
+        out = set_translations_tool.handler(
+            content_type='catalog.product',
+            object_id=str(product.pk),
+            language_code='sr',
+            values={f: f'Kajak {f}' for f in product_src['fields']},
+        ).output
+        self.assertEqual(out['missing'], [])
+        cache.clear()
+        body = Client().get('/sr/bookings/bay-kayak-tour/').content.decode('utf-8')
+        self.assertIn('Treba li iskustvo?', body)
+        self.assertIn('rel="canonical" href="http://testserver/sr/bookings/bay-kayak-tour/"', body)

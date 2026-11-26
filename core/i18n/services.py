@@ -541,6 +541,49 @@ def set_translation(
     return tr
 
 
+def translation_problem(obj, field: str, language_code: str) -> str:
+    """Why a translation of `field` in `language_code` would never be shown, or ''.
+
+    For an object an app registered: the field must be one of its registered fields
+    and the language one it can be translated into (not its own, not the default).
+    An object no app registered is not checked.
+    """
+    spec = spec_for(obj)
+    if spec is None:
+        return ''
+    if field not in spec['fields']:
+        return f'{field} is not translatable here; the fields are: {", ".join(spec["fields"])}'
+    languages = translatable_into(obj)
+    if (language_code or '').lower() not in languages:
+        return (
+            f'{language_code or "(none)"} is not a language this can be translated into; '
+            f'it is written in {source_language(obj)} and can go into: '
+            f'{", ".join(languages) or "nothing"}'
+        )
+    return ''
+
+
+#: How a translator writes each kind of field.
+FIELD_FORMATS = {
+    FIELD_TEXT: 'Plain text.',
+    FIELD_HTML: 'HTML: keep the tags of the original and translate only the words.',
+    FIELD_LINES: 'One item per line.',
+    FIELD_PAIRS: (
+        'One entry per block, blocks separated by a blank line: the first line is the '
+        '{first}, the lines below it the {second}.'
+    ),
+}
+
+
+def field_format(kind: str) -> tuple[str, str]:
+    """`(format, how to write it)` for a field kind: `('pairs', 'One entry per block …')`."""
+    keys = pair_keys(kind)
+    if keys is not None:
+        return FIELD_PAIRS, FIELD_FORMATS[FIELD_PAIRS].format(first=keys[0], second=keys[1])
+    kind = kind if kind in FIELD_FORMATS else FIELD_TEXT
+    return kind, FIELD_FORMATS[kind]
+
+
 def delete_translation(obj, field: str, language_code: str) -> int:
     from core.i18n.models import Translation
 

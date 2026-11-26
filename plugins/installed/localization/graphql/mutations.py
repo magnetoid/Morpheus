@@ -64,6 +64,11 @@ class LocalizationMutationExtension:
         if obj is None:
             return _err(f'No {content_type} with id {object_id}')
 
+        from core.i18n.services import translation_problem
+
+        problem = translation_problem(obj, field, language_code)
+        if problem:
+            return _err(problem)
         set_translation(obj, field, language_code, value, machine_translated=machine_translated)
         return SetTranslationResult(
             ok=True,

@@ -25,6 +25,8 @@ class I18nConfig(AppConfig):
                 get_translations_tool,
                 list_languages_tool,
                 set_translation_tool,
+                set_translations_tool,
+                source_text_tool,
                 translation_status_tool,
             )
 
@@ -38,6 +40,8 @@ class I18nConfig(AppConfig):
                 set_translation_tool,
                 translation_status_tool,
                 approve_translation_tool,
+                source_text_tool,
+                set_translations_tool,
             ):
                 agent_registry.register_tool(tool, plugin='core.i18n')
         except Exception:  # noqa: BLE001, S110

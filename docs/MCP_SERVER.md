@@ -365,23 +365,34 @@ Scopes `markets.read` ("Markets · read") and `markets.write` ("Markets · write
 
 ### Translations (i18n)
 
-For external translators + translation tools. Any object is addressed by
-`content_type` (`app_label.model`, e.g. `catalog.product`) + `object_id`.
-Scopes: `i18n.read` / `i18n.write`.
+For external translators + translation tools, on `/mcp/admin/v1/` with a token (since v0.192.0;
+before, only a Janus turn could reach them there). Any object is addressed by a kind key from
+`i18n.translation_status` (e.g. `booking_marketplace.experience`) or by `content_type`
+(`app_label.model`, e.g. `catalog.product`) + `object_id`. Scopes: `i18n.read` / `i18n.write`;
+tick the writes in the token's approvals.
 
 | Tool / Mutation | Purpose | Approval? |
 |---|---|---|
 | `i18n.languages` | The store's languages (the default first) and the ones content can be translated into | no |
+| `i18n.translation_status` | Per language and kind: translated, drafts waiting, missing; the objects of one kind, each with its kind, content type and address | no |
+| `i18n.source_text` | One object's text to translate, field by field, with each field's format, the stored translation and what is missing | no |
+| `i18n.set_translations` | Set several fields of one object in one language; says what is still missing and whether its page now appears in that language | **yes** |
 | `i18n.get_translations` / `translations(...)` | Read stored translations for an object, drafts included | no |
-| `i18n.set_translation` / `setTranslation(...)` | Set a field's translation in a language; it is reviewed and published | **yes** (MCP) |
-| `i18n.translation_status` | Per language and kind: translated, drafts waiting, missing; the objects of one kind | no |
-| `i18n.draft_translations` | Queue AI drafts (never shown until reviewed) for up to 50 objects of a kind | **yes** |
+| `i18n.set_translation` / `setTranslation(...)` | Set one field's translation in a language; it is reviewed and published | **yes** (MCP) |
+| `i18n.draft_translations` | Queue AI drafts (never shown until reviewed) for up to 50 objects of a kind (a Janus turn only) | **yes** |
 | `i18n.approve_translation` | Publish one object's AI drafts in a language | **yes** |
+
+The flow: `i18n.translation_status` (kind, language, `status: missing`) → `i18n.source_text` →
+`i18n.set_translations`. Fields come in four formats: `text`, `html` (keep the tags), `lines` (one
+item per line) and `pairs` (one entry per block, a blank line between; the first line is the question
+or step, the lines below it the answer or detail). A field the object's page does not show, or a
+language it cannot go into (its own, or the default), is refused rather than stored. Pass
+`machine_translated: true` for machine output; the shop then marks it as AI-written (EU AI Act Art. 50).
 
 GraphQL also exposes `enabledLanguages` (the store's languages). The same Bearer token works
 from MCP or GraphQL; the merchant grants `i18n.read`/`i18n.write` when minting the token. A
 translation is shown to shoppers only once every field of the object that has text is translated
-and reviewed (v0.160.0).
+and reviewed (v0.160.0); an experience's page also needs its product's text (v0.191.0).
 
 ## Read surface
 

@@ -50,6 +50,20 @@ CHECKOUT_TOOLS = CART_TOOLS | {'checkout.get_session', 'checkout.set_buyer'}
 # Admin: no whitelist → all tools (Linda's full catalog).
 ADMIN_NAMES: set[str] | None = None
 
+# Tools the admin server offers a token on top of Linda's catalog, resolved from the
+# registry: the translation surface an outside translator works through (list what
+# is missing, read an object's text, write it back). Each still needs the token's
+# `i18n.*` scope, and a write its tick in the token's approvals.
+ADMIN_REGISTRY_TOOLS = {
+    'i18n.languages',
+    'i18n.translation_status',
+    'i18n.source_text',
+    'i18n.get_translations',
+    'i18n.set_translation',
+    'i18n.set_translations',
+    'i18n.approve_translation',
+}
+
 
 _state = threading.local()
 
