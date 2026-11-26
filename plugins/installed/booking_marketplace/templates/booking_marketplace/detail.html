@@ -33,7 +33,7 @@
     <form method="post" action="/bookings/{{ service.slug }}/" style="display:grid; gap:.75rem; max-width:420px;">
       {% csrf_token %}
       <select name="booking_date" aria-label="Date" required style="padding:.7rem; border:1px solid var(--rule); border-radius:8px;">
-        {% for d in dates %}<option value="{{ d.date|date:'Y-m-d' }}">{{ d.date|date:'D j M Y' }} — {{ d.remaining }} left</option>{% endfor %}
+        {% for d in dates %}<option value="{{ d.date|date:'Y-m-d' }}">{{ d.date|booking_day }} — {{ d.remaining }} left</option>{% endfor %}
       </select>
       <input type="number" name="guests" value="1" min="1" max="{{ max_guests }}" required style="padding:.7rem; border:1px solid var(--rule); border-radius:8px;">
       <input type="text" name="name" placeholder="Your name" required style="padding:.7rem; border:1px solid var(--rule); border-radius:8px;">

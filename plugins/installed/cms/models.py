@@ -99,6 +99,9 @@ class Page(models.Model):
     title = models.CharField(max_length=200)
     excerpt = models.CharField(max_length=300, blank=True)
     body = models.TextField(blank=True, help_text='Markdown or HTML — theme decides.')
+    # The language the page is written in: '' is the store's default. A journal
+    # article written in Serbian lives in the Serbian tree (core.i18n).
+    language = models.CharField(max_length=10, blank=True, default='', db_default='')
 
     layout = models.CharField(max_length=20, choices=LAYOUT_CHOICES, default='default')
     state = models.CharField(max_length=12, choices=STATE_CHOICES, default='draft', db_index=True)

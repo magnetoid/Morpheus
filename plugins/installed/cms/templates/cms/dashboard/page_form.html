@@ -35,6 +35,18 @@
         <input type="text" id="page-excerpt" name="excerpt" maxlength="300" class="input" value="{{ page.excerpt|default:'' }}">
       </div>
 
+      {% if language_choices %}
+      <div class="md:col-span-4">
+        <label class="block text-xs font-medium mb-1" for="page-language">Written in</label>
+        <select id="page-language" name="language" class="input">
+          {% for value, label in language_choices %}
+          <option value="{{ value }}" {% if page.language|default:'' == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+        <p class="text-xs mt-1" style="color: var(--text-muted);">The page is listed and indexed in this language. Translate it into the others under Settings → Translations.</p>
+      </div>
+      {% endif %}
+
       <div class="md:col-span-4">
         <label class="block text-xs font-medium mb-1" for="page-layout">Template</label>
         <select id="page-layout" name="layout" class="input">

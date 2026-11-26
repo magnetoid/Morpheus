@@ -9,7 +9,8 @@ import logging
 import re
 
 from django.utils import timezone
-from django.utils.formats import date_format
+
+from core.i18n.dates import format_day
 
 logger = logging.getLogger('morpheus.cms')
 
@@ -150,6 +151,12 @@ def _default_author() -> str:
     return f'{StoreSettings.get("store_name", "Morpheus Store")} staff'
 
 
+def _reading_time(minutes: int) -> str:
+    from django.utils.translation import ngettext
+
+    return ngettext('%(n)s min read', '%(n)s min read', minutes) % {'n': minutes}
+
+
 def journal_dict(page) -> dict:
     """The render/SEO dict for a journal ``Page``. Public — the storefront
     journal view builds its context from this."""
@@ -192,8 +199,9 @@ def journal_dict(page) -> dict:
         # Visible publish date + honest reading time — e.g. "July 3, 2026 · 4 min
         # read". (The old format was "%B · %-d min read", which rendered the DAY
         # OF MONTH as a fake reading time and showed no actual date.)
-        # In the page's language: strftime's month is the C locale's, English on /sr/.
-        'date_label': (f'{date_format(pub, "F j, Y")} · {read_min} min read' if pub else ''),
+        # In the page's language: strftime's month is the C locale's, English on /sr/,
+        # and Django's own Serbian is Cyrillic (core.i18n.dates).
+        'date_label': (f'{format_day(pub)} · {_reading_time(read_min)}' if pub else ''),
         'excerpt': page.excerpt or '',
         'body': body,
         'published_at': pub,
@@ -208,20 +216,51 @@ def journal_dict(page) -> dict:
     }
 
 
-def journal_pages():
-    """Live journal posts, newest first — a queryset, so a listing can paginate it."""
+def journal_pages(language: str = ''):
+    """Live journal posts in a language, newest first — a queryset, so a listing can
+    paginate it.
+
+    A post is in a language when it is written in it, or has a reviewed translation
+    there of everything it says. `language` defaults to the page's; a store with one
+    language lists every post.
+    """
     from plugins.installed.cms.models import Page
 
-    return (
+    posts = (
         Page.objects.filter(state='published', metadata__category='journal')
         .exclude(publish_at__gt=timezone.now())
         .order_by('-publish_at', '-created_at')
     )
+    return in_language(posts, language)
 
 
-def list_journal_entries(*, limit: int = 50) -> list[dict]:
-    """Published CMS pages tagged with metadata.category == 'journal'."""
-    return [journal_dict(p) for p in _shown(list(journal_pages()[:limit]))]
+def in_language(pages, language: str = ''):
+    """The pages a visitor reading `language` can read: written in it, or translated."""
+    from django.db.models import Q
+
+    from core.i18n import services as i18n
+
+    if len(i18n.store_languages()) < 2:
+        return pages
+    language = language or i18n.active_language()
+    default = i18n.default_language()
+    written = Q(language=language) | (Q(language='') if language == default else Q(pk__in=[]))
+    spec = i18n.spec_by_key('cms.page')
+    translated = (
+        [
+            pk
+            for pk, s in i18n.object_statuses(spec, language).items()
+            if s == i18n.STATUS_TRANSLATED
+        ]
+        if spec is not None and language != default
+        else []
+    )
+    return pages.filter(written | Q(pk__in=translated))
+
+
+def list_journal_entries(*, limit: int = 50, language: str = '') -> list[dict]:
+    """Published CMS pages tagged with metadata.category == 'journal', in a language."""
+    return [journal_dict(p) for p in _shown(list(journal_pages(language)[:limit]))]
 
 
 def get_journal_page(slug: str):

@@ -15,6 +15,16 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.191.0 — 2026-11-25
+
+**Travel pages read in their own language**
+
+- An experience's details (duration, meeting point, cancellation terms, highlights, what is and is not included, what to bring, the itinerary and guest questions) can be translated on Translations, under Experience details. Its page appears in another language once these and its name and descriptions are translated there; until then that address names the main-language page to search engines.
+- Category names and descriptions can be translated: listing chips, the experiences filter, region pages and category pages show them in the shopper's language. A category's icon no longer depends on its English name.
+- A page says which language it is written in ("Written in" on the page editor, and Linda's page tools). A Serbian article lives at its /sr/ address, appears in the Serbian journal and sitemaps (the news sitemap names its language), and stays out of the English journal. Each journal lists only the articles written in its language or translated into it.
+- Dates on experience pages and journal articles read in the page's language (Serbian in the Latin script), and the reading time is translated.
+- The travel themes' gift-card banner shows only while a gift-card product is for sale, links to it and prints its real price range; it used to link an empty shop and promise €25 to €500.
+
 ## v0.190.2 — 2026-11-24
 
 **Montenegro's Serbian pages read in Serbian, and private pages stay private in every language**

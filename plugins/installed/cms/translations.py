@@ -17,7 +17,11 @@ def _live_pages():
 
 
 def page_path(page) -> str:
-    """The page's public path: a journal post's, a route another app claims, or /p/<slug>/."""
+    """The page's public path: a journal post's, a route another app claims, or /p/<slug>/.
+
+    In the store's default language; a page written in another language lives under
+    that language's prefix (`core.utils.i18n.path_in_language`).
+    """
     from core.hooks import MorpheusEvents, hook_registry
 
     if (page.metadata or {}).get('category') == 'journal':
@@ -40,7 +44,10 @@ def on_translatable_content(value, **kwargs):
             'key': 'cms.page',
             'model': Page,
             'label': 'Pages',
+            'title_field': 'title',
             'fields': {'title': 'text', 'excerpt': 'text', 'body': 'html'},
+            # A page written in another store language says so (a Serbian article).
+            'language_field': 'language',
             'queryset': lambda: _live_pages().exclude(sections__is_visible=True).distinct(),
             'url': page_path,
             'applies': _without_sections,

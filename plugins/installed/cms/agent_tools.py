@@ -8,6 +8,14 @@ from django.utils.text import slugify
 from morpheus.core import ToolError, ToolResult, tool
 
 
+def _language(code: str) -> str:
+    """A store language the page may be written in; '' for the default or anything else."""
+    from core.i18n import services as i18n
+
+    code = (code or '').strip().lower()
+    return code if code in i18n.store_languages() and code != i18n.default_language() else ''
+
+
 @tool(
     name='cms.create_page',
     description='Create a new CMS page. Slug auto-derived from title if not provided.',
@@ -20,13 +28,23 @@ from morpheus.core import ToolError, ToolResult, tool
             'slug': {'type': 'string'},
             'state': {'type': 'string', 'enum': ['draft', 'published'], 'default': 'draft'},
             'excerpt': {'type': 'string'},
+            'language': {
+                'type': 'string',
+                'description': "The store language the page is written in ('' = the default).",
+            },
         },
         'required': ['title', 'body'],
     },
     requires_approval=True,
 )
 def create_page_tool(
-    *, title: str, body: str, slug: str = '', state: str = 'draft', excerpt: str = ''
+    *,
+    title: str,
+    body: str,
+    slug: str = '',
+    state: str = 'draft',
+    excerpt: str = '',
+    language: str = '',
 ) -> ToolResult:
     from plugins.installed.cms.models import Page
 
@@ -36,6 +54,7 @@ def create_page_tool(
         body=body,
         state=state,
         excerpt=excerpt[:300],
+        language=_language(language),
     )
     return ToolResult(
         output={'id': str(page.id), 'slug': page.slug, 'state': page.state},
@@ -183,6 +202,7 @@ def get_page_tool(*, slug: str) -> ToolResult:
             'state': page.state,
             'layout': page.layout,
             'excerpt': page.excerpt,
+            'language': page.language or '',
             'body': page.body,
             'updated_at': page.updated_at.isoformat(),
         }
@@ -202,6 +222,10 @@ def get_page_tool(*, slug: str) -> ToolResult:
             'excerpt': {'type': 'string'},
             'state': {'type': 'string', 'enum': ['draft', 'scheduled', 'published', 'archived']},
             'layout': {'type': 'string', 'enum': ['default', 'long_form', 'landing']},
+            'language': {
+                'type': 'string',
+                'description': "The store language the page is written in ('' = the default).",
+            },
         },
         'required': ['slug'],
     },
@@ -215,6 +239,7 @@ def update_page_tool(
     excerpt: str | None = None,
     state: str | None = None,
     layout: str | None = None,
+    language: str | None = None,
 ) -> ToolResult:
     from plugins.installed.cms.models import Page
 
@@ -231,6 +256,8 @@ def update_page_tool(
         page.state = state
     if layout in ('default', 'long_form', 'landing'):
         page.layout = layout
+    if language is not None:
+        page.language = _language(language)
     page.save()
     return ToolResult(
         output={'slug': page.slug, 'state': page.state}, display=f'Updated page /p/{page.slug}/'

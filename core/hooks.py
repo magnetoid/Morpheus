@@ -638,7 +638,15 @@ class MorpheusEvents:
     #    'queryset': callable → the objects shoppers can see,
     #    'url': callable(obj) → its storefront path,
     #    'applies': optional callable(obj) → False when its text is not all in
-    #               `fields` (a CMS page built from sections)}.
+    #               `fields` (a CMS page built from sections),
+    #    'title_field': optional field naming an object on the Translations page,
+    #    'language_field': optional field holding the language the object is
+    #               written in ('' = the store's default; a Serbian article),
+    #    'with': optional callable(obj) → other registered objects the same page
+    #               shows (an experience's product): the page exists only in the
+    #               languages all of them are in}.
+    #   A field's kind is 'text', 'html', 'lines' (a JSON list of strings) or
+    #   'pairs:<a>,<b>' (a JSON list of two-key objects, e.g. 'pairs:q,a').
     #   Read through `core.i18n.services` (`translatable_specs`, `spec_for`,
     #   `content_languages`): a page about a registered object names a language only
     #   when the object has a reviewed translation there of every filled field, and

@@ -1922,6 +1922,22 @@ the active language, and `locale/sr` carries Django's Latin `sr_Latn` date names
 Guarded by `seo/tests/test_honest_languages.py`, `core/i18n/tests/test_honest_content.py`,
 `booking_marketplace/tests/test_translated_pages.py`, `storefront/tests/test_pdp_translation.py`,
 `localization/tests/` and `markets/tests/test_content_language.py`.
+Since v0.191.0 a spec may also say:
+- `title_field`: what the editor lists the object by.
+- `language_field`: the column naming the language the object is written in. cms's `Page.language`
+  (blank = default) puts a Serbian article in `/sr/journal/` and the sitemaps under `/sr/`, and keeps
+  it out of the English journal. It is never offered for translation (`translatable_into`).
+- `with`: the other objects its page shows. An experience page is the listing's "Experience details"
+  plus its Product's text, so it exists in a language only when both are translated. The detail view
+  names the listing as `seo_content_object`, because its `seo_object` is the Product.
+
+Two list kinds hold JSON lists as text a translator edits: `lines` (one item per line) and
+`pairs:<a>,<b>` (a blank line between entries; the first line is `a`, the rest `b`). The overlay
+shows them as lists that keep each entry's other keys (an itinerary step's time), so templates keep
+their loops. A visitor-facing date is `core.i18n.dates.format_day` or booking's `|booking_day`,
+never `|date`. Guarded by `core/i18n/tests/test_list_fields.py`,
+`booking_marketplace/tests/test_experience_details_translation.py` and
+`cms/tests/test_page_language.py`.
 
 **Convention — a breadcrumb is one list, rendered twice (v0.161.0).** A view's `breadcrumb_items` is
 the trail: the head builds the BreadcrumbList from it and `{% breadcrumb_trail %}` (storefront) renders the

@@ -572,6 +572,10 @@ def active_categories():
             .filter(is_active=True, svc_count__gt=0)
             .order_by('-svc_count', 'name')
         )
+        from core.i18n.services import overlay_translation
+
+        # Named in the page's language, where the category is translated.
+        rows = overlay_translation(list(rows))
         return [{'name': c.name, 'slug': c.slug, 'count': c.svc_count} for c in rows]
     except Exception:  # noqa: BLE001 — table missing / not migrated yet
         return []

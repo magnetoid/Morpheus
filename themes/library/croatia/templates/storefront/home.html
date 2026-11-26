@@ -151,6 +151,8 @@ the card from booking_marketplace/places/index.html.{% endcomment %}
 </section>
 
 <!-- ============ GIFT BANNER (1:1 port of components/GiftBanner.tsx) ============ -->
+{# Only while a gift card is for sale (the gift_cards app names it): the banner used to link an empty shop. #}
+{% if gift_card_offer %}
 <section class="py-10 sm:py-16 bg-foreground">
   <div class="container mx-auto px-4">
     <div class="flex flex-col lg:flex-row items-center justify-between gap-8">
@@ -162,11 +164,11 @@ the card from booking_marketplace/places/index.html.{% endcomment %}
         <h2 class="font-display text-2xl sm:text-3xl lg:text-4xl font-bold text-background mb-3 sm:mb-4">{% trans "Give the Gift of Adventure" %}</h2>
         <p class="text-background/70 mb-6 max-w-lg">{% trans "Digital gift cards delivered instantly. Valid for 2 years. Redeemable on any experience across Croatia." %}</p>
         <div class="flex flex-col sm:flex-row items-center gap-3 justify-center lg:justify-start">
-          <a href="/products/" class="h-11 px-6 rounded-lg bg-primary text-primary-foreground font-semibold inline-flex items-center gap-2 hover:bg-primary/90 transition-colors">
+          <a href="{{ gift_card_offer.url }}" class="h-11 px-6 rounded-lg bg-primary text-primary-foreground font-semibold inline-flex items-center gap-2 hover:bg-primary/90 transition-colors">
             {% trans "Buy Gift Card" %}
             <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
           </a>
-          <span class="text-sm text-background/60">{% trans "From €25 to €500" %}</span>
+          {% if gift_card_offer.low and gift_card_offer.high %}<span class="text-sm text-background/60">{% blocktrans trimmed with low=gift_card_offer.low|money high=gift_card_offer.high|money %}From {{ low }} to {{ high }}{% endblocktrans %}</span>{% elif gift_card_offer.low %}<span class="text-sm text-background/60">{% blocktrans trimmed with low=gift_card_offer.low|money %}From {{ low }}{% endblocktrans %}</span>{% endif %}
         </div>
       </div>
       <div class="flex-shrink-0">
@@ -187,6 +189,7 @@ the card from booking_marketplace/places/index.html.{% endcomment %}
     </div>
   </div>
 </section>
+{% endif %}
 
 <!-- ============ TESTIMONIALS (1:1 port of components/Testimonials.tsx) ============ -->
 {% if testimonials %}

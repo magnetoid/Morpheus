@@ -173,10 +173,9 @@ def _apply_content_languages(page: SeoPage, context: dict) -> None:
     registered object keeps every language. A view whose `seo_object` would change
     the head (a place, an event) names the object as `seo_content_object`.
     """
-    from django.conf import settings
     from django.utils.translation import get_language
 
-    from core.i18n.services import active_language, content_languages
+    from core.i18n.services import active_language, content_languages, source_language
 
     obj = context.get('seo_content_object') or page.obj
     if obj is None or isinstance(obj, dict):
@@ -184,8 +183,10 @@ def _apply_content_languages(page: SeoPage, context: dict) -> None:
     page.languages = content_languages(obj)
     if page.languages is None:
         return
+    # Not in this language: the page shows the object's own text (an English
+    # article on /sr/, a Serbian one in the English tree).
     page.language = (
-        get_language() if active_language() in page.languages else settings.LANGUAGE_CODE
+        get_language() if active_language() in page.languages else source_language(obj)
     ) or ''
 
 
@@ -195,13 +196,13 @@ def _shown_in_its_language(page: SeoPage) -> bool:
     return page.languages is None or active_language() in page.languages
 
 
-def _default_language_url(url: str) -> str:
-    """The same page in the store's default language."""
+def _language_url(url: str, language: str) -> str:
+    """The same page in `language` (the store's default when none is named)."""
     from django.conf import settings
     from django.urls import translate_url
 
     with suppress(Exception):
-        return translate_url(url, settings.LANGUAGE_CODE)
+        return translate_url(url, language or settings.LANGUAGE_CODE)
     return url
 
 
@@ -211,9 +212,10 @@ def _apply_canonical_and_robots(doc, page: SeoPage, meta, request) -> None:
     if owned:
         canonical = owned  # the page's owner names its better address
     if canonical and not _shown_in_its_language(page):
-        # `/sr/x/` showing an object nobody translated is the English page: say so,
+        # `/sr/x/` showing an object nobody translated is the English page, and
+        # `/x/` showing an article written in Serbian is the Serbian one: say so,
         # never `noindex` beside a canonical naming another url.
-        canonical = _default_language_url(canonical)
+        canonical = _language_url(canonical, page.language)
     if meta.canonical_url:
         canonical = meta.canonical_url  # an explicit merchant override wins
     if canonical:
