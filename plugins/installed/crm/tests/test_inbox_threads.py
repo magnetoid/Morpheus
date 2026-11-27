@@ -86,10 +86,17 @@ class InboxThreadTests(_InboxCase):
         self.assertEqual([t['message'].subject for t in threads], ['sales-only-marker'])
         self.assertNotContains(response, 'Kayak tour booking')
 
-    def test_a_search_lists_the_conversations_it_matches(self):
+    def test_a_search_lists_whole_conversations(self):
+        # Only the first message says this; the row is still the whole thread.
+        self.last.body_text = 'kayak-newest-line'
+        self.last.save(update_fields=['body_text'])
         _, threads = self._threads('/dashboard/crm/inbox/?q=room+on+Saturday')
         self.assertEqual(len(threads), 1)
-        self.assertEqual(threads[0]['message'].thread_key, 'kayak')
+        self.assertEqual(threads[0]['message'].pk, self.last.pk)
+        self.assertEqual(threads[0]['count'], 3)
+        self.assertTrue(threads[0]['unread'])
+        _, none = self._threads('/dashboard/crm/inbox/?q=no-such-words')
+        self.assertEqual(none, [])
 
     def test_opening_a_conversation_reads_all_of_it(self):
         with (
