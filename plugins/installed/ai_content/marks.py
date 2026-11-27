@@ -61,6 +61,22 @@ def on_ai_content_written(instance=None, fields=None, source='', **kwargs) -> No
         logger.error('ai_content: could not mark %s as written with AI: %s', fields, e)
 
 
+def ai_translated_fields(obj) -> list[str]:
+    """The fields ``obj`` shows in a translation an AI drafted, while the store marks them.
+
+    ``mark_ai_translations`` (on by default) is the merchant's choice: the EU's
+    Article 50 guidelines count translation as standard editing, so the mark is
+    not required. Off, a page carries only the marks of an object's own text.
+    """
+    from core.i18n.services import ai_translated
+    from plugins.registry import app_registry
+
+    plugin = app_registry.get('ai_content')
+    if plugin is not None and not plugin.get_config_value('mark_ai_translations', True):
+        return []
+    return ai_translated(obj)
+
+
 def marks_for(instance) -> dict[str, str]:
     """``{field: source}`` for every field of ``instance`` marked as written with AI."""
     if instance is None or getattr(instance, 'pk', None) is None:

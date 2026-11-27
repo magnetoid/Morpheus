@@ -2,8 +2,9 @@
 
 Design notes:
 
-* IMAP: we use UID-based fetching and persist `MailAccount.last_uid`, so
-  re-running the poller is idempotent and doesn't re-import old mail.
+* IMAP: a two-way sync per folder (`crm.imap_sync`): new mail is imported by
+  UID from `MailAccount.last_uid`, reads go both ways, mail gone from the
+  server leaves the inbox, and the server's Sent folder is synced too.
   `imaplib` is in the stdlib — no extra dependency.
 * SMTP: we send via `smtplib.SMTP_SSL` or `SMTP.starttls()` based on
   the account's flags, then persist a `MailMessage(direction='out')` so
@@ -16,17 +17,16 @@ Design notes:
 from __future__ import annotations
 
 import email
-import imaplib
 import logging
 import re
 import smtplib
 from collections.abc import Iterable
-from datetime import UTC
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from email.utils import parseaddr, parsedate_to_datetime
+from email.utils import formatdate, make_msgid, parseaddr
 
 from django.contrib.auth import get_user_model
+from django.db import transaction
 from django.utils import timezone
 
 from plugins.installed.crm.mail_render import header_text
@@ -92,20 +92,29 @@ def _extract_bodies(msg: email.message.Message) -> tuple[str, str]:
     return text, html
 
 
-def fetch_account(account, *, max_messages: int = 200) -> int:  # noqa: PLR0912, PLR0915
-    """Pull new messages for one MailAccount via IMAP. Returns count imported."""
-    from plugins.installed.crm.models import MailMessage
+def fetch_account(account, *, max_messages: int = 200) -> int:
+    """Sync one MailAccount with its server both ways; the number of new messages.
+
+    The inbox folder, then the server's Sent folder (``crm.imap_sync``): new mail
+    is imported, reads go both ways and mail gone from the server leaves the inbox.
+    """
+    from plugins.installed.crm import imap_sync
 
     if not account.is_active:
         return 0
+    if not imap_sync.account_lock(account):
+        return 0  # another poll or Sync now is on this mailbox
+    try:
+        return _sync_account(account, max_messages=max_messages)
+    finally:
+        imap_sync.release_lock(account)
+
+
+def _sync_account(account, *, max_messages: int) -> int:
+    from plugins.installed.crm import imap_sync
 
     try:
-        if account.imap_use_ssl:
-            conn = imaplib.IMAP4_SSL(account.imap_host, account.imap_port)
-        else:
-            conn = imaplib.IMAP4(account.imap_host, account.imap_port)
-        conn.login(account.imap_username, account.imap_password)
-        conn.select(account.imap_folder, readonly=True)
+        conn = imap_sync.connect(account)
     except Exception as e:  # noqa: BLE001
         account.last_error = f'connect: {e}'[:1000]
         account.last_polled_at = timezone.now()
@@ -114,85 +123,85 @@ def fetch_account(account, *, max_messages: int = 200) -> int:  # noqa: PLR0912,
         return 0
 
     imported = 0
+    step = 'fetch'
     try:
-        # UID search "since last_uid+1" — IMAP UID range is inclusive.
-        start_uid = (account.last_uid or 0) + 1
-        typ, data = conn.uid('SEARCH', None, f'UID {start_uid}:*')
-        if typ != 'OK' or not data or not data[0]:
-            return 0
-        uids = [int(u) for u in data[0].split() if int(u) >= start_uid]
-        uids.sort()
-        if max_messages:
-            uids = uids[:max_messages]
-
-        for uid in uids:
-            typ, raw = conn.uid('FETCH', str(uid), '(RFC822)')
-            if typ != 'OK' or not raw or not raw[0]:
-                continue
-            try:
-                msg = email.message_from_bytes(raw[0][1])
-            except Exception:  # noqa: BLE001
-                logger.warning('crm.inbox: %s could not parse UID %s', account.label, uid)
-                account.last_uid = max(account.last_uid, uid)
-                continue
-
-            mid = (msg.get('Message-ID') or '').strip()
-            if mid and MailMessage.objects.filter(message_id=mid).exists():
-                account.last_uid = max(account.last_uid, uid)
-                continue
-
-            from_name, from_addr = parseaddr(msg.get('From', ''))
-            # Headers arrive RFC 2047 encoded (=?UTF-8?Q?…?=); store them as people read them.
-            to_addrs = [header_text(a) for a in msg.get_all('To', []) or []]
-            cc_addrs = [header_text(a) for a in msg.get_all('Cc', []) or []]
-            subject = header_text(msg.get('Subject')).strip()
-            in_reply_to = (msg.get('In-Reply-To') or '').strip()
-
-            received_at = None
-            try:
-                if msg.get('Date'):
-                    received_at = parsedate_to_datetime(msg['Date'])
-                    if received_at and received_at.tzinfo is None:
-                        received_at = received_at.replace(tzinfo=UTC)
-            except Exception:  # noqa: BLE001
-                received_at = timezone.now()
-            received_at = received_at or timezone.now()
-
-            text, html = _extract_bodies(msg)
-
-            MailMessage.objects.create(
-                account=account,
-                direction='in',
-                message_id=mid[:255],
-                in_reply_to=in_reply_to[:255],
-                thread_key=_thread_key(subject, from_addr),
-                from_address=(from_addr or '')[:320],
-                to_addresses=', '.join(to_addrs)[:5000],
-                cc_addresses=', '.join(cc_addrs)[:5000],
-                subject=subject[:500],
-                body_text=text or '',
-                body_html=html or '',
-                customer=_match_customer(from_addr),
-                received_at=received_at,
+        imported = imap_sync.sync_folder(
+            conn,
+            account,
+            account.imap_folder or 'INBOX',
+            sent=False,
+            max_messages=max_messages,
+            importer=lambda *a: _import(account, *a),
+        )
+        step = 'sent folder'
+        if not account.sent_folder:
+            account.sent_folder = imap_sync.find_sent_folder(conn)
+            account.save(update_fields=['sent_folder'])
+        if account.sent_folder and account.sent_folder != (account.imap_folder or 'INBOX'):
+            imap_sync.sync_folder(
+                conn,
+                account,
+                account.sent_folder,
+                sent=True,
+                max_messages=max_messages,
+                importer=lambda *a: _import(account, *a),
             )
-            imported += 1
-            account.last_uid = max(account.last_uid, uid)
     except Exception as e:  # noqa: BLE001
-        logger.warning('crm.inbox: %s fetch failed: %s', account.label, e, exc_info=True)
-        account.last_error = f'fetch: {e}'[:1000]
+        logger.warning('crm.inbox: %s %s failed: %s', account.label, step, e, exc_info=True)
+        account.last_error = f'{step}: {e}'[:1000]
     else:
         account.last_error = ''
-
-    try:  # noqa: SIM105
-        conn.logout()
-    except Exception:  # noqa: BLE001, S110
-        pass
+    imap_sync.logout(conn)
 
     account.last_polled_at = timezone.now()
-    account.save(update_fields=['last_uid', 'last_polled_at', 'last_error'])
+    account.save(update_fields=['last_polled_at', 'last_error'])
     if imported:
         logger.info('crm.inbox: %s imported %d new message(s)', account.label, imported)
     return imported
+
+
+def _import(account, raw: bytes, uid: int, folder: str, flags: set, direction: str) -> bool:
+    """Store one message the server holds; False when it cannot be read."""
+    from plugins.installed.crm import imap_sync
+    from plugins.installed.crm.models import MailMessage
+
+    try:
+        msg = email.message_from_bytes(raw)
+    except Exception:  # noqa: BLE001
+        logger.warning('crm.inbox: %s could not parse UID %s', account.label, uid)
+        return False
+
+    mid = (msg.get('Message-ID') or '').strip()
+    _from_name, from_addr = parseaddr(msg.get('From', ''))
+    # Headers arrive RFC 2047 encoded (=?UTF-8?Q?…?=); store them as people read them.
+    to_addrs = [header_text(a) for a in msg.get_all('To', []) or []]
+    cc_addrs = [header_text(a) for a in msg.get_all('Cc', []) or []]
+    subject = header_text(msg.get('Subject')).strip()
+    when = imap_sync.received_at(msg)
+    text, html = _extract_bodies(msg)
+    # The other side of the conversation: the sender of mail we got, the first
+    # recipient of mail we sent.
+    counterparty = from_addr if direction == 'in' else parseaddr(', '.join(to_addrs))[1]
+    MailMessage.objects.create(
+        account=account,
+        direction=direction,
+        message_id=mid[:255],
+        in_reply_to=(msg.get('In-Reply-To') or '').strip()[:255],
+        thread_key=_thread_key(subject, counterparty or ''),
+        from_address=(from_addr or '')[:320],
+        to_addresses=', '.join(to_addrs)[:5000],
+        cc_addresses=', '.join(cc_addrs)[:5000],
+        subject=subject[:500],
+        body_text=text or '',
+        body_html=html or '',
+        customer=_match_customer(counterparty),
+        is_read=direction == 'out' or '\\Seen' in flags,
+        imap_folder=folder,
+        imap_uid=uid,
+        received_at=when if direction == 'in' else None,
+        sent_at=when if direction == 'out' else None,
+    )
+    return True
 
 
 def send_message(
@@ -231,6 +240,11 @@ def send_message(
     if cc_list:
         msg['Cc'] = ', '.join(cc_list)
     msg['Subject'] = subject or ''
+    # Our own Message-ID: the Sent folder copy is found by it, so the sync matches
+    # it to this row instead of importing it a second time.
+    message_id = make_msgid(domain=(account.email_address.rpartition('@')[2] or None))
+    msg['Message-ID'] = message_id
+    msg['Date'] = formatdate(localtime=False)
     if in_reply_to:
         msg['In-Reply-To'] = in_reply_to
         msg['References'] = in_reply_to
@@ -251,9 +265,10 @@ def send_message(
         logger.warning('crm.inbox: %s send failed: %s', account.label, e, exc_info=True)
         raise
 
-    return MailMessage.objects.create(
+    sent = MailMessage.objects.create(
         account=account,
         direction='out',
+        message_id=message_id[:255],
         in_reply_to=in_reply_to[:255],
         thread_key=thread_key or _thread_key(subject, to_list[0]),
         from_address=account.email_address,
@@ -263,8 +278,21 @@ def send_message(
         body_text=body_text or '',
         body_html=body_html or '',
         customer=customer or _match_customer(to_list[0]),
+        is_read=True,
         sent_at=timezone.now(),
     )
+    raw = msg.as_bytes()
+    transaction.on_commit(lambda: _queue_save_to_sent(sent.pk, raw))
+    return sent
+
+
+def _queue_save_to_sent(message_pk, raw: bytes) -> None:
+    from plugins.installed.crm.tasks import save_to_sent
+
+    try:
+        save_to_sent.delay(str(message_pk), raw.decode('utf-8', 'surrogateescape'))
+    except Exception as e:  # noqa: BLE001 — the mail is sent; the server copy is a convenience
+        logger.warning('crm.inbox: could not queue the Sent copy of %s: %s', message_pk, e)
 
 
 def fetch_all_active(*, max_per_account: int = 200) -> dict:

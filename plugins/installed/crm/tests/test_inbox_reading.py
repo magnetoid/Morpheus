@@ -10,7 +10,6 @@ from django.template.loader import get_template
 from django.test import Client, SimpleTestCase, TestCase
 from django.utils import timezone
 
-from plugins.installed.crm.inbox import fetch_account
 from plugins.installed.crm.mail_render import header_text, render_body
 from plugins.installed.crm.models import ChatMessage, ChatThread, CrmTask, MailAccount, MailMessage
 
@@ -216,28 +215,6 @@ class InboxMessageTests(_InboxCase):
         self.assertEqual(reply.thread_key, m.thread_key)
         body = self.c.get(f'/dashboard/crm/inbox/{m.pk}/').content.decode()
         self.assertLess(body.index('first-in-thread'), body.index('second-in-thread'))
-
-
-class InboxImportTests(_InboxCase):
-    def test_encoded_headers_are_stored_decoded(self):
-        raw = (
-            b'From: =?UTF-8?Q?Ana_=C5=A0?= <ana@guest.test>\r\n'
-            b'To: =?UTF-8?Q?Podr=C5=A1ka?= <support@shop.test>\r\n'
-            b'Subject: =?UTF-8?B?UG90dnJkYSDEjA==?=\r\n'
-            b'Message-ID: <import-1@guest.test>\r\n'
-            b'Date: Mon, 27 Oct 2026 10:00:00 +0000\r\n'
-            b'Content-Type: text/plain; charset=utf-8\r\n\r\nHello\r\n'
-        )
-        conn = mock.MagicMock()
-        conn.uid.side_effect = lambda cmd, *a: (
-            ('OK', [b'1']) if cmd == 'SEARCH' else ('OK', [(b'1 (RFC822 {1}', raw)])
-        )
-        with mock.patch('plugins.installed.crm.inbox.imaplib.IMAP4_SSL', return_value=conn):
-            self.assertEqual(fetch_account(self.account), 1)
-        m = MailMessage.objects.get(message_id='<import-1@guest.test>')
-        self.assertEqual(m.subject, 'Potvrda Č')
-        self.assertEqual(m.to_addresses, 'Podrška <support@shop.test>')
-        self.assertEqual(m.from_address, 'ana@guest.test')
 
 
 class MailAccountFormTests(_InboxCase):

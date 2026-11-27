@@ -393,6 +393,15 @@ class MailAccount(models.Model):
     # Highest IMAP UID we've already imported per account. Polling resumes
     # from `last_uid + 1` so we never reprocess the same message.
     last_uid = models.PositiveBigIntegerField(default=0)
+    # The folder's UIDVALIDITY when its UIDs were stored: a different value means
+    # the server renumbered the folder, so every stored UID is matched again.
+    # 0 = never synced (rows imported before v0.195.0 get their UIDs then).
+    uid_validity = models.PositiveBigIntegerField(default=0, db_default=0)
+    # The server's Sent folder: CRM replies are saved there and mail sent from
+    # another client is imported from it. Found from the server's list when blank.
+    sent_folder = models.CharField(max_length=255, blank=True, default='', db_default='')
+    sent_uid_validity = models.PositiveBigIntegerField(default=0, db_default=0)
+    sent_last_uid = models.PositiveBigIntegerField(default=0, db_default=0)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -448,6 +457,16 @@ class MailMessage(models.Model):
     )
 
     is_read = models.BooleanField(default=False, db_index=True)
+    # Where the message sits on the mail server (two-way sync, v0.195.0). A row
+    # without a UID was never matched to one and is left alone by the sync.
+    imap_folder = models.CharField(max_length=255, blank=True, default='', db_default='')
+    imap_uid = models.PositiveBigIntegerField(null=True, blank=True)
+    # Read in the CRM, not yet marked read on the server: the sync pushes it
+    # before it reads the server's flags, so its own change is never undone.
+    seen_pending = models.BooleanField(default=False, db_default=False)
+    # Gone from its folder on the server (deleted, archived, moved). It leaves
+    # the inbox and stays in the thread and the contact's history.
+    removed_at = models.DateTimeField(null=True, blank=True)
     sent_at = models.DateTimeField(null=True, blank=True, db_index=True)
     received_at = models.DateTimeField(null=True, blank=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -457,6 +476,8 @@ class MailMessage(models.Model):
         indexes = [
             models.Index(fields=['account', '-received_at']),
             models.Index(fields=['customer', '-received_at']),
+            models.Index(fields=['account', 'imap_folder', 'imap_uid']),
+            models.Index(fields=['account', 'message_id']),
         ]
 
     def __str__(self):

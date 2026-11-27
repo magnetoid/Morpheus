@@ -82,6 +82,10 @@
       <label class="text-xs text-[color:var(--text-muted)] block mb-1">IMAP folder</label>
       <input class="input w-full" name="imap_folder" value="{{ edit_account.imap_folder|default:'INBOX' }}">
     </div>
+    <div>
+      <label class="text-xs text-[color:var(--text-muted)] block mb-1">Sent folder <span class="text-[color:var(--text-muted)]">— found automatically when blank</span></label>
+      <input class="input w-full" name="sent_folder" value="{{ edit_account.sent_folder|default:'' }}" placeholder="Sent">
+    </div>
     <div class="flex items-center gap-2 pt-6">
       <label><input type="checkbox" name="imap_use_ssl"{% if not edit_account or edit_account.imap_use_ssl %} checked{% endif %}> Use SSL/TLS</label>
     </div>

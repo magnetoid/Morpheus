@@ -178,3 +178,98 @@ class ContentPageTests(TestCase):
             body = self._body(path)
             self.assertNotIn('data-ai-generated', body, path)
             self.assertNotIn(GENERATED, body, path)
+
+
+@override_settings(**BILINGUAL)
+class MarkTranslationsSettingTests(TestCase):
+    """The merchant may stop marking AI-drafted translations (v0.193.0).
+
+    The EU's guidelines on Article 50 (C/2026/6005) count translation as standard
+    editing, so the mark is the store's choice. Off, the page keeps the marks of an
+    object's own AI-written text and drops only those a translation brought.
+    """
+
+    def setUp(self):
+        from plugins.testing import set_app_settings
+
+        cache.clear()
+        set_app_settings(self, 'ai_content', mark_ai_translations=False)
+        self.product = Product.objects.create(
+            name='Night Sky Atlas',
+            slug='night-sky-atlas',
+            sku='NSA-1',
+            price=Money(Decimal('12.00'), 'USD'),
+            product_type='simple',
+            status='active',
+            short_description='<p>Every constellation, mapped.</p>',
+            description='<p>A field guide to the stars.</p>',
+        )
+
+    def _body(self, path: str) -> str:
+        cache.clear()
+        response = self.client.get(path)
+        self.assertEqual(response.status_code, 200)
+        return response.content.decode()
+
+    def test_an_ai_translation_is_not_marked(self):
+        for field, text in (
+            ('name', 'Atlas noćnog neba'),
+            ('short_description', '<p>Sva sazvežđa.</p>'),
+            ('description', '<p>Vodič kroz zvezde.</p>'),
+        ):
+            set_translation(self.product, field, 'sr', text, machine_translated=True)
+        body = self._body('/sr/products/night-sky-atlas/')
+        self.assertIn('Vodič kroz zvezde.', body)
+        self.assertNotIn('data-ai-generated', body)
+        self.assertNotIn(GENERATED, body)
+
+    def test_a_content_page_translation_is_not_marked(self):
+        from plugins.installed.cms.models import Page
+
+        page = Page.objects.create(
+            title='Our Story', slug='our-story', body='<p>One shelf.</p>', state='published'
+        )
+        set_translation(page, 'title', 'sr', 'Naša priča', machine_translated=True)
+        set_translation(page, 'body', 'sr', '<p>Jedna polica.</p>', machine_translated=True)
+        body = self._body('/sr/p/our-story/')
+        self.assertIn('Jedna polica.', body)
+        self.assertNotIn('data-ai-generated', body)
+        self.assertNotIn(GENERATED, body)
+
+    def test_the_products_own_ai_text_is_still_marked(self):
+        mark_ai_written(self.product, ['description'], 'linda')
+        body = self._body('/products/night-sky-atlas/')
+        self.assertIn('data-ai-generated="description"', body)
+        self.assertIn(GENERATED, body)
+
+
+class MarkTranslationsEveryWorkerTests(TestCase):
+    """A switch saved in another worker reaches this one once the window passes."""
+
+    def setUp(self):
+        from plugins.models import PluginConfig
+
+        self.plugin = app_registry.get('ai_content')
+        self.plugin.invalidate_config_cache()
+        self.addCleanup(self.plugin.invalidate_config_cache)
+        self.row, _ = PluginConfig.objects.get_or_create(plugin_name='ai_content')
+
+    def _saved_in_another_worker(self, value: bool):
+        from plugins.models import PluginConfig
+
+        # A queryset update: the row changes and this process's cache does not.
+        config = {**(self.row.config or {}), 'mark_ai_translations': value}
+        PluginConfig.objects.filter(pk=self.row.pk).update(config=config)
+
+    def test_the_switch_reaches_this_worker(self):
+        from unittest import mock
+
+        from plugins.installed.ai_content.marks import ai_translated_fields
+
+        with mock.patch('core.i18n.services.ai_translated', return_value=['title']):
+            self._saved_in_another_worker(True)
+            self.assertEqual(ai_translated_fields(object()), ['title'])
+            self._saved_in_another_worker(False)
+            self.assertEqual(ai_translated_fields(object()), ['title'])
+            self.plugin._config_read_at -= self.plugin.config_fresh_s
+            self.assertEqual(ai_translated_fields(object()), [])

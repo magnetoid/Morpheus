@@ -19,8 +19,10 @@
     <div class="mb-3">
       <label class="text-xs text-[color:var(--text-muted)] block mb-1">From account</label>
       <select name="account" class="input w-full" required>
-        {% for a in accounts %}<option value="{{ a.id }}">{{ a.label }} &lt;{{ a.email_address }}&gt;</option>{% endfor %}
+        {% if from_unavailable or not from_account %}<option value="" disabled{% if from_unavailable %} selected{% endif %}>Choose a mailbox</option>{% endif %}
+        {% for a in accounts %}<option value="{{ a.id }}"{% if from_account == a.id|stringformat:'s' %} selected{% endif %}>{{ a.label }} &lt;{{ a.email_address }}&gt;</option>{% endfor %}
       </select>
+      {% if from_unavailable %}<p class="text-xs text-[color:var(--text-muted)] mt-1">The mailbox you came from is switched off, so it cannot send. Choose another one.</p>{% endif %}
     </div>
     <div class="mb-3">
       <label class="text-xs text-[color:var(--text-muted)] block mb-1">To (comma-separated)</label>

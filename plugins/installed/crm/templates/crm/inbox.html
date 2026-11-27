@@ -4,10 +4,10 @@
 
 {% block content %}
 <div class="flex items-center justify-between mb-4">
-  <h1 class="text-xl font-semibold">Inbox</h1>
+  <h1 class="text-xl font-semibold">Inbox{% if account %} <span class="text-[color:var(--text-muted)] font-normal">· {{ account.email_address }}</span>{% endif %}</h1>
   <div class="flex items-center gap-2">
     <a href="/dashboard/crm/inbox/accounts/" class="btn btn-secondary text-sm">Mail accounts</a>
-    <a href="/dashboard/crm/inbox/compose/" class="btn btn-primary text-sm">Compose</a>
+    {% if account and not account.is_active %}<button type="button" class="btn btn-primary text-sm" disabled title="This mailbox is switched off on Mail accounts.">Compose</button>{% else %}<a href="/dashboard/crm/inbox/compose/{% if account %}?account={{ account.id }}{% endif %}" class="btn btn-primary text-sm">Compose</a>{% endif %}
     <form method="post" class="inline">
       {% csrf_token %}
       <input type="hidden" name="action" value="sync">
@@ -16,17 +16,13 @@
   </div>
 </div>
 
+{% if accounts %}<div class="mb-4">{% include "admin_dashboard/_tabs.html" with tabs=mailbox_tabs %}</div>{% endif %}
+
 <form method="get" class="card card-padded mb-4 flex flex-wrap gap-2 items-end">
+  {% if account %}<input type="hidden" name="account" value="{{ account.id }}">{% endif %}
   <div class="flex-1 min-w-[200px]">
     <label class="text-xs text-[color:var(--text-muted)] block mb-1">Search</label>
     <input type="text" name="q" value="{{ search }}" placeholder="Subject, sender, body…" class="input w-full">
-  </div>
-  <div>
-    <label class="text-xs text-[color:var(--text-muted)] block mb-1">Account</label>
-    <select name="account" class="input">
-      <option value="">All</option>
-      {% for a in accounts %}<option value="{{ a.id }}" {% if account_id == a.id|stringformat:'s' %}selected{% endif %}>{{ a.label }}</option>{% endfor %}
-    </select>
   </div>
   <div>
     <label class="text-xs text-[color:var(--text-muted)] block mb-1">Direction</label>
@@ -44,7 +40,7 @@
   <table class="morph-table">
     <thead>
       <tr>
-        <th>From / To</th><th>Subject</th><th>Account</th><th>When</th>
+        <th>From / To</th><th>Subject</th>{% if not account %}<th>Account</th>{% endif %}<th>When</th>
       </tr>
     </thead>
     <tbody>
@@ -61,7 +57,7 @@
           </a>
         </td>
         <td><a href="/dashboard/crm/inbox/{{ m.id }}/" class="hover:underline">{{ m.subject|mail_header|default:"(no subject)" }}</a></td>
-        <td class="text-[color:var(--text-muted)]">{{ m.account.label }}</td>
+        {% if not account %}<td class="text-[color:var(--text-muted)]">{{ m.account.label }}</td>{% endif %}
         <td class="text-[color:var(--text-muted)] whitespace-nowrap">{{ m.occurred_at|date:"M j, H:i" }}</td>
       </tr>
       {% endfor %}
@@ -69,7 +65,7 @@
   </table>
   {% else %}
     {% if accounts %}
-      {% include "admin_dashboard/_empty_state.html" with icon="inbox" title="No messages yet" hint="Click Sync now to fetch from your mailbox." %}
+      {% include "admin_dashboard/_empty_state.html" with icon="inbox" title="No messages here yet" hint="Click Sync now to fetch new mail." %}
     {% else %}
       {% include "admin_dashboard/_empty_state.html" with icon="inbox" title="No mail accounts configured" hint="Connect an IMAP/SMTP mailbox to start receiving customer mail in the CRM." action_url="/dashboard/crm/inbox/accounts/" action_label="Add a mail account" %}
     {% endif %}

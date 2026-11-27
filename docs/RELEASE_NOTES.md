@@ -15,6 +15,27 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.195.0 — 2026-11-27
+
+**The CRM inbox syncs with each mailbox both ways**
+
+- Read in the CRM is read on the mail server and the other way round; mail deleted, archived or moved on the server leaves the inbox and its unread counts (its thread and the contact's history keep it).
+- A reply sent from the CRM is filed in the mailbox's Sent folder (Gmail files it itself), and replies sent from another mail app are picked up from the Sent folder into their threads. A first sync reaches a month back.
+- Mail imported before this release is matched to the server by its Message-ID on the first sync, not imported again; a renumbered folder is matched the same way. Nothing is ever deleted on the server: the CRM only marks mail read and adds its own replies.
+- Mail accounts gains a Sent folder field, found automatically when blank.
+
+## v0.194.0 — 2026-11-27
+
+**Each mailbox has its own tab in the CRM inbox**
+
+- The CRM inbox shows "All" and then one tab per connected mailbox, each with its unread count, in place of the Account dropdown. A tab keeps the search and direction, shows the mailbox's address in the heading, and Compose from it sends from that mailbox. An unknown mailbox in the link shows every mailbox instead of an error.
+
+## v0.193.0 — 2026-11-27
+
+**Translations an AI drafted can go unmarked**
+
+- AI → Brand voice & AI content has "Mark translations an AI drafted" (on by default, as before). The EU's guidelines on Article 50 of the AI Act (C/2026/6005) count translation as standard editing, so the law does not ask for the mark; switched off, a translated page carries no AI mark, while a product's own AI-written text keeps its mark.
+
 ## v0.192.0 — 2026-11-26
 
 **Translate the store from an outside tool over MCP**

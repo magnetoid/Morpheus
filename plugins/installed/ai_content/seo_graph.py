@@ -83,14 +83,14 @@ def _marked_fields(obj) -> list[tuple[str, str]]:
     An own mark covers the object's own text only: a field shown in a translation
     is marked when that translation began as an AI draft, never because of it.
     """
-    from core.i18n.services import ai_translated, shown_in_translation
-    from plugins.installed.ai_content.marks import marks_for
+    from core.i18n.services import shown_in_translation
+    from plugins.installed.ai_content.marks import ai_translated_fields, marks_for
 
     own = marks_for(obj)
     translated = shown_in_translation(obj)
     names = dict(_VISIBLE)
     fields = [field for field, _name in _VISIBLE if field in own and field not in translated]
-    fields += [f for f in ai_translated(obj) if f not in fields]
+    fields += [f for f in ai_translated_fields(obj) if f not in fields]
     return [(f, names.get(f) or f.replace('_', ' ').capitalize()) for f in fields]
 
 

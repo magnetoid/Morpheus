@@ -3,12 +3,12 @@ summary: Sets the store's brand voice for AI-written text, and marks product tex
 ---
 
 ## What it's for
-This is where you set the store's brand voice — a name, an audience, a tone, and any specific writing rules — so every piece of AI-written text across the store sounds consistent instead of generic. Linda and every other AI writing tool in the store read this same voice before they write anything.
+Set the store's brand voice here — a name, an audience, a tone and any writing rules — so AI-written text sounds like your store. Linda and every other AI writing tool read it before they write.
 
-It also keeps track of product text an AI wrote, so shoppers and search engines can tell. EU law (Article 50 of the AI Act) asks for text a model generates to be marked in a form machines can read.
+It also marks product text an AI wrote, so shoppers and search engines can tell, as Article 50 of the EU AI Act asks.
 
 ## Set it up
-Fill in as much of the brand voice as you care about: a name AI-written copy should use, a line on who shops here, a few tone words, and any free-form rules such as words to avoid or how long sentences should be. Leaving a field blank just skips it.
+Fill in as much of the brand voice as you like; a blank field is skipped.
 
 Turn on [](field:ai_content.label_ai_text) if you also want a sentence under an AI-written description that a shopper reads.
 
@@ -23,6 +23,6 @@ Turn on [](field:ai_content.label_ai_text) if you also want a sentence under an 
 ## Good to know
 A product's description, short description, meta title and meta description are marked when Linda or an AI worker writes them, when you use Draft with AI or Rewrite on the product page and save, and when a bulk AI rewrite changes them. Text sent by another system through an access token is not marked, because nothing says a model wrote it. A marked description or short description is said in the product page's structured data and on the page itself. Only you can clear a mark; Linda can read the marks but not remove them.
 
-A translation an AI drafted, Linda's included, is marked too wherever it is shown, until you change its text; one you wrote yourself is not.
+A translation an AI drafted, Linda's included, is marked too wherever it is shown, until you change its text; one you wrote yourself is not. EU guidance counts translation as ordinary editing, so this mark is your choice: turn off [](field:ai_content.mark_ai_translations) and only a product's own AI-written text is marked.
 
 Nothing in the brand voice is required: leave every field blank and AI-written text uses its own default voice.

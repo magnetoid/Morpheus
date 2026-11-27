@@ -32,6 +32,7 @@
   {% if message.direction == 'in' %}from {{ message.from_address }}{% else %}to {{ message.to_addresses|mail_header }}{% endif %}
   · {{ message.occurred_at|date:"M j, Y H:i" }}
 </p>
+{% if message.removed_at %}<p class="text-sm text-[color:var(--text-muted)] mb-4">No longer in the mailbox on the server (deleted, archived or moved), so it has left the inbox. Its thread and the contact's history keep it.</p>{% endif %}
 
 {% if thread %}
 <div class="space-y-3 mb-6">

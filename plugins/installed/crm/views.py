@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import logging
 import re
 
 from core.authz import require_capability
 from morpheus.app.views import render, staff_member_required
+
+logger = logging.getLogger('morpheus.crm.views')
 
 
 @staff_member_required
@@ -154,13 +157,22 @@ def inbox_list(request):
         return redirect('/dashboard/crm/inbox/')
 
     accounts = list(MailAccount.objects.all())
-    qs = MailMessage.objects.select_related('account', 'customer').order_by(_mail_time().desc())
+    # Mail gone from the server (deleted, archived) leaves the inbox; it stays in
+    # its thread and the contact's history.
+    qs = (
+        MailMessage.objects.filter(removed_at__isnull=True)
+        .select_related('account', 'customer')
+        .order_by(_mail_time().desc())
+    )
     direction = (request.GET.get('dir') or '').lower()
     if direction in ('in', 'out'):
         qs = qs.filter(direction=direction)
-    account_id = request.GET.get('account')
-    if account_id:
-        qs = qs.filter(account_id=account_id)
+    # Each mailbox is a tab; an id that names none shows them all (it used to 500).
+    wanted = request.GET.get('account') or ''
+    account = next((a for a in accounts if str(a.pk) == wanted), None)
+    account_id = str(account.pk) if account else ''
+    if account:
+        qs = qs.filter(account=account)
     search = (request.GET.get('q') or '').strip()
     if search:
         from django.db.models import Q
@@ -178,6 +190,8 @@ def inbox_list(request):
         'crm/inbox.html',
         {
             'accounts': accounts,
+            'account': account,
+            'mailbox_tabs': _mailbox_tabs(accounts, account, direction, search),
             'mail_messages': mail_messages,
             'direction': direction,
             'account_id': account_id,
@@ -202,7 +216,14 @@ def inbox_message(request, message_id):
     )
     if not msg.is_read and msg.direction == 'in':
         msg.is_read = True
-        msg.save(update_fields=['is_read'])
+        # Read here is read on the server too: pushed now, and by the next poll if
+        # this fails, which never undoes it in between.
+        msg.seen_pending = msg.imap_uid is not None
+        msg.save(update_fields=['is_read', 'seen_pending'])
+        if msg.seen_pending:
+            from django.db import transaction
+
+            transaction.on_commit(lambda: _queue_push_read(msg.pk))
 
     # A reply goes to the other side: the sender of mail we received, the
     # recipients of mail we sent (not our own address).
@@ -241,6 +262,16 @@ def inbox_message(request, message_id):
             .select_related('account', 'customer')
             .order_by(_mail_time())
         )
+        # One email sent to two connected mailboxes is stored once per mailbox
+        # (each tab mirrors its own); the thread shows it once.
+        seen_ids: set[str] = set()
+        kept = []
+        for m in thread:
+            if m.message_id and m.message_id in seen_ids and m.pk != msg.pk:
+                continue
+            seen_ids.add(m.message_id)
+            kept.append(m)
+        thread = kept
     return render(
         request,
         'crm/inbox_message.html',
@@ -255,6 +286,53 @@ def inbox_message(request, message_id):
     )
 
 
+def _queue_push_read(message_pk) -> None:
+    """Queue the server-side read; a broker that cannot take it leaves it to the poll."""
+    from plugins.installed.crm.tasks import push_read
+
+    try:
+        push_read.delay(str(message_pk))
+    except Exception as e:  # noqa: BLE001 — seen_pending is stored; the next poll pushes it
+        logger.warning('crm: could not queue the read of %s: %s', message_pk, e)
+
+
+def _mailbox_tabs(accounts, current, direction: str, search: str) -> list[dict]:
+    """The inbox's tabs: every mailbox, then each one, with its unread count.
+
+    A tab keeps the search and direction, so switching mailbox keeps the filter.
+    """
+    from urllib.parse import urlencode
+
+    from django.db.models import Count
+
+    from plugins.installed.crm.models import MailMessage
+
+    unread = dict(
+        MailMessage.objects.filter(direction='in', is_read=False, removed_at__isnull=True)
+        .values('account_id')
+        .annotate(n=Count('id'))
+        .values_list('account_id', 'n')
+    )
+
+    def href(account_id: str = '') -> str:
+        query = {k: v for k, v in (('account', account_id), ('dir', direction), ('q', search)) if v}
+        return '/dashboard/crm/inbox/' + (f'?{urlencode(query)}' if query else '')
+
+    tabs = [
+        {'label': 'All', 'count': sum(unread.values()), 'active': current is None, 'href': href()}
+    ]
+    tabs += [
+        {
+            'label': a.label,
+            'count': unread.get(a.pk, 0),
+            'active': current is not None and a.pk == current.pk,
+            'href': href(str(a.pk)),
+        }
+        for a in accounts
+    ]
+    return tabs
+
+
 @staff_member_required
 @require_capability('crm.write')
 def inbox_compose(request):
@@ -264,10 +342,11 @@ def inbox_compose(request):
     from plugins.installed.crm.models import MailAccount
 
     accounts = list(MailAccount.objects.filter(is_active=True))
+    from_account = request.POST.get('account') or request.GET.get('account') or ''
     error = ''
     if request.method == 'POST':
         try:
-            account = MailAccount.objects.get(pk=request.POST.get('account'))
+            account = MailAccount.objects.get(pk=request.POST.get('account'), is_active=True)
         except (MailAccount.DoesNotExist, ValueError, TypeError):
             account = None
         to = (request.POST.get('to') or '').strip()
@@ -291,6 +370,12 @@ def inbox_compose(request):
         'crm/inbox_compose.html',
         {
             'accounts': accounts,
+            # Compose from a mailbox's tab sends from that mailbox. One that cannot
+            # send (switched off, gone) selects nothing: the browser would otherwise
+            # pick the first mailbox and send under another address.
+            'from_account': from_account,
+            'from_unavailable': bool(from_account)
+            and all(str(a.pk) != from_account for a in accounts),
             'error': error,
             'active_nav': 'crm',
         },
@@ -332,6 +417,7 @@ def inbox_accounts(request):
             'imap_username': (request.POST.get('imap_username') or '').strip(),
             'imap_password': request.POST.get('imap_password') or '',
             'imap_folder': (request.POST.get('imap_folder') or 'INBOX').strip(),
+            'sent_folder': (request.POST.get('sent_folder') or '').strip()[:255],
             'smtp_host': (request.POST.get('smtp_host') or '').strip(),
             'smtp_port': smtp_port,
             'smtp_use_ssl': request.POST.get('smtp_use_ssl') == 'on',
@@ -349,6 +435,7 @@ def inbox_accounts(request):
         else:
             account_id = (request.POST.get('id') or '').strip()
             if account_id:
+                _reset_sync_if_moved(account_id, data)
                 MailAccount.objects.filter(pk=account_id).update(
                     **{
                         # Don't overwrite passwords if blank.
@@ -387,6 +474,32 @@ def _mail_time():
     from django.db.models.functions import Coalesce
 
     return Coalesce('received_at', 'sent_at', 'created_at')
+
+
+def _reset_sync_if_moved(account_id, data: dict) -> None:
+    """Forget the stored UIDs when an edit points the account at other mail.
+
+    A UID means something only on one server, for one sign-in, in one folder:
+    kept across a change, the sync would take the new folder's messages for the
+    old ones and mark the old ones removed.
+    """
+    from plugins.installed.crm.models import MailAccount, MailMessage
+
+    before = MailAccount.objects.filter(pk=account_id).first()
+    if before is None:
+        return
+    moved = any(
+        str(getattr(before, field)).strip().lower() != str(data[field]).strip().lower()
+        for field in ('imap_host', 'imap_username', 'imap_folder')
+    )
+    if moved:
+        data.update(uid_validity=0, last_uid=0, sent_uid_validity=0, sent_last_uid=0)
+        MailMessage.objects.filter(account_id=account_id).update(imap_uid=None, imap_folder='')
+    elif (before.sent_folder or '') != data['sent_folder']:
+        data.update(sent_uid_validity=0, sent_last_uid=0)
+        MailMessage.objects.filter(account_id=account_id, direction='out').update(
+            imap_uid=None, imap_folder=''
+        )
 
 
 def _port(value, default: int) -> int | None:
