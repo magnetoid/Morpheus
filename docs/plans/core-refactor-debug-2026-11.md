@@ -113,13 +113,13 @@ step saving copied in `agent_core/services.py` and `core/assistant/tools/spawn.p
 
 | # | Severity | Finding | Status |
 |---|---|---|---|
-| J1 | high | A turn whose HTTP stream ends early (tab closed, worker recycled) loses its answer and its spend; the Janus child can outlive its deadline | open |
+| J1 | high | A turn whose HTTP stream ends early (tab closed, worker recycled) loses its answer and its spend; the Janus child can outlive its deadline | **fixed** (v0.198.0) |
 | J2 | high | An external agent's turn hydrates and harvests the store's Janus learning, and every API token shares one `USER.md` | **fixed** |
-| J3 | medium | Context compression opens a continuation session; this turn's spend on the parent session is not counted | open |
-| J4 | medium | A store provider Janus has no mapping for (openrouter, apikey, packy, moonshot, ollama) falls through to Janus `auto` | open |
-| J5 | low-medium | Two turns of one conversation at once: the second hydrate wipes the first turn's unharvested notes | open |
-| J6 | low | Two harvests creating the same new path roll each other back (`IntegrityError`) | open |
-| J7 | low | The Janus connection test runs a real turn outside the kill switch and the spend cap | open |
+| J3 | medium | Context compression opens a continuation session; this turn's spend on the parent session is not counted | **fixed** (v0.198.0) |
+| J4 | medium | A store provider Janus has no mapping for (openrouter, apikey, packy, moonshot, ollama) falls through to Janus `auto` | **fixed** (v0.198.0) |
+| J5 | low-medium | Two turns of one conversation at once: the second hydrate wipes the first turn's unharvested notes | **fixed** (v0.198.0) |
+| J6 | low | Two harvests creating the same new path roll each other back (`IntegrityError`) | **fixed** (v0.198.0) |
+| J7 | low | The Janus connection test runs a real turn outside the kill switch and the spend cap | **fixed** (v0.198.0) |
 
 Refactor candidates: `janus_engine.py` splits along five seams (binary, provider wiring, home and
 config, state.db reader, turn runner), with about 45 test patches that must keep resolving;
@@ -220,3 +220,24 @@ dashboard shell.
   unbounded table.
 - The wider negation list refuses some real approvals ("ok, that's not a problem"). It fails
   closed: the change is proposed again and the Approve button always works.
+
+## What v0.198.0 shipped (batch 2, the Janus turn lifecycle)
+
+J1, J3, J4, J5, J6 and J7, each with a test that failed first (`core/assistant/tests/test_turn_lifecycle.py`
+and additions to the engine, learning and janus app suites).
+
+- A turn whose reader left is drained in the background, so its answer, usage, run and learning are
+  stored. Still lost: the reply of a turn whose web worker is recycled or redeployed mid-turn (the
+  drain thread dies with the process). Its spend is billed by the conversation's next turn.
+- Janus starts under coreutils `timeout`, so it stops at its deadline when its parent is gone.
+- Spend is the home's total less what was billed; one turn per home; the journal's first entry of
+  the day no longer rolls a second harvest back; an unmapped store provider is refused; the
+  connection test obeys the kill switch and the spend cap.
+
+Not done: the `janus_engine.py` split. The fixes changed about 320 lines of that file and need the
+conformance suite's verdict first; moving 1,300 lines in the same release would hide them in the
+diff. It is the next refactor, on its own.
+
+Before deploying: a store whose AI provider is openrouter, apikey, packy, moonshot, ollama or hermes,
+with Janus on "the store's provider", gets the refusal on every message until a provider is chosen
+under Settings → AI → Janus. Those turns ran on Janus's `auto` before.

@@ -6,6 +6,20 @@ first. If a version isn't listed, it shipped no breaking change to a surface in
 
 ---
 
+## v0.198.0 — a Janus turn finishes on its own, and names its provider
+
+- **A store provider Janus has no name for is refused.** With Janus set to use the store's
+  provider and that provider being openrouter, apikey, packy, moonshot, ollama or hermes, every
+  message now gets "Linda cannot run on <provider>. Choose a provider for her under Settings →
+  AI → Janus." Those turns used to run on Janus's own `auto` choice, a model the store had not
+  chosen and may not have priced. Pin a provider on that page.
+- **One turn per conversation at a time.** A second message sent while the first is still being
+  answered (also by `janus.ask` on one external conversation) gets "Linda is still working on your
+  last message." instead of a second turn.
+- **A turn the reader left still finishes**: its reply, usage and run are stored when Janus is done.
+- **`janus_engine._session_usage` is gone**; a turn's usage is the conversation home's total over
+  every session less what was already billed (`_home_usage`, `_bill`).
+
 ## v0.197.0 — consent answers one proposal, tokens cannot start the Worker
 
 - **An approval is the merchant's first message after the proposal.** A write Janus proposed

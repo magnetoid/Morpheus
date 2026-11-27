@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import logging
+import threading
 import time
 from dataclasses import dataclass
 from typing import Any
@@ -24,6 +25,10 @@ from core.assistant.persistence import StoredMessage, get_default_store
 from core.assistant.prompts import build_system_prompt
 
 logger = logging.getLogger('morpheus.assistant')
+
+
+# How the engine reports a store provider Janus has no name for, then the provider.
+_NO_PROVIDER = 'janus cannot run on '
 
 
 def _friendly_provider_error(raw: str) -> str:  # noqa: PLR0911
@@ -45,6 +50,13 @@ def _friendly_provider_error(raw: str) -> str:  # noqa: PLR0911
         )
     if 'janus returned no reply' in text:
         return "I couldn't put an answer together that time. Please try again, or rephrase."
+    if 'janus is busy' in text:
+        return 'Linda is still working on your last message. Try again in a moment.'
+    if text.startswith(_NO_PROVIDER):
+        return (
+            f'Linda cannot run on {raw[len(_NO_PROVIDER) :]}. Choose a provider for her '
+            'under Settings → AI → Janus.'
+        )
     if '429' in text or 'rate' in text:
         return (
             "I hit the provider's rate limit (the free model is "
@@ -234,6 +246,42 @@ def _tool_events(conversation_key: str, since, seen: set) -> list[dict]:
             }
         )
     return events
+
+
+def _in_background(work) -> None:
+    """Run ``work`` on a thread of its own, with its own database connections.
+
+    Inline under tests: a second thread that touches the database locks the test
+    database.
+    """
+    from django.conf import settings
+
+    if getattr(settings, '_RUNNING_TESTS', False):
+        work()
+        return
+
+    def run() -> None:
+        from django.db import connections
+
+        try:
+            work()
+        finally:
+            connections.close_all()
+
+    threading.Thread(target=run, name='linda-turn', daemon=True).start()
+
+
+def _finish_unwatched(turn, conversation_key: str) -> None:
+    """Run a turn nobody reads any more to its end, off the request that left it."""
+
+    def drain() -> None:
+        try:
+            for _event in turn:
+                pass
+        except Exception:  # noqa: BLE001 — nobody is left to raise it to
+            logger.exception('assistant: unwatched turn failed key=%s', conversation_key)
+
+    _in_background(drain)
 
 
 class Assistant:
@@ -482,7 +530,23 @@ class Assistant:
           * ``{type: 'assistant_text', text}``
           * ``{type: 'final', result: AssistantRunResult}``
           * ``{type: 'error', result: AssistantRunResult}``
+
+        A reader that goes away mid-turn (tab closed, reload, a proxy dropping the
+        stream) closes this generator while Janus is still working. The turn is
+        then finished in the background, so its reply, its spend, its run and
+        what Janus learned are stored as for a turn watched to the end.
         """
+        turn = self._turn(message=message, conversation_key=conversation_key, context=context)
+        # Not ``yield from``: that would close the turn with its reader.
+        for event in turn:
+            try:
+                yield event
+            except GeneratorExit:
+                _finish_unwatched(turn, conversation_key)
+                raise
+
+    def _turn(self, *, message: str, conversation_key: str, context: dict[str, Any] | None):
+        """The turn itself: the events :meth:`stream` passes on."""
         started = time.monotonic()
         history = self.store.history(conversation_key=conversation_key, limit=30)
         # A click on an assistant.ask button is stored marked, so it never

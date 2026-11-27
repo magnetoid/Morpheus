@@ -28,6 +28,7 @@ load-bearing:
 from __future__ import annotations
 
 import contextlib
+import fcntl
 import functools
 import hashlib
 import json
@@ -35,6 +36,7 @@ import logging
 import os
 import re
 import shutil
+import signal
 import sqlite3
 import subprocess
 import sys
@@ -762,12 +764,17 @@ def _fallback_wiring(primary_env: dict[str, str]) -> tuple[list[dict[str, str]],
     return entries, env
 
 
+class UnsupportedProvider(Exception):
+    """The store's AI provider is one Janus has no name for. ``str()`` is the provider."""
+
+
 def _provider_wiring(choice: str = '') -> tuple[list[str], dict[str, str]]:
     """CLI args + env that pin Janus to its provider.
 
     The provider picked for this message in the composer (when it is one of
     :func:`selectable_providers`), else the one pinned on Settings → AI → Janus,
-    else the store's active AI provider.
+    else the store's active AI provider. Raises :class:`UnsupportedProvider` when
+    that one is not in ``_JANUS_PROVIDERS``.
     """
     custom = janus_settings.custom_provider()
     picked = (
@@ -802,8 +809,12 @@ def _provider_wiring(choice: str = '') -> tuple[list[str], dict[str, str]]:
             return [], {}
         model, api_key, base_url = cfg.model, cfg.api_key, cfg.base_url
     spec = _JANUS_PROVIDERS.get(name)
-    if spec is None or not api_key:
-        logger.warning('janus: no provider mapping for %r; Janus will auto-select', name)
+    if spec is None:
+        # Never left to Janus's own `auto`: it picks a model from whatever keys the
+        # container holds, one the store did not choose and may not have priced.
+        raise UnsupportedProvider(name)
+    if not api_key:
+        logger.warning('janus: no key for provider %r; Janus will auto-select', name)
         return [], {}
     janus_id, key_var, base_var = spec
     args = ['--provider', janus_id]
@@ -838,6 +849,13 @@ def _stored_session_id(conv_home: Path) -> str:
     return sid
 
 
+def _save_session_meta(conv_home: Path, **changes: Any) -> None:
+    with contextlib.suppress(OSError):
+        (conv_home / _SESSION_FILE).write_text(
+            json.dumps({**_session_meta(conv_home), **changes}), encoding='utf-8'
+        )
+
+
 def _remember_session_id(conv_home: Path, stderr: str) -> str:
     match = _SESSION_LINE_RE.search(stderr)
     if not (match and _SESSION_ID_RE.match(match.group(1))):
@@ -845,16 +863,13 @@ def _remember_session_id(conv_home: Path, stderr: str) -> str:
     sid = match.group(1)
     meta = _session_meta(conv_home)
     turns = int(meta.get('turns') or 0) + 1 if meta.get('id') == sid else 1
-    with contextlib.suppress(OSError):
-        (conv_home / _SESSION_FILE).write_text(
-            json.dumps({'id': sid, 'turns': turns, 'last_at': time.time()}), encoding='utf-8'
-        )
+    _save_session_meta(conv_home, id=sid, turns=turns, last_at=time.time())
     return sid
 
 
 def _forget_session_id(conv_home: Path) -> None:
-    with contextlib.suppress(OSError):
-        (conv_home / _SESSION_FILE).unlink()
+    # The file stays: it also holds what the home has been billed for.
+    _save_session_meta(conv_home, id='', turns=0)
 
 
 _USAGE_COLUMNS = (
@@ -868,23 +883,61 @@ _USAGE_COLUMNS = (
 )
 
 
-def _session_usage(conv_home: Path, session_id: str) -> dict[str, Any]:
-    """Janus's running token and cost totals for one session, from its state.db."""
+def _home_usage(conv_home: Path, session_id: str = '') -> dict[str, Any]:
+    """Janus's token and cost totals over every session in the home's state.db.
+
+    A home is one conversation, so the sum is all that conversation ever spent,
+    whichever session spent it: a turn that died before it was counted, or the
+    session a context compression ended while this turn went on in a new one.
+    ``model`` is the named session's, else the newest session's.
+    """
     db = conv_home / 'state.db'
-    if not session_id or not db.is_file():
+    if not db.is_file():
         return {}
+    sums = ', '.join(f'SUM({column})' for column in _USAGE_COLUMNS)
     try:
         with contextlib.closing(sqlite3.connect(f'file:{db}?mode=ro', uri=True, timeout=2)) as conn:
-            row = conn.execute(
-                f'SELECT model, {", ".join(_USAGE_COLUMNS)} FROM sessions WHERE id = ?',  # noqa: S608 — fixed column list  # nosec B608
+            totals = conn.execute(f'SELECT {sums} FROM sessions').fetchone()  # noqa: S608 — fixed column list  # nosec B608
+            model = conn.execute(
+                'SELECT model FROM sessions ORDER BY id = ? DESC, rowid DESC LIMIT 1',
                 (session_id,),
             ).fetchone()
     except sqlite3.Error:
         logger.debug('janus: usage unreadable', exc_info=True)
         return {}
-    if row is None:
-        return {}
-    return {'model': row[0] or '', **{k: row[i + 1] or 0 for i, k in enumerate(_USAGE_COLUMNS)}}
+    return {
+        'model': (model[0] if model else '') or '',
+        **{k: totals[i] or 0 for i, k in enumerate(_USAGE_COLUMNS)},
+    }
+
+
+def _counted_usage(conv_home: Path) -> dict[str, Any]:
+    """The home's totals that earlier turns were already billed for.
+
+    Kept beside the session id. A turn's spend is the home's total after it less
+    this figure, so a turn nobody counted (its process died) is billed by the
+    next one. A home without the figure starts from its total as it is now: its
+    history was billed turn by turn. Never above a total that could be read,
+    which drops when Janus prunes old sessions.
+    """
+    total = _home_usage(conv_home)
+    counted = _session_meta(conv_home).get('counted')
+    if not isinstance(counted, dict):
+        # Stored now, so the first turn is covered too if it dies uncounted.
+        counted = {k: total.get(k) or 0 for k in _USAGE_COLUMNS}
+        _save_session_meta(conv_home, counted=counted)
+    elif total:
+        counted = {k: min(counted.get(k) or 0, total[k]) for k in _USAGE_COLUMNS}
+    return counted
+
+
+def _bill(conv_home: Path, counted: dict[str, Any], session_id: str) -> dict[str, Any]:
+    """What the home spent since ``counted``, which now counts it too."""
+    total = _home_usage(conv_home, session_id)
+    usage = _turn_usage(counted, total)
+    if usage:
+        _save_session_meta(conv_home, counted={k: total[k] for k in _USAGE_COLUMNS})
+    return usage
 
 
 # `janus chat -q` records its sessions with source 'cli' whatever --source says;
@@ -934,7 +987,7 @@ def _recover_reply(conv_home: Path, resume_id: str, since: float) -> tuple[str, 
 
 
 def _turn_usage(before: dict[str, Any], after: dict[str, Any]) -> dict[str, Any]:
-    """What this turn added to a session's totals (the row accumulates across resumes)."""
+    """What a turn added to the totals (they accumulate); never negative."""
     if not after:
         return {}
     usage = {k: max(0, (after.get(k) or 0) - (before.get(k) or 0)) for k in _USAGE_COLUMNS}
@@ -950,6 +1003,35 @@ _NOTICE_PREFIXES = ('⚠️  Reached maximum iterations', '❌ All API retries e
 def _strip_notices(stdout: str) -> str:
     lines = [ln for ln in stdout.splitlines() if not ln.lstrip().startswith(_NOTICE_PREFIXES)]
     return '\n'.join(lines).strip()
+
+
+_TURN_LOCK = '.morpheus-turn.lock'
+
+
+def _lock_home(conv_home: Path):
+    """The home's turn lock, held, or None while another turn holds it.
+
+    One turn per conversation at a time: a second turn's hydrate would rewrite the
+    notes and remove the files the first turn's Janus wrote and has not harvested
+    yet. Closing the file releases the lock, and so does the process dying.
+    """
+    handle = (conv_home / _TURN_LOCK).open('w')
+    try:
+        fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError as e:
+        handle.close()
+        if isinstance(e, BlockingIOError):
+            return None
+        raise
+    return handle
+
+
+def _open_home(conversation_key: str):
+    """The conversation's home and its turn lock (None while another turn holds it)."""
+    conv_home = linda_janus_home() / 'conv' / _session_id(conversation_key)
+    conv_home.mkdir(mode=0o700, parents=True, exist_ok=True)
+    _maybe_prune_homes(conv_home)
+    return conv_home, _lock_home(conv_home)
 
 
 def run_janus_turn(**kwargs: Any) -> dict[str, Any]:
@@ -1000,9 +1082,13 @@ def iter_janus_turn(
     timeout = turn_timeout_s() if timeout_s is None else max(5, int(timeout_s))
     started = time.monotonic()
     try:
-        conv_home = linda_janus_home() / 'conv' / _session_id(conversation_key)
-        conv_home.mkdir(mode=0o700, parents=True, exist_ok=True)
-        _maybe_prune_homes(conv_home)
+        # The model picked for this message (validated in _provider_wiring).
+        provider_args, provider_env = _provider_wiring(str((context or {}).get('provider') or ''))
+    except UnsupportedProvider as e:
+        yield {'text': '', 'error': f'janus cannot run on {e}', 'duration_ms': 0, 'build': build}
+        return
+    try:
+        conv_home, lock = _open_home(conversation_key)
     except OSError as e:
         # Reported like any engine failure, so the merchant gets the friendly
         # error and the self-improvement loop gets a signal, not a stack trace.
@@ -1014,70 +1100,78 @@ def iter_janus_turn(
             'build': build,
         }
         return
-    mcp_url, mcp_headers = _mcp_endpoint(context)
-    # The model picked for this message (validated in _provider_wiring), and the
-    # backups Janus may switch to when that provider fails.
-    provider_args, provider_env = _provider_wiring(str((context or {}).get('provider') or ''))
-    fallbacks, fallback_env = _fallback_wiring(provider_env)
-    learning = learns(conversation_key)
-    _ensure_config(
-        conv_home,
-        mcp_url=mcp_url,
-        mcp_headers=mcp_headers,
-        fallbacks=fallbacks,
-        learning=learning,
-    )
-    _prepare_home(conv_home)
-    progress = activity.ProgressReader(conv_home / activity.PROGRESS_FILE)
-    progress.reset()
-
-    from core.assistant import janus_learning
-
-    user = (context or {}).get('user')
-    snapshot = None
-    if learning:
-        snapshot = janus_learning.hydrate(conv_home, user=user)
-    else:
-        janus_learning.clear(conv_home)
-
-    env = _turn_env(conv_home, system_prompt, turn_token, {**fallback_env, **provider_env})
-
-    # Read here, not in argv_for: that runs on the worker thread, which has no view
-    # of this request's database connection (and so of the merchant's settings).
-    toolsets = ','.join(turn_toolsets(conversation_key))
-
-    def argv_for(resume_id: str) -> list[str]:
-        # -Q: stdout is the answer only (no banner, query echo or screen escapes).
-        # -t: see TURN_TOOLSETS — never let the default toolset load.
-        text = _compose_message(message, turn_context, '' if resume_id else history)
-        argv = [*cmd, 'chat', '-Q', '-q', text, '--source', 'linda']
-        argv += ['-t', toolsets, *provider_args]
-        return [*argv, '--resume', resume_id] if resume_id else argv
-
-    # The subprocess wait runs in a thread; everything touching the database stays
-    # on this one (hydrate above, harvest below), where the request's connection is.
-    payload = None
-    try:
-        payload = yield from _relay_steps(
-            _wait_ticking(
-                lambda: _spawn(argv_for, env, conv_home, timeout, started, conversation_key),
-                tick_s,
-            ),
-            progress,
+    if lock is None:
+        # The conversation's last turn is still running (its reader may have left).
+        yield {
+            'text': '',
+            'error': 'janus is busy with this conversation',
+            'duration_ms': 0,
+            'build': build,
+        }
+        return
+    with lock:
+        mcp_url, mcp_headers = _mcp_endpoint(context)
+        # The backups Janus may switch to when the turn's provider fails.
+        fallbacks, fallback_env = _fallback_wiring(provider_env)
+        learning = learns(conversation_key)
+        _ensure_config(
+            conv_home,
+            mcp_url=mcp_url,
+            mcp_headers=mcp_headers,
+            fallbacks=fallbacks,
+            learning=learning,
         )
-    finally:
-        if snapshot is not None:
-            if payload is not None:
-                # Also after a timeout or crash: a note saved before the failure
-                # is still something Janus learned.
-                janus_learning.harvest(
-                    conv_home, snapshot, conversation_key=conversation_key, user=user
-                )
-            else:
-                # The caller went away mid-turn and Janus is still writing.
-                logger.info(
-                    'janus: turn abandoned; learning not harvested key=%s', conversation_key
-                )
+        _prepare_home(conv_home)
+        progress = activity.ProgressReader(conv_home / activity.PROGRESS_FILE)
+        progress.reset()
+
+        from core.assistant import janus_learning
+
+        user = (context or {}).get('user')
+        snapshot = None
+        if learning:
+            snapshot = janus_learning.hydrate(conv_home, user=user)
+        else:
+            janus_learning.clear(conv_home)
+
+        env = _turn_env(conv_home, system_prompt, turn_token, {**fallback_env, **provider_env})
+
+        # Read here, not in argv_for: that runs on the worker thread, which has no view
+        # of this request's database connection (and so of the merchant's settings).
+        toolsets = ','.join(turn_toolsets(conversation_key))
+
+        def argv_for(resume_id: str) -> list[str]:
+            # -Q: stdout is the answer only (no banner, query echo or screen escapes).
+            # -t: see TURN_TOOLSETS — never let the default toolset load.
+            text = _compose_message(message, turn_context, '' if resume_id else history)
+            argv = [*cmd, 'chat', '-Q', '-q', text, '--source', 'linda']
+            argv += ['-t', toolsets, *provider_args]
+            return [*argv, '--resume', resume_id] if resume_id else argv
+
+        # The subprocess wait runs in a thread; everything touching the database stays
+        # on this one (hydrate above, harvest below), where the request's connection is.
+        payload = None
+        try:
+            payload = yield from _relay_steps(
+                _wait_ticking(
+                    lambda: _spawn(argv_for, env, conv_home, timeout, started, conversation_key),
+                    tick_s,
+                ),
+                progress,
+            )
+        finally:
+            if snapshot is not None:
+                if payload is not None:
+                    # Also after a timeout or crash: a note saved before the failure
+                    # is still something Janus learned.
+                    janus_learning.harvest(
+                        conv_home, snapshot, conversation_key=conversation_key, user=user
+                    )
+                else:
+                    # The caller went away mid-turn and Janus is still writing.
+                    logger.info(
+                        'janus: turn abandoned; learning not harvested key=%s', conversation_key
+                    )
     yield {**payload, 'build': build}
 
 
@@ -1159,6 +1253,31 @@ def _compose_message(message: str, turn_context: str, history: str) -> str:
     )
 
 
+# Seconds coreutils ``timeout`` waits between its TERM and its KILL.
+_KILL_AFTER_S = 5
+
+
+def _timeout_bin() -> str:
+    """coreutils ``timeout`` where the host has it (the image does, macOS does not).
+
+    ``subprocess.run(timeout=…)`` stops Janus only while this process lives, and
+    gunicorn recycles a worker at ``--max-requests``: Janus then ran on with
+    nothing to stop it. Started under ``timeout``, Janus and what it started are
+    stopped at the deadline whoever is still around.
+    """
+    return shutil.which('timeout') or ''
+
+
+def _stopped_at_deadline(returncode: int, ran_s: float, limit_s: int) -> bool:
+    """Whether ``timeout`` ended the command, from how the wrapper itself ended.
+
+    It exits 124 after its TERM. Its KILL goes to the whole process group, the
+    wrapper included, so Python then sees signal 9 (a shell reports 137). A kill
+    before the deadline is someone else's (out of memory).
+    """
+    return returncode == 124 or (returncode in (137, -signal.SIGKILL) and ran_s >= limit_s)
+
+
 def _spawn(
     argv_for,
     env: dict[str, str],
@@ -1168,49 +1287,67 @@ def _spawn(
     conversation_key: str,
 ) -> dict[str, Any]:
     resume_id = _stored_session_id(conv_home)
-    usage_before = _session_usage(conv_home, resume_id)
+    counted = _counted_usage(conv_home)
     # Always the conversation's own home. Janus auto-injects AGENTS.md / SOUL.md
     # from its working directory, so running inside an engine source checkout
     # would feed that project's developer instructions to the store agent.
     cwd = str(conv_home)
     spawned_at = time.time()
+    wrapper = _timeout_bin()
     for _attempt in (0, 1):
         remaining = max(1, timeout - int(time.monotonic() - started))
+        argv = argv_for(resume_id)
+        if wrapper:
+            argv = [wrapper, '-k', str(_KILL_AFTER_S), str(remaining), *argv]
+        began = time.monotonic()
         try:
             proc = subprocess.run(  # noqa: S603 — cmd is resolved from settings/PATH
-                argv_for(resume_id),
+                argv,
                 env=env,
                 capture_output=True,
                 text=True,
-                timeout=remaining,
+                # Longer than the wrapper's own limit, so the wrapper is the one
+                # that stops Janus: Python killing the wrapper would orphan it.
+                timeout=remaining + 2 * _KILL_AFTER_S if wrapper else remaining,
                 cwd=cwd,
                 check=False,
             )
         except subprocess.TimeoutExpired:
+            proc = None
+        except OSError as e:
+            logger.error('janus engine spawn failed: %s', e)
+            return {'text': '', 'error': f'janus spawn failed: {e}', 'duration_ms': 0}
+        if proc is None or (
+            wrapper and _stopped_at_deadline(proc.returncode, time.monotonic() - began, remaining)
+        ):
             # ERROR, not WARNING: the merchant got no reply, and the error log keeps a
             # warning only while detailed capture is on.
             logger.error('janus engine timed out after %ss key=%s', timeout, conversation_key)
             # The longest turns are the ones that time out, and the daily spend
-            # cap reads `usage`: count what the session spent before the kill.
-            killed = resume_id or _session_started_since(conv_home, spawned_at)
+            # cap reads `usage`: count what the home spent before the kill.
             return {
                 'text': '',
                 'error': f'janus timed out after {timeout}s',
                 'duration_ms': timeout * 1000,
-                'usage': _turn_usage(
-                    usage_before if killed == resume_id else {},
-                    _session_usage(conv_home, killed),
+                'usage': _bill(
+                    conv_home, counted, resume_id or _session_started_since(conv_home, spawned_at)
                 ),
             }
-        except OSError as e:
-            logger.error('janus engine spawn failed: %s', e)
-            return {'text': '', 'error': f'janus spawn failed: {e}', 'duration_ms': 0}
+        if wrapper and proc.returncode in (125, 126, 127):
+            # The wrapper could not start Janus (missing, not executable). Reported as
+            # the same failure as without it: its own text says "timeout".
+            logger.error('janus engine spawn failed: %s', (proc.stderr or '').strip()[:400])
+            return {
+                'text': '',
+                'error': f'janus spawn failed: exit {proc.returncode}',
+                'duration_ms': 0,
+            }
         if proc.returncode != 0 and resume_id and 'Session not found' in (proc.stderr or ''):
             # The stored id outlived its state.db. Janus exits before any model
             # call on this path, so starting a fresh session (with the history
             # recap) costs nothing.
             _forget_session_id(conv_home)
-            resume_id, usage_before = '', {}
+            resume_id = ''
             continue
         break
 
@@ -1223,10 +1360,7 @@ def _spawn(
         if recovered_sid:
             logger.warning('janus: reply recovered from state.db key=%s', conversation_key)
             stderr = f'{stderr}\nsession_id: {recovered_sid}'
-    session = _remember_session_id(conv_home, stderr)
-    if session != resume_id:
-        usage_before = {}
-    usage = _turn_usage(usage_before, _session_usage(conv_home, session))
+    usage = _bill(conv_home, counted, _remember_session_id(conv_home, stderr))
     duration = int((time.monotonic() - started) * 1000)
     result = _turn_result(proc.returncode, text, _SESSION_LINE_RE.sub('', stderr).strip())
     return {**result, 'duration_ms': duration, 'usage': usage}

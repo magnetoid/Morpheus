@@ -185,8 +185,14 @@ def _updates(cmd: list[str] | None) -> dict:
 
 def _run_test(user) -> dict:
     """One tiny turn with no store tools: proves the engine and the model answer."""
+    from core.agents import guardrails
     from core.assistant import janus_engine as eng
 
+    # A real model call outside an agent run: the kill switch and the spend cap
+    # cover it, and its tokens count toward the cap.
+    refused = guardrails.model_call_refusal()
+    if refused:
+        return {'ok': False, 'text': '', 'error': refused, 'seconds': 0}
     out = eng.run_janus_turn(
         message='Reply with exactly: ok',
         conversation_key=f'janus-settings-test:{user.pk}:{uuid.uuid4().hex[:8]}',
@@ -195,6 +201,15 @@ def _run_test(user) -> dict:
         # This page does not stream, so the request must finish before a proxy
         # gives up on a silent connection.
         timeout_s=45,
+    )
+    usage = out.get('usage') or {}
+    guardrails.record_model_usage(
+        usage.get('model') or '',
+        sum(
+            int(usage.get(k) or 0)
+            for k in ('input_tokens', 'cache_read_tokens', 'cache_write_tokens')
+        ),
+        usage.get('output_tokens') or 0,
     )
     return {
         'ok': not out.get('error'),
