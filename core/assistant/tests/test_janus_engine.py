@@ -17,6 +17,7 @@ from unittest import mock
 from django.test import SimpleTestCase, override_settings
 
 import core.assistant.janus_engine as eng
+from core.assistant import janus_binary
 from core.assistant.janus_engine import (
     _child_env,
     _ensure_config,
@@ -43,7 +44,7 @@ class JanusDiscoveryTests(SimpleTestCase):
         with (
             override_settings(JANUS_BIN='', JANUS_ENGINE_ROOT='/no/such/janus'),
             mock.patch.object(eng.shutil, 'which', return_value=None),
-            mock.patch.object(eng, 'engine_root', return_value=None),
+            mock.patch.object(janus_binary, 'engine_root', return_value=None),
         ):
             self.assertFalse(janus_available())
 
@@ -250,7 +251,7 @@ class TurnTests(SimpleTestCase):
             TemporaryDirectory() as tmp,
             mock.patch.object(eng, 'janus_cmd', return_value=['/bin/true']),
             mock.patch.object(eng, 'linda_janus_home', return_value=Path(tmp)),
-            mock.patch.object(eng, 'engine_root', return_value=None),
+            mock.patch.object(janus_binary, 'engine_root', return_value=None),
             mock.patch.object(eng.subprocess, 'run', return_value=proc) as spawn,
         ):
             out = run_janus_turn(
@@ -330,14 +331,16 @@ class TurnInvocationTests(SimpleTestCase):
         with (
             mock.patch.object(eng, 'janus_cmd', return_value=['/opt/janus/bin/janus']),
             mock.patch.object(eng, 'linda_janus_home', return_value=self.home),
-            mock.patch.object(eng, 'engine_root', return_value=None),
+            mock.patch.object(janus_binary, 'engine_root', return_value=None),
             mock.patch.object(eng.subprocess, 'run', side_effect=list(procs)) as spawn,
         ):
             out = run_janus_turn(message='hi', conversation_key='conv-1', system_prompt='p')
         return out, [c.args[0] for c in spawn.call_args_list]
 
     def test_the_result_names_the_janus_this_turn_ran(self):
-        with mock.patch.object(eng, '_build_of', return_value=('0.18.0', 'e' * 40)) as read:
+        with mock.patch.object(
+            janus_binary, '_build_of', return_value=('0.18.0', 'e' * 40)
+        ) as read:
             out, _ = self._turn(_FakeProc(stdout='ok'))
         read.assert_called_once_with('/opt/janus/bin/janus')
         self.assertEqual(out['build'], {'version': '0.18.0', 'commit': 'e' * 40})
@@ -382,7 +385,7 @@ class TurnInvocationTests(SimpleTestCase):
         with (
             mock.patch.object(eng, 'janus_cmd', return_value=['/opt/janus/bin/janus']),
             mock.patch.object(eng, 'linda_janus_home', return_value=self.home),
-            mock.patch.object(eng, 'engine_root', return_value=Path('/src/janus-agent')),
+            mock.patch.object(janus_binary, 'engine_root', return_value=Path('/src/janus-agent')),
             mock.patch.object(eng.subprocess, 'run', return_value=_FakeProc(stdout='ok')) as spawn,
         ):
             run_janus_turn(message='hi', conversation_key='conv-1', system_prompt='p')

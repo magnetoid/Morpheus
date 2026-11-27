@@ -145,8 +145,9 @@ class LindaAutomationTests(TestCase):
 class PublicMcpEndpointTests(TestCase):
     def test_a_turn_without_a_request_reaches_the_store_by_its_public_address(self):
         from core.assistant import janus_engine as eng
+        from core.assistant import janus_home
 
-        with mock.patch.object(eng, '_default_host', return_value='shop.example'):
+        with mock.patch.object(janus_home, '_default_host', return_value='shop.example'):
             url, headers = eng._mcp_endpoint({'mcp_public': True})
         self.assertEqual(url, 'https://shop.example/mcp/admin/v1/')
         self.assertEqual(headers, {})
