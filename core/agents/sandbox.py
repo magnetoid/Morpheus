@@ -71,6 +71,8 @@ _FORBIDDEN_NAMES = frozenset(
     }
 )
 
+_FORBIDDEN_ATTR_PREFIXES = ('gi_', 'f_', 'tb_', 'cr_', 'ag_', 'co_')
+
 # Curated builtins — crucially NO __import__, open, eval, exec.
 _SAFE_BUILTINS: dict[str, Any] = {
     'True': True,
@@ -117,6 +119,16 @@ def _validate(tree: ast.AST) -> None:
             and node.attr.endswith('__')
         ):
             raise SandboxError(f'forbidden dunder access: {node.attr}')
+        # Generator, coroutine, frame, traceback and code objects reach the
+        # interpreter through attributes that are not dunders.
+        if isinstance(node, ast.Attribute) and (
+            node.attr.startswith(_FORBIDDEN_ATTR_PREFIXES) or node.attr == 'func_globals'
+        ):
+            raise SandboxError(f'forbidden attribute: {node.attr}')
+        # str.format reads attributes named inside the text, where no rule here
+        # sees them ('{0.gi_frame}'). An f-string does the same job in plain view.
+        if isinstance(node, ast.Attribute) and node.attr in ('format', 'format_map'):
+            raise SandboxError('forbidden: str.format (use an f-string)')
         if isinstance(node, ast.Name) and node.id in _FORBIDDEN_NAMES:
             raise SandboxError(f'forbidden name: {node.id}')
         # Block dunders hidden in string literals — defeats format-string /

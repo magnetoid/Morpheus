@@ -16,13 +16,16 @@ itself.
 from __future__ import annotations
 
 import time
+from unittest import mock
 
 from django.core.cache import cache
-from django.test import SimpleTestCase
+from django.db import DatabaseError
+from django.test import SimpleTestCase, TestCase
 
 from core.agents.tools import Tool
 from core.assistant import consent, gates
 from core.assistant.gates import LINDA_SCOPES
+from core.assistant.persistence import StoredMessage, get_default_store
 
 
 def _tool(name, *, scopes=None, requires_approval=False, supports_staging=False):
@@ -143,7 +146,7 @@ class HumanConsentGateTests(SimpleTestCase):
         self.assertIn('approval_required', reason or '')
 
 
-class ConsentOrderingTests(SimpleTestCase):
+class ConsentOrderingTests(TestCase):
     """Consent is spent only by a human message sent AFTER the proposal.
 
     Without the ordering check, "change the setting, ok?" approves itself: the
@@ -162,8 +165,11 @@ class ConsentOrderingTests(SimpleTestCase):
 
     def test_message_after_the_proposal_is_consent(self):
         consent.request(**self.key)
-        later = time.time() + 1
-        self.assertTrue(consent.consume(**self.key, human_message='yes', human_message_at=later))
+        get_default_store().append(
+            conversation_key='conv-order', message=StoredMessage(role='user', content='yes')
+        )
+        text, at = gates.latest_human_turn('conv-order')
+        self.assertTrue(consent.consume(**self.key, human_message=text, human_message_at=at))
 
     def test_entry_written_before_proposal_times_existed_fails_closed(self):
         from core.agents.approval import args_fingerprint
@@ -194,6 +200,115 @@ class ConsentOrderingTests(SimpleTestCase):
         self.assertIn('approval_required', reason or '')
 
 
+class NextMessageConsentTests(TestCase):
+    """Only the merchant's first message after a proposal can approve it.
+
+    A pending consent used to be spendable by any later yes for its whole TTL: the
+    merchant declined write A, then approved write B, and a retry of A went through.
+    """
+
+    CONV = 'user:1:chat:next'
+
+    def setUp(self):
+        cache.clear()
+        self.tool = _tool('settings.set', scopes=['system.write'], requires_approval=True)
+
+    def _say(self, text):
+        get_default_store().append(
+            conversation_key=self.CONV, message=StoredMessage(role='user', content=text)
+        )
+
+    def _call(self, args):
+        """What the MCP edge does: read the stored human turn, then gate the call."""
+        text, at = gates.latest_human_turn(self.CONV)
+        return _gate(
+            self.tool,
+            args=args,
+            conversation_key=self.CONV,
+            human_message=text,
+            human_message_at=at,
+        )
+
+    def test_a_decline_then_a_yes_to_another_change_does_not_approve_the_first(self):
+        a, b = {'key': 'a'}, {'key': 'b'}
+        self._say('change a')
+        self.assertIn('approval_required', self._call(a) or '')
+        self._say("No, don't make that change.")
+        self.assertIn('approval_required', self._call(b) or '')
+        self._say('Yes, go ahead.')
+        self.assertIsNone(self._call(b))
+        # The retry of A is refused and proposed afresh, so it needs a yes of its own.
+        self.assertIn('approval_required', self._call(a) or '')
+        self._say('Yes, go ahead.')
+        self.assertIsNone(self._call(a))
+
+    def test_a_yes_right_after_the_proposal_approves_it(self):
+        self._say('change a')
+        self.assertIn('approval_required', self._call({'key': 'a'}) or '')
+        self._say('yes')
+        self.assertIsNone(self._call({'key': 'a'}))
+
+    def test_one_yes_approves_every_change_proposed_in_one_turn(self):
+        a, b = {'key': 'a'}, {'key': 'b'}
+        self._say('change a and b')
+        self.assertIn('approval_required', self._call(a) or '')
+        self.assertIn('approval_required', self._call(b) or '')
+        self._say('Yes, go ahead.')
+        self.assertIsNone(self._call(a))
+        self.assertIsNone(self._call(b))
+
+    def test_a_yes_lapses_once_the_merchant_writes_again(self):
+        # The yes answered the proposal, but nothing spent it in its turn; a later
+        # message (affirmative words or not) is not the answer, so re-ask.
+        self._say('change a')
+        self.assertIn('approval_required', self._call({'key': 'a'}) or '')
+        self._say('yes')
+        self._say('ok, and how are sales today?')
+        self.assertIn('approval_required', self._call({'key': 'a'}) or '')
+        self._say('yes')
+        self.assertIsNone(self._call({'key': 'a'}))
+
+    def test_an_unreadable_conversation_approves_nothing(self):
+        self._say('change a')
+        self._call({'key': 'a'})
+        self._say('yes')
+        text, at = gates.latest_human_turn(self.CONV)
+        with mock.patch(
+            'core.assistant.models.AssistantMessage.objects.filter', side_effect=DatabaseError
+        ):
+            self.assertFalse(
+                consent.consume(
+                    conversation_key=self.CONV,
+                    tool_name='settings.set',
+                    args={'key': 'a'},
+                    human_message=text,
+                    human_message_at=at,
+                )
+            )
+
+
+class SpendIsAtomicTests(SimpleTestCase):
+    """A grant is spent only by the call whose delete removed it."""
+
+    def _consume(self, deleted):
+        with mock.patch('core.assistant.consent.cache') as fake:
+            fake.get.return_value = {'proposed_at': time.time() - 5}
+            fake.delete.return_value = deleted
+            return consent.consume(
+                conversation_key='k', tool_name='settings.set', args={}, human_message='yes'
+            )
+
+    def test_a_grant_another_call_already_spent_is_refused(self):
+        self.assertFalse(self._consume(False))
+
+    def test_a_cache_that_is_down_approves_nothing(self):
+        # django-redis with IGNORE_EXCEPTIONS answers None when Redis is down.
+        self.assertFalse(self._consume(None))
+
+    def test_the_call_that_deleted_it_is_approved(self):
+        self.assertTrue(self._consume(True))
+
+
 class WriteAuditTests(SimpleTestCase):
     """Which calls count as writes for `assistant.tool_write`."""
 
@@ -221,3 +336,31 @@ class AffirmativeParsingTests(SimpleTestCase):
     def test_negation_beats_affirmation(self):
         for m in ['yes but no', "ok don't", 'sure, wait']:
             self.assertFalse(consent.is_affirmative(m), m)
+
+    def test_an_amended_yes_is_not_consent(self):
+        for m in [
+            'yes, but not that one',
+            'ok except the second',
+            'yes, skip the reviews one',
+            'yes but only the first',
+            'sure, without the discount',
+            'go ahead, skipping the last one',
+            'ok don\u2019t',  # a phone's curly apostrophe
+            "No, don't make that change.",  # the Decline card
+        ]:
+            self.assertFalse(consent.is_affirmative(m), m)
+
+    def test_a_plain_yes_still_is(self):
+        for m in [
+            'Yes, go ahead.',  # the Approve card
+            'yes',
+            'Yes please',
+            'go for it',
+            'sounds good',
+            'please do',
+            # Word bounded: these contain "not", "but" and "skip" inside other words.
+            'yes, update the notebook',
+            'ok, the button text is fine',
+            'yes, book the skipper',
+        ]:
+            self.assertTrue(consent.is_affirmative(m), m)

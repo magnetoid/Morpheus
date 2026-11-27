@@ -16,14 +16,16 @@ asking the user"; nothing enforced it.
 3. The human answers **in their own turn** — a ``role='user'`` message, which is
    the one thing injected content can never become.
 4. Next attempt with the **same fingerprint** → the kernel checks the human's
-   latest message is affirmative **and was sent after the proposal** → allow
-   **once**, then consume the grant.
+   latest message is affirmative **and is the first one they sent after the
+   proposal** → allow **once**, then consume the grant.
 
 The ordering check matters. Without it, "set the price to 20, ok?" is spent by
 its own "ok": the first attempt is refused and recorded, and an immediate retry
 in the same turn finds an affirmative human message waiting. The human never saw
 the proposal. An agent that retries a refused call inside one turn — Janus does —
-would approve itself.
+would approve itself. Only the FIRST message after the proposal answers it: once
+the merchant has written anything else (a decline, another request), a later yes
+was given to something else, and the call is proposed again.
 
 Grants are single-use and fingerprint-bound, so an approval given for a benign
 call can't be spent on a different one (same invariant as
@@ -51,11 +53,12 @@ CONSENT_TTL_SECONDS = 600
 _CACHE_PREFIX = 'assistant:consent:'
 
 # Word-boundary matched so "know" never reads as "no" and "cancelled" doesn't
-# swallow an unrelated sentence. Negation is checked first and wins outright.
+# swallow an unrelated sentence. Negation is checked first and wins outright, and
+# so does a yes that amends the proposal ("but", "except", "only", "skip").
 _NEGATIVE = re.compile(
-    r"\b(no|nope|nah|don'?t|do not|stop|cancel|cancelled|abort|wait|"
+    r"\b(no|nope|nah|don['’]?t|do not|not|stop|cancel|cancelled|abort|wait|"
     r'never|nevermind|never mind|not yet|hold on|undo|reject|rejected|'
-    r'disregard|scratch that)\b',
+    r'disregard|scratch that|but|except|only|without|skip|skipping)\b',
     re.IGNORECASE,
 )
 _AFFIRMATIVE = re.compile(
@@ -120,8 +123,8 @@ def consume(
     """Spend a pending consent for this exact call, if the human just said yes.
 
     All must hold: a consent was *proposed* for this fingerprint, the human's
-    message was sent *after* that proposal (so they saw what they were agreeing
-    to), and it is affirmative. Single-use — the entry is deleted on success so a single
+    message is the first they sent *after* that proposal (so it answers what they
+    saw), and it is affirmative. Single-use — the entry is deleted on success so a single
     "yes" can't authorise a repeated action.
     """
     fp = _fingerprint(tool_name, args)
@@ -130,16 +133,19 @@ def consume(
     # A pre-v0.64 plain 'pending' entry has no proposal time: fail closed, re-ask.
     if not isinstance(entry, dict):
         return False
+    proposed_at = float(entry.get('proposed_at') or 0)
     # ``human_message_at`` (epoch seconds) must postdate the proposal. Callers
-    # that cannot supply it pass None and skip only this check.
-    if human_message_at is not None and human_message_at <= float(entry.get('proposed_at') or 0):
+    # that cannot supply it pass None and skip only these ordering checks.
+    if human_message_at is not None and human_message_at <= proposed_at:
         return False
     if not is_affirmative(human_message):
         return False
-    cache.delete(key)
-    return True
+    if human_message_at is not None:
+        from core.assistant.gates import first_human_turn_after
 
-
-def clear(*, conversation_key: str, tool_name: str, args: dict | None) -> None:
-    """Drop a pending consent (tests / explicit cancellation)."""
-    cache.delete(_key(conversation_key, args_fingerprint(tool_name, args)))
+        # A decline, or anything else written in between, was the answer: re-ask.
+        if first_human_turn_after(conversation_key, proposed_at) != human_message_at:
+            return False
+    # Two identical calls can both read the entry; only the one whose delete
+    # removed it is approved. A cache that is down answers None: not approved.
+    return bool(cache.delete(key))

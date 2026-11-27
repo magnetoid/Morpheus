@@ -1,43 +1,10 @@
-import hashlib
-import json
 import logging
-from functools import wraps
 
 from django.core.cache import cache
 
 from core.hooks import MorpheusEvents, hook_registry
 
 logger = logging.getLogger('morpheus.core.cache')
-
-
-def cache_graphql_query(timeout=3600, key_prefix='gql'):
-    """
-    Decorator for Strawberry GraphQL resolvers to cache responses in Redis.
-    """
-
-    def decorator(func):
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            # Create deterministic cache key from arguments
-            # Note: For production, we must also consider request user context
-            args_str = json.dumps(kwargs, sort_keys=True)
-            key_hash = hashlib.md5(
-                f'{func.__name__}:{args_str}'.encode(), usedforsecurity=False
-            ).hexdigest()  # noqa: S324
-            cache_key = f'{key_prefix}:{func.__name__}:{key_hash}'
-
-            result = cache.get(cache_key)
-            if result is not None:
-                return result
-
-            # Compute and cache
-            result = func(*args, **kwargs)
-            cache.set(cache_key, result, timeout)
-            return result
-
-        return wrapper
-
-    return decorator
 
 
 class SmartCacheInvalidator:
@@ -75,7 +42,7 @@ class SmartCacheInvalidator:
     # edit left the API serving the old price and title until the TTL lapsed,
     # on production only (local dev has no delete_pattern and falls through to
     # cache.clear(), which is why it never showed up in development).
-    _QUERY_CACHE_PATTERNS = ('graphql:query:*', 'rest:*')
+    _QUERY_CACHE_PATTERNS = ('graphql:query:*',)
 
     @staticmethod
     def _clear_query_caches(reason: str) -> None:

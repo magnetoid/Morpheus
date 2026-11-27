@@ -126,10 +126,11 @@ def _llm_breaker(fn: Callable) -> Callable:
                 )
                 cache_key = f'llm_cache_{self.name}_{self.model}_{hashlib.sha256(msg_str.encode()).hexdigest()}'
                 cached_resp = cache.get(cache_key)
-                if cached_resp:
+                if cached_resp and (cached_resp.get('text') or '').strip():
                     logger.debug('llm provider %s returning cached response', self.name)
-                    # Convert dict back to LLMResponse
-                    return LLMResponse(**cached_resp)
+                    # A hit spent nothing: the stored token counts would be
+                    # recorded against the spend cap a second time.
+                    return LLMResponse(text=cached_resp['text'], model=cached_resp.get('model', ''))
             except Exception:  # noqa: S110 — best-effort cache read; fall through to live call
                 pass
 
@@ -137,7 +138,8 @@ def _llm_breaker(fn: Callable) -> Callable:
         try:
             with breaker:
                 resp = fn(self, *args, **kwargs)
-                if cache_key and not resp.is_tool_call:
+                # An empty reply (a reasoning model out of tokens) is no answer to keep.
+                if cache_key and not resp.is_tool_call and (resp.text or '').strip():
                     try:
                         cache_dict = {
                             'text': resp.text,
@@ -577,8 +579,14 @@ class GeminiProvider(LLMProvider):
         if system_chunks:
             body['systemInstruction'] = {'parts': [{'text': '\n\n'.join(system_chunks)}]}
 
-        url = f'{self.base_url}/models/{self.model}:generateContent?key={self._api_key}'
-        resp = self._requests.post(url, json=body, timeout=LLM_HTTP_TIMEOUT_SECS)
+        # The key goes in a header: an HTTPError quotes the URL.
+        url = f'{self.base_url}/models/{self.model}:generateContent'
+        resp = self._requests.post(
+            url,
+            json=body,
+            headers={'x-goog-api-key': self._api_key},
+            timeout=LLM_HTTP_TIMEOUT_SECS,
+        )
         resp.raise_for_status()
         data = resp.json()
         chunks: list[str] = []

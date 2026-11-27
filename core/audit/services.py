@@ -8,6 +8,7 @@ export the full decision history for a customer or a model.
 
 from __future__ import annotations
 
+import ipaddress
 import logging
 from typing import Any
 
@@ -40,6 +41,12 @@ def record(
         )
     elif actor is not None:
         actor_label = str(actor)[:200]
+    try:
+        ip_address = str(ipaddress.ip_address(ip_address)) if ip_address else None
+    except ValueError:
+        # Postgres refuses junk in the inet column, and the whole row would be lost
+        # (X-Forwarded-For: x would erase a code-guesser's trail).
+        ip_address = None
 
     return AuditEvent.objects.create(
         event_type=event_type[:120],

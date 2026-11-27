@@ -6,10 +6,3 @@ class LoyaltyPointsConfig(AppConfig):
     name = 'plugins.installed.loyalty_points'
     label = 'loyalty_points'
     verbose_name = 'Loyalty points'
-
-    def ready(self) -> None:
-        # Subscribe earn-on-purchase handler at module-import time so the
-        # listener is in place before any ORDER_PAID fire.
-        from plugins.installed.loyalty_points import services  # noqa: F401, PLC0415
-
-        services.register_handlers()

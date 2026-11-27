@@ -356,7 +356,8 @@ class GeminiGateway(LLMGateway):
         if not self.api_key:
             raise RuntimeError('Gemini API key not configured.')
         start = time.monotonic()
-        url = f'{self.base_url}/models/{self.model}:generateContent?key={self.api_key}'
+        # The key goes in a header: an HTTPError quotes the URL.
+        url = f'{self.base_url}/models/{self.model}:generateContent'
         body = {
             'contents': [{'role': 'user', 'parts': [{'text': prompt}]}],
             'generationConfig': {
@@ -367,7 +368,9 @@ class GeminiGateway(LLMGateway):
         if system:
             body['systemInstruction'] = {'parts': [{'text': system}]}
         try:
-            resp = requests.post(url, json=body, timeout=20)
+            resp = requests.post(
+                url, json=body, headers={'x-goog-api-key': self.api_key}, timeout=20
+            )
             resp.raise_for_status()
             data = resp.json()
             chunks = []
@@ -397,12 +400,13 @@ class GeminiGateway(LLMGateway):
         if not self.api_key:
             raise RuntimeError('Gemini API key not configured.')
         embed_model = 'text-embedding-004'
-        url = f'{self.base_url}/models/{embed_model}:embedContent?key={self.api_key}'
+        url = f'{self.base_url}/models/{embed_model}:embedContent'
         resp = requests.post(
             url,
             json={
                 'content': {'parts': [{'text': text}]},
             },
+            headers={'x-goog-api-key': self.api_key},
             timeout=30,
         )
         resp.raise_for_status()

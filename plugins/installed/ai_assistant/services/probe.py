@@ -111,8 +111,8 @@ def probe_gemini(*, api_key: str, base_url: str = '') -> dict:
     if not api_key:
         return _fail('Gemini API key not set.')
     base = (base_url or 'https://generativelanguage.googleapis.com/v1beta').rstrip('/')
-    # Gemini uses ?key=… instead of an Authorization header.
-    data = _http_get(f'{base}/models?key={api_key}', headers={})
+    # The key goes in a header, never the URL, which an error can quote.
+    data = _http_get(f'{base}/models', headers={'x-goog-api-key': api_key})
     if '_error' in data:
         return _fail(str(data['_error']))
     items = data.get('models') or []

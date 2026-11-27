@@ -15,6 +15,7 @@ from datetime import UTC, datetime, timedelta
 from unittest import mock
 
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.test import TestCase
 
 from core.agents.tools import ToolError
@@ -60,9 +61,7 @@ class AnswerIsNotConsentTests(TestCase):
 
     def setUp(self):
         self.conv = AssistantConversation.objects.create(key=self.CONV)
-        self.addCleanup(
-            consent.clear, conversation_key=self.CONV, tool_name='t.write', args={'x': 1}
-        )
+        self.addCleanup(cache.clear)
 
     def _proposal_then(self, **message):
         consent.request(conversation_key=self.CONV, tool_name='t.write', args={'x': 1})

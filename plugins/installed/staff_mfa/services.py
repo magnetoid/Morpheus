@@ -14,6 +14,8 @@ import secrets
 from django.shortcuts import redirect
 from django.utils import timezone
 
+from core.ratelimit import client_ip_address
+
 logger = logging.getLogger('morpheus.staff_mfa')
 
 # Self-service enrollment lives at the plugin's dashboard page, mounted by the
@@ -105,12 +107,7 @@ def qr_svg(data: str, *, box: int = 5) -> str:
 
 # ── Audit ────────────────────────────────────────────────────────────────────
 def _client_ip(request) -> str | None:
-    if request is None:
-        return None
-    xff = request.META.get('HTTP_X_FORWARDED_FOR', '')
-    if xff:
-        return xff.split(',', 1)[0].strip() or None
-    return request.META.get('REMOTE_ADDR') or None
+    return client_ip_address(request) if request is not None else None
 
 
 def audit(

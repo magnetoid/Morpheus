@@ -500,10 +500,9 @@ def spawn(archive: Path, *, confirm: str, by: str, reload_pid: int = 0) -> None:
         str(Path(settings.BASE_DIR) / 'manage.py'),
         'morph_restore',
         str(archive),
-        '--confirm',
-        confirm,
-        '--by',
-        by,
+        # One argument each: a name or username starting with "-" would read as an option.
+        f'--confirm={confirm}',
+        f'--by={by}',
     ]
     if reload_pid:
         argv += ['--reload-web', str(reload_pid)]

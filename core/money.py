@@ -148,10 +148,6 @@ def is_positive(value: Money) -> bool:
     return _decimal_of(value) > 0
 
 
-def is_zero(value: Money) -> bool:
-    return _decimal_of(value) == 0
-
-
 def zero(currency: str = 'USD') -> Money:
     """``Money(0, currency)`` — handy when initialising sums."""
     return Money(Decimal('0'), currency)
@@ -162,11 +158,4 @@ def cap(value: Money, ceiling: Money) -> Money:
     assert_same_currency(value, ceiling)
     if _decimal_of(value) > _decimal_of(ceiling):
         return ceiling
-    return value
-
-
-def floor_at_zero(value: Money) -> Money:
-    """Clamp ``value`` to zero — never go negative."""
-    if _decimal_of(value) < 0:
-        return zero(_currency_of(value))
     return value

@@ -224,12 +224,25 @@ def auto_approve_enabled() -> bool:
     return bool(getattr(s, 'LINDA_JANUS_AUTO_APPROVE', False) if s else False)
 
 
-def turn_toolsets() -> tuple[str, ...]:
+def learns(conversation_key: str = '') -> bool:
+    """Whether this conversation reads and writes what Janus has learned.
+
+    Never an external agent's. Its turns run as one shared service user, so
+    hydrating would hand the store's notes (and every other token's notes about
+    "the person") to a caller whose token grants no such read, and what it wrote
+    would be loaded into every merchant turn.
+    """
+    from core.assistant.gates import is_external_key
+
+    return janus_settings.learning_enabled() and not is_external_key(conversation_key)
+
+
+def turn_toolsets(conversation_key: str = '') -> tuple[str, ...]:
     """The toolsets a turn loads: the base set, web search and memory while allowed."""
     toolsets = TURN_TOOLSETS
     if janus_settings.web_search_enabled():
         toolsets += WEB_SEARCH_TOOLSETS
-    if janus_settings.learning_enabled():
+    if learns(conversation_key):
         toolsets += LEARNING_TOOLSETS
     return toolsets
 
@@ -361,14 +374,6 @@ def stage_store_skills(home: Path) -> Path | None:
     return staged
 
 
-def bundled_skill_names() -> list[str]:
-    root = bundled_skills_dir()
-    if not root.is_dir():
-        return []
-    names = {p.parent.name for p in root.rglob('SKILL.md') if p.is_file()}
-    return sorted(names)
-
-
 # A conversation home nobody has used for this long is removed. Each chat has
 # its own home, so homes grow with chats; nothing in one has to survive (what
 # Janus learns is harvested into the DB every turn, and a reopened chat without
@@ -446,6 +451,7 @@ def _config_text(
     *,
     fallbacks: list[dict[str, str]] | None = None,
     skills_dir: Path | None = None,
+    learning: bool | None = None,
 ) -> str:
     mcp_block = ''
     if mcp_url:
@@ -474,7 +480,9 @@ mcp_servers:
     if skills_dir is not None:
         quoted = str(skills_dir).replace('\\', '/')
         external = f'\n  external_dirs:\n    - "{quoted}"'
-    learning = 'true' if janus_settings.learning_enabled() else 'false'
+    if learning is None:
+        learning = janus_settings.learning_enabled()
+    learning = 'true' if learning else 'false'
     # guard_agent_created: Janus scans a skill the agent writes only when this
     #   resolves on, and its "auto" default is OFF under `janus chat -q`.
     # inline_shell: a skill could otherwise run shell snippets when it loads.
@@ -585,6 +593,7 @@ def _ensure_config(
     mcp_url: str = '',
     mcp_headers: dict[str, str] | None = None,
     fallbacks: list[dict[str, str]] | None = None,
+    learning: bool | None = None,
 ) -> Path:
     """Write (or REWRITE) the store-agent Janus config.
 
@@ -600,6 +609,7 @@ def _ensure_config(
         home / activity.PROGRESS_FILE,
         fallbacks=fallbacks,
         skills_dir=stage_store_skills(home),
+        learning=learning,
     )
     try:
         current = cfg_path.read_text(encoding='utf-8')
@@ -1009,7 +1019,14 @@ def iter_janus_turn(
     # backups Janus may switch to when that provider fails.
     provider_args, provider_env = _provider_wiring(str((context or {}).get('provider') or ''))
     fallbacks, fallback_env = _fallback_wiring(provider_env)
-    _ensure_config(conv_home, mcp_url=mcp_url, mcp_headers=mcp_headers, fallbacks=fallbacks)
+    learning = learns(conversation_key)
+    _ensure_config(
+        conv_home,
+        mcp_url=mcp_url,
+        mcp_headers=mcp_headers,
+        fallbacks=fallbacks,
+        learning=learning,
+    )
     _prepare_home(conv_home)
     progress = activity.ProgressReader(conv_home / activity.PROGRESS_FILE)
     progress.reset()
@@ -1018,7 +1035,7 @@ def iter_janus_turn(
 
     user = (context or {}).get('user')
     snapshot = None
-    if janus_settings.learning_enabled():
+    if learning:
         snapshot = janus_learning.hydrate(conv_home, user=user)
     else:
         janus_learning.clear(conv_home)
@@ -1027,7 +1044,7 @@ def iter_janus_turn(
 
     # Read here, not in argv_for: that runs on the worker thread, which has no view
     # of this request's database connection (and so of the merchant's settings).
-    toolsets = ','.join(turn_toolsets())
+    toolsets = ','.join(turn_toolsets(conversation_key))
 
     def argv_for(resume_id: str) -> list[str]:
         # -Q: stdout is the answer only (no banner, query echo or screen escapes).

@@ -14,7 +14,10 @@ this layer and the storefront app's both then answer
 Skips:
   - Admin/dashboard paths (`/dashboard/`, `/admin/`, `/auth/`,
     `/api/`, `/graphql/`)
-  - Authenticated requests (cookies + Authorization both checked)
+  - Authenticated requests (Authorization header or a signed-in user)
+  - A page that is one visitor's (``may_be_public``: a private cookie, or a
+    cart, checkout, order or account page), the rule the storefront app's
+    middleware reads too
   - Responses that already set Cache-Control upstream
   - Non-2xx responses
   - Non-GET / HEAD requests
@@ -25,6 +28,8 @@ from __future__ import annotations
 import logging
 import re
 from typing import Any
+
+from core.i18n_links import split_language_prefix
 
 logger = logging.getLogger('morpheus.core.storefront_cache')
 
@@ -42,6 +47,38 @@ def keep_private(request) -> None:
 def is_private(request) -> bool:
     """Did anything rendering this response call ``keep_private``?"""
     return bool(getattr(request, _PRIVATE_FLAG, False))
+
+
+#: Cookies that make a page the visitor's own: a session, a cart, a consent
+#: choice (the banner goes and the analytics tags load). Not `csrftoken`: Django
+#: sets it on a first GET, and a token is per form, not per visitor.
+PRIVATE_COOKIES = ('sessionid', 'cart_token', 'morpheus_session', 'morpheus_consent')
+
+#: Pages that are one visitor's whoever asks (after any language prefix): an
+#: edge copy of an empty cart would be served to every visitor with a cart.
+PRIVATE_PATH_PREFIXES = (
+    '/cart/',
+    '/checkout/',
+    '/order/',
+    '/account/',
+    '/pay/',
+    '/digital/',
+    '/wishlist/',
+    '/withdraw/',
+    '/returns/start/',
+)
+
+
+def may_be_public(request) -> bool:
+    """Whether a shared cache may keep this request's page.
+
+    Both cache layers ask, so neither marks public a page the other keeps
+    private.
+    """
+    if any(name in request.COOKIES for name in PRIVATE_COOKIES):
+        return False
+    _, path = split_language_prefix(request.path or '')
+    return not path.startswith(PRIVATE_PATH_PREFIXES)
 
 
 # URL patterns → TTL config key. First match wins.
@@ -103,6 +140,8 @@ class StorefrontCacheMiddleware:
         user = getattr(request, 'user', None)
         if user is not None and getattr(user, 'is_authenticated', False):
             return
+        if not may_be_public(request):
+            return
         # Already set explicitly upstream? Respect it.
         if response.get('Cache-Control'):
             return
@@ -134,8 +173,8 @@ class StorefrontCacheMiddleware:
         response['Cache-Control'] = header
         # Vary on Accept-Encoding so cached bytes match the client's
         # compression support. Intentionally NOT Vary: Cookie — anon vs
-        # logged-in are already bucketed by the
-        # StorefrontCacheControlMiddleware cookie-presence skip, and
+        # logged-in are already bucketed by the private-cookie skip
+        # (may_be_public), and
         # Vary: Cookie would explode the edge cache key on _ga / _fbp /
         # csrftoken (effective Cloudflare hit ratio ~0%).
         existing_vary = response.get('Vary', '')

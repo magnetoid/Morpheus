@@ -43,7 +43,7 @@ MORPHEUS_THEMES_DIR = BASE_DIR / 'themes' / 'library'
 MORPHEUS_ACTIVE_THEME = config('MORPHEUS_ACTIVE_THEME', default='dot_books')
 
 # Display version next to the logo in the admin sidebar.
-MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.196.0')
+MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.197.0')
 
 # The release stage shown beside the version (the dashboard, the README badge, the
 # GitHub Release title) while Morpheus is not finalized; '' once it is. The version
@@ -801,6 +801,8 @@ EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@morpheusstore.io')
 EMAIL_USE_TLS = True
+# Seconds an SMTP connection may block (the sign-in code is sent in the request).
+EMAIL_TIMEOUT = config('EMAIL_TIMEOUT', default=10, cast=int)
 # Who hears about errors, a failed health check and a rollback, comma-separated
 # (core/errors/alerts.py); unset means the active superusers.
 ERROR_ALERT_EMAILS = config('ERROR_ALERT_EMAILS', default='')
@@ -955,8 +957,8 @@ if not _RUNNING_TESTS:
 # Configure the autonomic loop. None of these settings are required —
 # defaults in core.self_improvement.policy ship sensible thresholds.
 SELF_IMPROVEMENT = {
-    # Maximum daily token budget across all engine LLM calls. Hard cap;
-    # exceeded → analyzer aborts the remainder of the run and logs to Sentry.
+    # Tokens the nightly analyzer may spend on its model calls in 24 hours
+    # (0 = no budget). Once spent, the rest of the run writes plain advisories.
     'daily_token_budget': config('SELF_IMPROVEMENT_TOKEN_BUDGET', default=500_000, cast=int),
     # Override per-class policy here, e.g.:
     #   'policy': {'seo_gap': {'auto': 0.95}},
@@ -967,8 +969,6 @@ SELF_IMPROVEMENT = {
     # Paths the engine treats as protected in addition to core/safety.py's
     # PROTECTED_PATHS. Always a superset, never a relax.
     'extra_protected_paths': [],
-    # Weekly digest email recipients.
-    'digest_recipients': config('SELF_IMPROVEMENT_DIGEST_RECIPIENTS', default='', cast=Csv()),
 }
 
 # ── Sentry ─────────────────────────────────────────────────────────────────────

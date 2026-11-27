@@ -45,6 +45,9 @@ class PublicIpTests(SimpleTestCase):
             '169.254.169.254',  # cloud metadata — the one that leaks credentials
             '0.0.0.0',  # unspecified
             '224.0.0.1',  # multicast
+            'ff02::1',  # multicast v6
+            '100.64.0.1',  # carrier-grade NAT: not is_private, never public
+            '100.127.255.254',
         ):
             self.assertFalse(is_public_ip(ipaddress.ip_address(bad)), bad)
 
@@ -117,6 +120,21 @@ class CheckOutboundUrlTests(SimpleTestCase):
         # would not parse as an IP and loopback would slip through.
         with self.assertRaises(UnsafeUrlError):
             check_outbound_url('http://[::1]:8000/x', require_https=False)
+
+    def test_a_backslash_or_blank_in_the_authority_is_refused(self):
+        # urlparse reads example.com here, while urllib3 (so requests) connects
+        # to 127.0.0.1: the two parsers must never be asked to disagree.
+        with _resolves_to('93.184.216.34'):
+            for url in (
+                'http://127.0.0.1:8000\\@example.com/',
+                'http://127.0.0.1\\@example.com/',
+                'http://exa mple.com/',
+                'http://example.com\x00/',
+            ):
+                with self.assertRaises(UnsafeUrlError, msg=repr(url)):
+                    check_outbound_url(url, require_https=False)
+            # A space in the path is the path's business (requests quotes it).
+            self.assertEqual(check_outbound_url('https://example.com/a file.jpg'), 'example.com')
 
     def test_non_raising_helper(self):
         self.assertFalse(is_safe_outbound_url('http://127.0.0.1/', require_https=False))

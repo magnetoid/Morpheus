@@ -41,30 +41,36 @@ def scrub_pii(text: str) -> str:
 
 
 def scrub_span_attributes(span) -> int:
-    """Redact PII in a span's string attributes IN PLACE. Returns the count
+    """Redact PII in a span's string attributes, on the span. Returns the count
     of attributes rewritten (for tests/observability of the scrubber itself).
 
     ``span.set_attribute()`` is a **no-op** here: by the time a processor's
     ``on_end`` runs the span has already ended, and the SDK silently drops
     attribute writes on a non-recording span (this was a real, silent bug —
-    PII exported unscrubbed). We instead mutate the ReadableSpan's backing
-    ``_attributes`` map directly. The ``BatchSpanProcessor`` is registered
-    *after* the scrubber, so it serializes these redacted values for export.
+    PII exported unscrubbed). We instead replace the ReadableSpan's backing
+    ``_attributes`` map with a scrubbed one. The ``BatchSpanProcessor`` is
+    registered *after* the scrubber, so it serializes these redacted values.
     """
     attrs = getattr(span, '_attributes', None)
     if not attrs:
         return 0
-    rewritten = 0
-    for key, value in list(attrs.items()):
-        if not isinstance(value, str):
-            continue
-        cleaned = scrub_pii(value)
-        if cleaned != value:
-            try:
-                attrs[key] = cleaned
-                rewritten += 1
-            except Exception:  # noqa: BLE001, S110 — bounded-attrs edge; best-effort
-                pass
+    cleaned = {k: scrub_pii(v) if isinstance(v, str) else v for k, v in attrs.items()}
+    rewritten = sum(1 for k, v in cleaned.items() if v != attrs[k])
+    if not rewritten:
+        return 0
+    if isinstance(attrs, dict):
+        attrs.update(cleaned)
+    else:
+        # An ended SDK span holds an immutable BoundedAttributes, which refuses
+        # a write, so the span gets a scrubbed copy with the same limits.
+        from opentelemetry.attributes import BoundedAttributes
+
+        span._attributes = BoundedAttributes(
+            maxlen=attrs.maxlen,
+            attributes=cleaned,
+            immutable=True,
+            max_value_len=attrs.max_value_len,
+        )
     return rewritten
 
 

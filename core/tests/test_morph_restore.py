@@ -325,16 +325,25 @@ class SpawnTests(_Folder, SimpleTestCase):
             [
                 'morph_restore',
                 str(self.root / NAME),
-                '--confirm',
-                'Test Shop',
-                '--by',
-                'boss',
+                '--confirm=Test Shop',
+                '--by=boss',
                 '--reload-web',
                 '42',
             ],
         )
         self.assertTrue(popen.call_args.kwargs['start_new_session'])
         self.assertTrue((self.root / 'restore' / 'restore.log').exists())
+
+    def test_answers_that_start_with_a_dash_still_reach_the_command(self):
+        # A username may start with "-"; argparse would take it for an option.
+        from core.management.commands.morph_restore import Command as RestoreCommand
+
+        with patch('core.restore.subprocess.Popen') as popen:
+            restore.spawn(self.root / NAME, confirm='-Shop', by='--boss')
+        argv = popen.call_args.args[0]
+        parser = RestoreCommand().create_parser('manage.py', 'morph_restore')
+        options = parser.parse_args(argv[3:])
+        self.assertEqual((options.confirm, options.by), ('-Shop', '--boss'))
 
 
 class PreRestoreCopyTests(_Folder, TestCase):

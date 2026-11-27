@@ -20,6 +20,15 @@ class OutboundRequestTests(SimpleTestCase):
             outbound_request('POST', 'http://10.0.0.5/hook', require_https=False)
         post.assert_not_called()
 
+    def test_a_backslash_authority_never_reaches_requests(self):
+        with (
+            patch('socket.getaddrinfo', return_value=[(2, 1, 6, '', ('93.184.216.34', 0))]),
+            patch('requests.get') as get,
+            self.assertRaises(UnsafeUrlError),
+        ):
+            outbound_request('GET', 'http://127.0.0.1:6379\\@example.com/', require_https=False)
+        get.assert_not_called()
+
     def test_https_is_required_unless_waived(self):
         with self.assertRaises(UnsafeUrlError):
             outbound_request('POST', 'http://example.com/x')

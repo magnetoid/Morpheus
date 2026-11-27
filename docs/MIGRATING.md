@@ -6,6 +6,37 @@ first. If a version isn't listed, it shipped no breaking change to a surface in
 
 ---
 
+## v0.197.0 — consent answers one proposal, tokens cannot start the Worker
+
+- **An approval is the merchant's first message after the proposal.** A write Janus proposed
+  could be approved by any later "yes" for ten minutes, also one given to a different change
+  after the merchant declined the first. A retry after any other message is refused and proposed
+  again. A yes that amends the proposal ("yes, but not that one", "ok except the second",
+  "yes, only the first") is not an approval.
+- **MCP: `delegate.spawn_workers`, `delegate.invoke_agent`, `delegate.poll_workers` and
+  `delegate.wait_for_workers` are no longer offered to an API token**, nor to Janus when it works
+  for one (`janus.ask`). The Worker they start holds every merchant scope, so a token with
+  `system.write` could make changes its own scopes forbid. A merchant's own chat keeps them.
+- **An external agent's Janus turn has no memory tool** and neither reads nor writes what Janus
+  has learned in the store.
+- **`morph_backup` refuses a destination inside `MEDIA_ROOT` or `STATIC_ROOT`**, and a database
+  engine it cannot dump (it used to write an archive without one and exit 0). A deployment whose
+  `MORPHEUS_BACKUP_DIR` points inside its media folder must move it before deploying: the
+  pre-deploy backup fails there, and the deploy stops before migrating.
+- **The migration gate (`release --check`) flags two more operations**: an `AlterField` that
+  changes `db_column`, and `AlterOrderWithRespectTo` turned on or off. It also reads every
+  migration file Django loads, whatever its name.
+- **Error groups re-form once.** A server error's group is now its class plus the three innermost
+  frames of the store's own code, so groups made before this release stop collecting and new
+  ones start.
+- **Removed, unused in this repository**: `core.channels.price_for`, `listing_for` and
+  `list_published_in_channel`; `core.money.is_zero` and `floor_at_zero`;
+  `core.utils.cache.cache_graphql_query`; `core.circuit_breaker.LLM_BREAKER`, `WEBHOOK_BREAKER`
+  and `CDN_BREAKER`; `core.assistant.consent.clear`; the `synonym` healer and the
+  `self_improvement.digest_weekly` task (it sent nothing) with the `SELF_IMPROVEMENT_DIGEST_RECIPIENTS`
+  setting. `SELF_IMPROVEMENT_TOKEN_BUDGET` is now read: once the nightly analyzer has spent it,
+  the rest of the run writes plain advisories.
+
 ## v0.182.0 — marking an order fulfilled or shipped records its parcel
 
 - **GraphQL `markOrderFulfilled` / `markOrderShipped` and MCP `orders.mark_fulfilled` /

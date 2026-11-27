@@ -10,8 +10,8 @@ Strategy:
     ``GET /category/<slug>/`` / ``GET /journal/`` / ``GET /journal/<slug>/``
     →  ``public, s-maxage=60, stale-while-revalidate=300``
   - Anything authenticated / mutating / cart-bearing →  skipped (the
-    middleware bails out the moment it sees a sessionid cookie or a
-    cart_token cookie).
+    middleware bails out on a private cookie or page,
+    ``core.storefront_cache.may_be_public``).
   - The middleware never overrides a header the view already set
     (Django views can opt out by setting Cache-Control themselves).
 
@@ -24,7 +24,7 @@ from __future__ import annotations
 
 import re
 
-from core.storefront_cache import PRIVATE_VALUE, is_private
+from core.storefront_cache import PRIVATE_VALUE, is_private, may_be_public
 
 # Storefront paths that are safe to cache at the CDN edge.
 # Anything that requires per-user data (cart, account, checkout) stays
@@ -46,15 +46,6 @@ _CACHEABLE_PATTERNS = (
     re.compile(r'^/p/[^/]+/?$'),  # CMS pages
     re.compile(r'^/authors?/[^/]*/?$'),
 )
-
-# Cookies whose presence signals a per-user request → don't edge-cache.
-# Intentionally NOT `csrftoken` — Django sets it on the first GET so every
-# returning anon visitor would fall out of the cacheable set. CSRF is
-# per-form, not per-user, and anon PLP/PDP have no per-user state.
-# morpheus_consent too: a visitor's answer changes the page (the banner goes, the
-# analytics tags load), so a page rendered for one visitor's choice must never be
-# served from the edge to everyone else.
-_PRIVATE_COOKIES = ('sessionid', 'cart_token', 'morpheus_session', 'morpheus_consent')
 
 _CACHE_VALUE = 'public, s-maxage=60, stale-while-revalidate=300'
 
@@ -84,7 +75,8 @@ class StorefrontCacheControlMiddleware:
         if response.has_header('Cache-Control'):
             # View already declared a policy — respect it.
             return response
-        if any(c in request.COOKIES for c in _PRIVATE_COOKIES):
+        # The private cookies and pages: one rule, core's, read by both layers.
+        if not may_be_public(request):
             return response
         if not _is_cacheable_path(request.path):
             return response

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import re
 from decimal import Decimal
+from unittest import mock
 
 from django.contrib.auth import get_user_model
 from django.db import connection
@@ -141,7 +142,15 @@ class ProductListColumnTests(TestCase):
         self.assertEqual([c for c in cells if 'hide-sm' in c], [])
         self.assertIn("matchMedia('(max-width: 639px)')", body)
 
+    # The error log's detailed-capture switch is memoised for 10 s per process. On a
+    # slow runner it lapsed between the two measured pages and one paid an extra
+    # query (44 != 45 in CI); the storefront's two query-count tests hold it too.
+    @mock.patch('core.errors.mode._MEMO_S', 3600.0)
     def test_rows_cost_no_extra_queries(self):
+        from core.errors import mode
+
+        mode.forget()
+        self.addCleanup(mode.forget)
         hold_app_settings(self)
         category = Category.objects.create(name='Qzcount', slug='qzcount')
         collection = Collection.objects.create(name='Qzcountcoll', slug='qzcountcoll')

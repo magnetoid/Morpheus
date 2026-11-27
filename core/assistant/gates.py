@@ -299,10 +299,23 @@ NOT_LINDAS: frozenset[str] = frozenset(
     }
 )
 
-#: The shop memory's writes, never an API token's: every Linda turn reads that memory
-#: as "what you know about this store", so a token that could write it would speak in
-#: every merchant's chat. Linda saves a fact only on the merchant's own yes.
-NOT_FOR_TOKENS: frozenset[str] = frozenset({'memory.recall', 'memory.remember', 'memory.forget'})
+#: Never an API token's, nor Janus's when it works for one:
+#: - the shop memory: every Linda turn reads it as "what you know about this store", so
+#:   a token that could write it would speak in every merchant's chat. Linda saves a
+#:   fact only on the merchant's own yes.
+#: - the Worker: it holds every merchant scope and runs the job it is handed, so a
+#:   token with `system.write` could make changes its own scopes forbid.
+NOT_FOR_TOKENS: frozenset[str] = frozenset(
+    {
+        'memory.recall',
+        'memory.remember',
+        'memory.forget',
+        'delegate.spawn_workers',
+        'delegate.invoke_agent',
+        'delegate.poll_workers',
+        'delegate.wait_for_workers',
+    }
+)
 
 #: Tools that act on the world without declaring a write scope.
 CONSENT_ALSO: frozenset[str] = frozenset(
@@ -408,3 +421,32 @@ def latest_human_turn(conversation_key: str) -> tuple[str, float]:
     except Exception:  # noqa: BLE001 — no message means no consent, never an error
         logger.debug('assistant: latest human message unavailable', exc_info=True)
     return '', 0.0
+
+
+def first_human_turn_after(conversation_key: str, after: float) -> float | None:
+    """When the first ``role='user'`` message sent after ``after`` was stored, or None.
+
+    Consent is spent only by the message that answered a proposal
+    (``consent.consume``). This reads every stored message, not the last 30 a turn
+    replays, which a long turn's tool rows push the answer out of. An unreadable
+    conversation gives None, which approves nothing.
+    """
+    from datetime import UTC, datetime
+
+    try:
+        from core.assistant.models import AssistantMessage
+
+        sent = (
+            AssistantMessage.objects.filter(
+                conversation__key=conversation_key,
+                role='user',
+                created_at__gt=datetime.fromtimestamp(after, UTC),
+            )
+            .order_by('created_at')
+            .values_list('created_at', flat=True)
+            .first()
+        )
+    except Exception:  # noqa: BLE001 — no message means no consent, never an error
+        logger.debug('assistant: human messages unavailable', exc_info=True)
+        return None
+    return sent.timestamp() if sent else None

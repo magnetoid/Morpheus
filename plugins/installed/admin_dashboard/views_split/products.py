@@ -1057,11 +1057,18 @@ def content_fill_one(request: HttpRequest, product_id: str) -> HttpResponse:
         return JsonResponse({'ok': False, 'error': refusal}, status=503)
 
     try:
-        from core.agents.llm import LLMMessage, get_llm_provider
+        from core.agents.llm import LLMMessage, get_llm_provider, is_degraded_response
 
         provider = get_llm_provider()
     except Exception as e:  # noqa: BLE001
         return JsonResponse({'ok': False, 'error': f'llm unavailable: {e}'}, status=502)
+    # Without a provider, and during an outage, the reply is a notice, never copy.
+    if getattr(provider, 'name', '') == 'unconfigured':
+        return JsonResponse(
+            {'ok': False, 'error': 'No AI provider is set up. Open Settings → AI providers.'},
+            status=503,
+        )
+    degraded = False
 
     if not (p.short_description or '').strip():
         try:
@@ -1088,7 +1095,9 @@ def content_fill_one(request: HttpRequest, product_id: str) -> HttpResponse:
                 max_tokens=120,
             )
             short = (resp.text or '').strip().strip('"').strip()
-            if short:
+            if is_degraded_response(short):
+                degraded = True
+            elif short:
                 p.short_description = short[:600]
                 fields_updated.append('short_description')
         except Exception as e:  # noqa: BLE001
@@ -1120,7 +1129,9 @@ def content_fill_one(request: HttpRequest, product_id: str) -> HttpResponse:
                 max_tokens=400,
             )
             long_desc = (resp.text or '').strip()
-            if long_desc:
+            if is_degraded_response(long_desc):
+                degraded = True
+            elif long_desc:
                 p.description = long_desc[:5000]
                 fields_updated.append('description')
         except Exception as e:  # noqa: BLE001
@@ -1155,7 +1166,9 @@ def content_fill_one(request: HttpRequest, product_id: str) -> HttpResponse:
                     max_tokens=40,
                 )
                 guess = (resp.text or '').strip().strip('"').strip()
-                if guess and guess.upper() != 'NONE':
+                if is_degraded_response(guess):
+                    degraded = True
+                elif guess and guess.upper() != 'NONE':
                     cat = Category.objects.filter(name__iexact=guess).first()
                     if cat:
                         p.category = cat
@@ -1163,9 +1176,20 @@ def content_fill_one(request: HttpRequest, product_id: str) -> HttpResponse:
         except Exception as e:  # noqa: BLE001
             logger.warning('content_fill: category failed for %s: %s', p.pk, e)
 
+    if degraded and not fields_updated:
+        return JsonResponse(
+            {'ok': False, 'error': 'The AI provider is not answering. Nothing was saved.'},
+            status=503,
+        )
+
     if fields_updated:
+        written = [f for f in fields_updated if f != 'category']
         fields_updated.append('updated_at')
         p.save(update_fields=fields_updated)
+        # The model wrote this copy (EU AI Act Art. 50; core/agents/provenance.py).
+        from core.agents.provenance import mark_ai_written
+
+        mark_ai_written(p, written, 'bulk')
 
     return JsonResponse(
         {

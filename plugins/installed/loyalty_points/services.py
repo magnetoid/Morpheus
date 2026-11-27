@@ -84,9 +84,3 @@ def _on_order_paid(order=None, **_kwargs):
         )
     except Exception as e:  # noqa: BLE001 — never let loyalty break a paid order
         logger.warning('loyalty: award_points failed: %s', e)
-
-
-def register_handlers() -> None:
-    from morpheus.core import hook_registry, MorpheusEvents
-
-    hook_registry.register(MorpheusEvents.ORDER_PAID, _on_order_paid, priority=80)

@@ -134,6 +134,6 @@ def send_otp_email(*, to: str, code: str) -> None:
         )
         msg = EmailMultiAlternatives(subject, text, from_email, [to])
         msg.attach_alternative(html, 'text/html')
-        msg.send(fail_silently=True)
+        msg.send(fail_silently=False)  # so a failure reaches the log below
     except Exception as e:  # noqa: BLE001 — never bubble; caller will handle
         logger.warning('otp send failed for %s: %s', redact_email(to), e, exc_info=True)

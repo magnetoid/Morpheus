@@ -10,19 +10,24 @@ change, and the merchant asks for it in a chat.
 
 from __future__ import annotations
 
-import time
 from types import SimpleNamespace
 
 from django.core.cache import cache
-from django.test import SimpleTestCase
+from django.test import TestCase
 
 from core.assistant import consent, gates
+from core.assistant.persistence import StoredMessage, get_default_store
 
 _TOOL = SimpleNamespace(scopes=[], requires_approval=True, supports_staging=False)
 _ARGS = {'product_id': 'p1', 'price': '20.00'}
 
 
 def _gate(key: str, message: str):
+    # Stored first, as the chat (or the automation's run) stores it before the turn.
+    get_default_store().append(
+        conversation_key=key, message=StoredMessage(role='user', content=message)
+    )
+    text, at = gates.latest_human_turn(key)
     return gates.gate_reason(
         tool=_TOOL,
         tool_name='products.update_price',
@@ -30,13 +35,13 @@ def _gate(key: str, message: str):
         scopes=['*'],
         context={},
         conversation_key=key,
-        human_message=message,
-        human_message_at=time.time() + 5,
+        human_message=text,
+        human_message_at=at,
         needs_consent=True,
     )
 
 
-class AutomationConsentTests(SimpleTestCase):
+class AutomationConsentTests(TestCase):
     def setUp(self):
         cache.clear()
         self.addCleanup(cache.clear)

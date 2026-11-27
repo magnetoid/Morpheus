@@ -2,7 +2,8 @@ import json
 
 from django.test import TestCase
 
-from core.assistant.page_help import _parse_json, build_page_help
+from core.assistant.page_help import build_page_help
+from core.llm_parsing import parse_llm_object
 
 
 class _FakeProvider:
@@ -45,7 +46,7 @@ class PageHelpTests(TestCase):
 
     def test_parses_json_wrapped_in_prose(self):
         wrapped = 'Sure!\n```json\n' + GOOD + '\n```\nHope that helps.'
-        self.assertIsNotNone(_parse_json(wrapped))
+        self.assertIsNotNone(parse_llm_object(wrapped))
 
     def test_empty_page_text_skips_llm(self):
         out = build_page_help(

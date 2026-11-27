@@ -155,4 +155,43 @@ class TokenWritesTests(TestCase):
         owner = types.SimpleNamespace(is_staff=True, is_superuser=True, pk=1)
         turn = LindaTurn(user=owner, conversation_key='user:1:chat:abc', mode_slug='general')
         names = {t.name for t in catalogue(turn)}
-        self.assertLessEqual(gates.NOT_FOR_TOKENS, names)
+        self.assertLessEqual(gates.NOT_FOR_TOKENS - gates.DEVELOPER_TOOLS, names)
+        dev = LindaTurn(user=owner, conversation_key='user:1:chat:abc', mode_slug='dev')
+        self.assertLessEqual(gates.NOT_FOR_TOKENS, {t.name for t in catalogue(dev)})
+
+    # The Worker holds every merchant scope and runs the job prompt it is handed, so
+    # a token with `system.write` could reach prices, orders and catalog through it.
+    _WORKER = (
+        'delegate.spawn_workers',
+        'delegate.invoke_agent',
+        'delegate.poll_workers',
+        'delegate.wait_for_workers',
+    )
+
+    def test_a_token_can_neither_see_nor_call_the_worker(self):
+        listed = {t['name'] for t in self._post(TOKEN, 'tools/list')['result']['tools']}
+        self.assertTrue(listed, 'the token sees the admin tools')
+        for name in self._WORKER:
+            with self.subTest(name=name):
+                self.assertNotIn(name, listed)
+                call = self._post(TOKEN, 'tools/call', {'name': name, 'arguments': {}})
+                self.assertIn('not exposed', call['error']['message'])
+
+    def test_janus_for_a_token_can_neither_see_nor_call_the_worker(self):
+        token = self._turn()
+        listed = {t['name'] for t in self._post(token, 'tools/list')['result']['tools']}
+        self.assertIn('loyalty.balance', listed)
+        for name in self._WORKER:
+            with self.subTest(name=name):
+                self.assertNotIn(name, listed)
+                call = self._post(token, 'tools/call', {'name': name, 'arguments': {}})
+                self.assertIn('not exposed', call['error']['message'])
+
+    def test_the_merchants_chat_still_offers_the_worker(self):
+        import types
+
+        from plugins.installed.agent_mcp.linda_turn import LindaTurn, catalogue
+
+        owner = types.SimpleNamespace(is_staff=True, is_superuser=True, pk=1)
+        turn = LindaTurn(user=owner, conversation_key='user:1:chat:abc', mode_slug='general')
+        self.assertIn('delegate.spawn_workers', {t.name for t in catalogue(turn)})

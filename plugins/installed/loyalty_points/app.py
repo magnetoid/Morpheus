@@ -58,6 +58,12 @@ class LoyaltyPointsPlugin(Plugin):
         # against the true order total, and BEFORE the gift-card tender(50) so
         # the card covers whatever the points don't (deep-debug #7).
         self.register_hook(events.CART_CALCULATE_BREAKDOWN, self.on_cart_breakdown, priority=45)
+        # Earn on a paid order. Registered here, tagged with the app, so it
+        # stops with the app: wired from AppConfig.ready it carried no owner and
+        # points were still earned while the app was switched off.
+        from plugins.installed.loyalty_points import services  # noqa: PLC0415
+
+        self.register_hook(events.ORDER_PAID, services._on_order_paid, priority=80)
         # GDPR slice: contribute this plugin's data to the export/erasure.
         from plugins.installed.loyalty_points import gdpr  # noqa: PLC0415
 

@@ -73,6 +73,32 @@ class UnsafeOperationTests(SimpleTestCase):
         field = models.CharField(max_length=10, default='')
         self.assert_blocks(migrations.AlterField('thing', 'note', field), 'AlterField thing.note')
 
+    def test_a_field_given_another_column(self):
+        # Django renames the column; the previous release still reads "title".
+        field = models.CharField(max_length=10, db_column='heading')
+        self.assert_blocks(migrations.AlterField('thing', 'title', field), 'from title to heading')
+
+    def test_a_field_s_own_column_dropped_for_the_default(self):
+        state = _state()
+        renamed = models.CharField(max_length=10, null=True, db_column='memo')
+        migrations.AlterField('thing', 'note', renamed).state_forwards('shop', state)
+        back = migrations.AlterField('thing', 'note', models.CharField(max_length=10, null=True))
+        result = review(_migration(back), state)
+        self.assertTrue(result.blocks)
+        self.assertIn('from memo to note', ' '.join(result.findings))
+
+    def test_ordering_with_respect_to_adds_a_not_null_column(self):
+        self.assert_blocks(
+            migrations.AlterOrderWithRespectTo('thing', 'title'), 'AlterOrderWithRespectTo thing'
+        )
+
+    def test_ordering_with_respect_to_removed_drops_the_column(self):
+        state = _state()
+        migrations.AlterOrderWithRespectTo('thing', 'title').state_forwards('shop', state)
+        result = review(_migration(migrations.AlterOrderWithRespectTo('thing', None)), state)
+        self.assertTrue(result.blocks)
+        self.assertIn('_order', ' '.join(result.findings))
+
 
 class SafeOperationTests(SimpleTestCase):
     def assert_passes(self, *operations):
@@ -101,6 +127,24 @@ class SafeOperationTests(SimpleTestCase):
     def test_a_column_made_nullable(self):
         field = models.CharField(max_length=10, null=True)
         self.assert_passes(migrations.AlterField('thing', 'title', field))
+
+    def test_naming_the_column_it_already_has(self):
+        field = models.CharField(max_length=10, db_column='title')
+        self.assert_passes(migrations.AlterField('thing', 'title', field))
+
+    def test_a_foreign_key_naming_its_default_column(self):
+        state = _state()
+        fk = models.ForeignKey('shop.tag', models.CASCADE, null=True)
+        migrations.AddField('thing', 'tag', fk).state_forwards('shop', state)
+        same = models.ForeignKey('shop.tag', models.CASCADE, null=True, db_column='tag_id')
+        result = review(_migration(migrations.AlterField('thing', 'tag', same)), state)
+        self.assertEqual(result.findings, ())
+
+    def test_ordering_with_respect_to_another_field(self):
+        state = _state()
+        migrations.AlterOrderWithRespectTo('thing', 'title').state_forwards('shop', state)
+        result = review(_migration(migrations.AlterOrderWithRespectTo('thing', 'note')), state)
+        self.assertEqual(result.findings, ())
 
     def test_python_data_changes(self):
         self.assert_passes(migrations.RunPython(migrations.RunPython.noop))
@@ -156,6 +200,16 @@ class NewTableTests(SimpleTestCase):
             _migration(
                 migrations.CreateModel('box', [('id', models.AutoField(primary_key=True))]),
                 migrations.AddField('box', 'flag', models.BooleanField(default=False)),
+            ),
+            _state(),
+        )
+        self.assertEqual(result.findings, ())
+
+    def test_ordering_a_new_table_is_not_flagged(self):
+        result = review(
+            _migration(
+                migrations.CreateModel('box', [('id', models.AutoField(primary_key=True))]),
+                migrations.AlterOrderWithRespectTo('box', 'id'),
             ),
             _state(),
         )

@@ -1,16 +1,19 @@
-"""Recommendation pipeline — turn signal clusters into ranked recs.
+"""Recommendation pipeline — turn signals into ranked recommendations.
 
 Stages (synchronous, called from a Celery task):
-  1. dedupe + suppression filter (services.emit_signal already does
-     dedup; here we apply suppressions a second time at cluster level).
-  2. cluster by (class, top-N entity) deterministically.
-  3. score: impact × reach × evidence × age_decay.
-  4. plan: LLM proposes a fix; we attach the customization summary +
-     file excerpts.
-  5. verify: second LLM tries to refute. Refuted → downgrade.
+  1. project: one cluster per signal (``emit_signal`` already merged identical
+     fingerprints and dropped suppressed ones).
+  2. stand down: drop every cluster that already has its answer (an open
+     recommendation, a rejected or snoozed one, a healer that keeps failing).
+  3. score: severity × reach × age_decay, and keep the top N.
+  4. plan: the model proposes a fix; without a model, a plain advisory.
+  5. verify: a second call tries to refute. Refuted → downgrade.
   6. policy gate: confidence vs class threshold → kind.
   7. safety gate: assert_diff_safe on the proposed patch.
   8. write SiRecommendation rows + fire backlog.updated hook.
+
+The model is asked only while it answers and the day's token budget holds: after
+the first failed call the rest of the run writes plain advisories.
 """
 
 from __future__ import annotations
@@ -20,15 +23,18 @@ from dataclasses import dataclass
 from datetime import timedelta
 from decimal import Decimal
 
+from celery.exceptions import SoftTimeLimitExceeded
+from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
 from core.agents.guardrails import AIPaused
 from core.hooks import hook_registry
+from core.llm_parsing import parse_llm_object
 from core.safety import assert_diff_safe
 from core.self_improvement.policy import decide_action, policy_for
 from core.self_improvement.prompts import RECOMMEND_PROMPT_VERSION, recommend_v1
-from core.self_improvement.verify import verify_recommendation
+from core.self_improvement.verify import unavailable, verify_recommendation
 
 logger = logging.getLogger('morpheus.self_improvement.recommend')
 
@@ -65,20 +71,67 @@ def run_analyzer(window_hours: int = 24) -> dict:
     if not clusters:
         return {'clusters': 0, 'recommendations': 0}
 
-    clusters.sort(key=_score, reverse=True)
-    top = clusters[:TOP_CLUSTERS_PER_RUN]
+    # Stand down BEFORE the top-N cut. Cut first and a store with 50 standing
+    # gaps fills every slot with clusters that are then skipped, so nothing new
+    # is ever proposed.
+    answered = _standing_down({_rec_fingerprint(c) for c in clusters})
+    fresh = [c for c in clusters if _rec_fingerprint(c) not in answered]
+    fresh.sort(key=_score, reverse=True)
 
+    model = _ModelUse()
     written = 0
-    for cluster in top:
+    stopped = ''
+    for cluster in fresh[:TOP_CLUSTERS_PER_RUN]:
         try:
-            row = _process_cluster(cluster)
+            row = _process_cluster(cluster, model)
             if row is not None:
                 written += 1
+        except SoftTimeLimitExceeded:
+            # Out of time: stop here and report what was written, rather than
+            # run on into the hard kill with the hook unfired.
+            logger.warning('analyzer: out of time after %s recommendation(s)', written)
+            stopped = 'time_limit'
+            break
         except Exception:  # noqa: BLE001 — never let one bad cluster kill the run
             logger.exception('analyzer: cluster failed: %s', cluster.fingerprint)
 
     hook_registry.fire(EVENT_BACKLOG_UPDATED, added_count=written)
-    return {'clusters': len(clusters), 'recommendations': written}
+    out = {'clusters': len(clusters), 'recommendations': written}
+    if stopped:
+        out['stopped'] = stopped
+    return out
+
+
+class _ModelUse:
+    """Whether this run may still ask the model.
+
+    It stops for the rest of the run after a failed call (a provider answering
+    402 or timing out fails the same way for every cluster, at up to a minute
+    each) and once the day's token budget is spent. ``budget=0`` is no budget.
+    """
+
+    def __init__(self, budget: int | None = None) -> None:
+        self.down = False
+        if budget is None:
+            budget = (getattr(settings, 'SELF_IMPROVEMENT', None) or {}).get('daily_token_budget')
+        self.budget = int(budget or 0)
+        self.spent = self._spent_today() if self.budget else 0
+
+    @staticmethod
+    def _spent_today() -> int:
+        from django.db.models import Sum  # noqa: PLC0415
+
+        from core.self_improvement.models import SiRecommendation  # noqa: PLC0415
+
+        since = timezone.now() - timedelta(hours=24)
+        spent = SiRecommendation.objects.filter(created_at__gte=since).aggregate(
+            t=Sum('tokens_used')
+        )['t']
+        return int(spent or 0)
+
+    @property
+    def allowed(self) -> bool:
+        return not self.down and not (self.budget and self.spent >= self.budget)
 
 
 # ---------------------------------------------------------------------------
@@ -127,50 +180,82 @@ FAILURE_BACKOFF_LIMIT = 3
 FAILURE_BACKOFF_DAYS = 7
 
 
-def _process_cluster(cluster: Cluster):
-    """Plan → Verify → Gate → Write one SiRecommendation. Returns the
-    row or None if the cluster was suppressed at any stage."""
+def _rec_fingerprint(cluster: Cluster) -> str:
+    """The recommendation's own fingerprint: stable across nights, unlike the
+    signal's primary key, which rotates past the 24h dedup window."""
+    from core.self_improvement.services import fingerprint_for  # noqa: PLC0415
+
+    return fingerprint_for(cluster.class_name, cluster.fingerprint)
+
+
+SNOOZE_DAYS = 30
+
+
+def _standing_down(rec_fps) -> set[str]:
+    """Which of these recommendation fingerprints already have their answer.
+
+    - an OPEN recommendation covers it;
+    - the merchant rejected it (for good), or snoozed it in the last 30 days.
+      The reject also writes a suppression from the evidence signals, but those
+      are pruned after 30 days, and a reject without them used to return the
+      next night;
+    - its healer failed FAILURE_BACKOFF_LIMIT times inside the window (a
+      'failed' recommendation is not open, so it would otherwise be proposed
+      again every night, hunt #18).
+    """
+    from django.db.models import Count, Q  # noqa: PLC0415
+
     from core.self_improvement.models import (  # noqa: PLC0415
         OPEN_RECOMMENDATION_STATUSES,
         SiRecommendation,
     )
-    from core.self_improvement.services import fingerprint_for  # noqa: PLC0415
 
+    now = timezone.now()
+    fps = list(rec_fps)
+    out: set[str] = set()
+    for start in range(0, len(fps), 500):  # sqlite caps the variables of one query
+        rows = SiRecommendation.objects.filter(fingerprint__in=fps[start : start + 500])
+        out.update(
+            rows.filter(
+                Q(status__in=(*OPEN_RECOMMENDATION_STATUSES, 'rejected'))
+                | Q(status='suppressed', updated_at__gte=now - timedelta(days=SNOOZE_DAYS))
+            ).values_list('fingerprint', flat=True)
+        )
+        out.update(
+            rows.filter(status='failed', created_at__gte=now - timedelta(days=FAILURE_BACKOFF_DAYS))
+            .values('fingerprint')
+            .annotate(n=Count('id'))
+            .filter(n__gte=FAILURE_BACKOFF_LIMIT)
+            .values_list('fingerprint', flat=True)
+        )
+    return out
+
+
+def _process_cluster(cluster: Cluster, model: _ModelUse | None = None):
+    """Plan → Verify → Gate → Write one SiRecommendation. Returns the
+    row or None if the cluster was suppressed at any stage."""
+    from core.self_improvement.models import SiRecommendation  # noqa: PLC0415
+
+    model = model or _ModelUse()
     pol = policy_for(cluster.class_name)
     if not pol.enabled:
         return None
 
-    # Dedup: skip the whole (LLM-costing) pipeline when an OPEN recommendation
-    # already covers this (class, cluster) — otherwise the same issue is
-    # re-proposed every nightly run, flooding the backlog. A stable rec-level
-    # fingerprint (not the signal PK, which rotates past the 24h dedup window)
-    # is the guard.
-    rec_fp = fingerprint_for(cluster.class_name, cluster.fingerprint)
-    if SiRecommendation.objects.filter(
-        fingerprint=rec_fp, status__in=OPEN_RECOMMENDATION_STATUSES
-    ).exists():
+    # Checked again here: the run filters before its cut, but a direct caller
+    # and a second worker do not.
+    rec_fp = _rec_fingerprint(cluster)
+    if rec_fp in _standing_down([rec_fp]):
         return None
 
-    # Stand down a fingerprint that keeps failing to heal (hunt #18) — a 'failed'
-    # rec is not OPEN, so the dedup above would otherwise re-propose it nightly.
-    from datetime import timedelta  # noqa: PLC0415
-
-    from django.utils import timezone  # noqa: PLC0415
-
-    cooldown_start = timezone.now() - timedelta(days=FAILURE_BACKOFF_DAYS)
-    if (
-        SiRecommendation.objects.filter(
-            fingerprint=rec_fp, status='failed', created_at__gte=cooldown_start
-        ).count()
-        >= FAILURE_BACKOFF_LIMIT
-    ):
-        return None
-
-    plan = _plan(cluster, pol)
+    plan = _plan(cluster, pol, model)
     if plan is None:
         return None
 
-    verify = verify_recommendation(plan)
+    verify = verify_recommendation(plan) if model.allowed else unavailable('model_unavailable')
+    if verify.failed:
+        model.down = True
+    model.spent += verify.tokens_used
+    plan['_tokens_used'] = int(plan.get('_tokens_used', 0)) + verify.tokens_used
     if verify.refuted:
         plan['confidence'] = min(plan.get('confidence', 0.0), 0.49)
         plan['rationale'] = (
@@ -221,9 +306,12 @@ def _process_cluster(cluster: Cluster):
         )
 
 
-def _plan(cluster: Cluster, pol) -> dict | None:
-    """Call the analyzer LLM with the recommend prompt. Returns the
-    parsed JSON dict, or None on failure."""
+def _plan(cluster: Cluster, pol, model: _ModelUse | None = None) -> dict | None:
+    """Ask the model for a fix. Without a model (none configured, it failed
+    earlier in this run, the day's budget is spent) the plain advisory."""
+    model = model or _ModelUse(budget=0)
+    if not model.allowed:
+        return _heuristic_plan(cluster)
     try:
         from core.agents.llm import LLMMessage  # noqa: PLC0415
         from core.assistant.providers import get_default_provider  # noqa: PLC0415
@@ -231,8 +319,8 @@ def _plan(cluster: Cluster, pol) -> dict | None:
 
         provider = get_default_provider()
         if provider is None:
+            model.down = True
             return _heuristic_plan(cluster)
-
         prompt = recommend_v1(
             module=_module_for(cluster.class_name),
             recommendation_class=cluster.class_name,
@@ -253,19 +341,25 @@ def _plan(cluster: Cluster, pol) -> dict | None:
             max_tokens=1000,
             temperature=0.2,
         )
-        text = (getattr(response, 'text', '') or '').strip()
-        parsed = _parse_json(text)
-        if parsed is None:
-            return _heuristic_plan(cluster)
-        parsed['_tokens_used'] = int(getattr(response, 'prompt_tokens', 0) or 0) + int(
+        tokens = int(getattr(response, 'prompt_tokens', 0) or 0) + int(
             getattr(response, 'completion_tokens', 0) or 0
         )
+        model.spent += tokens
+        text = (getattr(response, 'text', '') or '').strip()
+        # An answer that cannot be read was still paid for: the recommendation
+        # carries its tokens either way, since that is what tomorrow's budget reads.
+        parsed = parse_llm_object(text) or _heuristic_plan(cluster)
+        parsed['_tokens_used'] = tokens
         return parsed
+    except SoftTimeLimitExceeded:
+        raise
     except AIPaused as e:  # the merchant paused AI or hit today's cap: not a fault
         logger.info('analyzer: _plan skipped the model: %s', e)
+        model.down = True
         return _heuristic_plan(cluster)
     except Exception:  # noqa: BLE001
-        logger.exception('analyzer: _plan failed')
+        logger.exception('analyzer: _plan failed; the rest of this run skips the model')
+        model.down = True
         return _heuristic_plan(cluster)
 
 
@@ -330,19 +424,3 @@ def _summarise(cluster: Cluster) -> str:
         f'seen={cluster.seen_count} '
         f'payload_sample={sample!s:.300}'
     )
-
-
-def _parse_json(text: str):
-    import json  # noqa: PLC0415
-
-    try:
-        return json.loads(text)
-    except (ValueError, TypeError):
-        start = text.find('{')
-        end = text.rfind('}')
-        if start >= 0 and end > start:
-            try:
-                return json.loads(text[start : end + 1])
-            except (ValueError, TypeError):
-                return None
-        return None

@@ -50,3 +50,20 @@ class SearchFilesOracleTests(SimpleTestCase):
         with self.assertRaises(ToolError) as cm:
             read_file_tool.invoke({'path': '.env'})
         self.assertIn('protected', str(cm.exception).lower())
+
+
+class SearchFilesQueryIsNotAnOptionTests(SimpleTestCase):
+    """A query that starts with `-` is text to find, never an option to grep."""
+
+    def test_the_query_and_the_path_are_passed_after_e_and_double_dash(self):
+        fake = subprocess.CompletedProcess(args=[], returncode=1, stdout='', stderr='')
+        with mock.patch('core.assistant.tools.filesystem.subprocess.run', return_value=fake) as run:
+            search_files_tool.invoke({'query': '-f/etc/passwd', 'path': 'core'})
+        argv = run.call_args.args[0]
+        i = argv.index('-e')
+        self.assertEqual(argv[i + 1 :], ['-f/etc/passwd', '--', str(_PROJECT_ROOT / 'core')])
+
+    def test_a_dash_led_query_finds_the_text(self):
+        # The image installs the lock with `pip install --require-hashes`.
+        out = search_files_tool.invoke({'query': '--require-hashes', 'path': 'Dockerfile'}).output
+        self.assertEqual(out['matches'], ['Dockerfile'])

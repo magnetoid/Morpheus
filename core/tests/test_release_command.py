@@ -92,6 +92,32 @@ class NotesTests(TestCase):
         with self.assertRaises(CommandError):
             insert_entry('# no separator here\n', 'x')
 
+    def test_notes_without_separator_leave_the_version_alone(self) -> None:
+        # Bumping settings.py alone is the desync the command exists to prevent.
+        import io
+        import tempfile
+        from pathlib import Path
+        from unittest import mock
+
+        from django.core.management import call_command
+
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        settings_path, notes_path = Path(tmp.name) / 'settings.py', Path(tmp.name) / 'NOTES.md'
+        settings_path.write_text(_SETTINGS, encoding='utf-8')
+        notes_path.write_text('# no separator here\n', encoding='utf-8')
+        release = 'core.management.commands.release'
+        with (
+            mock.patch(f'{release}._settings_path', return_value=settings_path),
+            mock.patch(f'{release}._notes_path', return_value=notes_path),
+            mock.patch(f'{release}.Command._refuse_unsafe_migrations'),
+            mock.patch(f'{release}._git', return_value=None),
+            self.assertRaisesMessage(CommandError, 'separator'),
+        ):
+            call_command('release', '--patch', 'A change', stdout=io.StringIO())
+        self.assertEqual(settings_path.read_text(encoding='utf-8'), _SETTINGS)
+        self.assertEqual(notes_path.read_text(encoding='utf-8'), '# no separator here\n')
+
     def test_extract_section_returns_only_that_version(self) -> None:
         body = extract_section(_NOTES, 'v0.24.0')
         self.assertIn('Agent hardening', body)

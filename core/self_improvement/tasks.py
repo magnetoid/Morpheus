@@ -8,7 +8,6 @@ import — Celery auto-discovers shared_task definitions):
   - scan_drift_daily     (cron 04:30)
   - scan_code_weekly     (cron Mon 05:00)
   - analyze_nightly      (cron 04:00)
-  - digest_weekly        (cron Mon 09:00)
 
 The actual beat_schedule registration is done in morph/celery.py once
 this module is imported (Celery's @shared_task decorator handles
@@ -74,42 +73,6 @@ def execute_queue() -> dict:
     return _run()
 
 
-@shared_task(name='self_improvement.digest_weekly')
-def digest_weekly() -> dict:
-    """Generate + email the weekly engineering digest."""
-    from datetime import timedelta  # noqa: PLC0415
-
-    from django.utils import timezone  # noqa: PLC0415
-
-    from core.self_improvement.models import SiActionLog, SiRecommendation  # noqa: PLC0415
-
-    since = timezone.now() - timedelta(days=7)
-    accepted = SiRecommendation.objects.filter(
-        created_at__gte=since, status__in=('approved', 'auto_applied', 'applied', 'merged')
-    ).count()
-    rejected = SiRecommendation.objects.filter(
-        created_at__gte=since, status__in=('rejected', 'suppressed')
-    ).count()
-    rollbacks = SiActionLog.objects.filter(
-        created_at__gte=since, phase='rollback', outcome='ok'
-    ).count()
-    total = accepted + rejected
-    rollback_rate = rollbacks / total if total else 0.0
-
-    logger.info(
-        'self_improvement digest: accepted=%s rejected=%s rollbacks=%s',
-        accepted,
-        rejected,
-        rollbacks,
-    )
-    return {
-        'accepted': accepted,
-        'rejected': rejected,
-        'rollbacks': rollbacks,
-        'rollback_rate': rollback_rate,
-    }
-
-
 def register_beat_schedule(schedule: dict) -> None:
     """Called from morph/celery.py after app.conf.beat_schedule is set.
 
@@ -148,13 +111,6 @@ def register_beat_schedule(schedule: dict) -> None:
         {
             'task': 'self_improvement.scan_code_weekly',
             'schedule': crontab(hour=5, minute=0, day_of_week=1),
-        },
-    )
-    schedule.setdefault(
-        'self_improvement.digest_weekly',
-        {
-            'task': 'self_improvement.digest_weekly',
-            'schedule': crontab(hour=9, minute=0, day_of_week=1),
         },
     )
     schedule.setdefault(

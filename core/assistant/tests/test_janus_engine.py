@@ -20,7 +20,6 @@ import core.assistant.janus_engine as eng
 from core.assistant.janus_engine import (
     _child_env,
     _ensure_config,
-    bundled_skill_names,
     bundled_skills_dir,
     janus_available,
     run_janus_turn,
@@ -974,7 +973,7 @@ class BundledEcommerceSkillsTests(SimpleTestCase):
     )
 
     def test_required_skills_are_present(self):
-        names = bundled_skill_names()
+        names = {p.parent.name for p in bundled_skills_dir().rglob('SKILL.md')}
         for name in self._REQUIRED:
             self.assertIn(name, names)
 

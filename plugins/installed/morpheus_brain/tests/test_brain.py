@@ -4,6 +4,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 
 from core.brain import analyst, signals
+from core.llm_parsing import parse_llm_object
 
 
 class SignalsTests(TestCase):
@@ -39,9 +40,9 @@ class AnalystTests(TestCase):
         self.assertIn('big file', text)
 
     def test_parse_json_lenient(self):
-        self.assertEqual(analyst._parse_json('```json\n{"a":1}\n```'), {'a': 1})
-        self.assertEqual(analyst._parse_json('noise {"a": 2} trailing'), {'a': 2})
-        self.assertIsNone(analyst._parse_json('not json at all'))
+        self.assertEqual(parse_llm_object('```json\n{"a":1}\n```'), {'a': 1})
+        self.assertEqual(parse_llm_object('noise {"a": 2} trailing'), {'a': 2})
+        self.assertIsNone(parse_llm_object('not json at all'))
 
 
 class BrainPageTests(TestCase):

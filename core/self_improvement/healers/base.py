@@ -13,8 +13,7 @@ SiRecommendation and must implement:
   - verify() — confirm the change took (re-query, curl, etc.).
   - rollback() — best-effort revert. Optional.
 
-Phase 2 healers all touch DATA only (Product fields, Redirect rows,
-SearchSynonym rows). Code-touching healers ship in Phase 3.
+Healers touch DATA only (Product fields, Redirect rows).
 """
 
 from __future__ import annotations
@@ -98,7 +97,6 @@ def get_healer(class_name: str) -> Healer | None:
 # from evidence_signal_ids and refuse cleanly when their slice is empty).
 CLASS_HEALERS: dict[str, tuple[str, ...]] = {
     'seo_gap': ('alt_text', 'meta_description'),
-    'zero_search': ('synonym',),
     'dead_link': ('redirect',),
 }
 
