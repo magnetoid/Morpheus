@@ -241,3 +241,35 @@ class MarkTranslationsSettingTests(TestCase):
         body = self._body('/products/night-sky-atlas/')
         self.assertIn('data-ai-generated="description"', body)
         self.assertIn(GENERATED, body)
+
+
+class MarkTranslationsEveryWorkerTests(TestCase):
+    """A switch saved in another worker reaches this one once the window passes."""
+
+    def setUp(self):
+        from plugins.models import PluginConfig
+
+        self.plugin = app_registry.get('ai_content')
+        self.plugin.invalidate_config_cache()
+        self.addCleanup(self.plugin.invalidate_config_cache)
+        self.row, _ = PluginConfig.objects.get_or_create(plugin_name='ai_content')
+
+    def _saved_in_another_worker(self, value: bool):
+        from plugins.models import PluginConfig
+
+        # A queryset update: the row changes and this process's cache does not.
+        config = {**(self.row.config or {}), 'mark_ai_translations': value}
+        PluginConfig.objects.filter(pk=self.row.pk).update(config=config)
+
+    def test_the_switch_reaches_this_worker(self):
+        from unittest import mock
+
+        from plugins.installed.ai_content.marks import ai_translated_fields
+
+        with mock.patch('core.i18n.services.ai_translated', return_value=['title']):
+            self._saved_in_another_worker(True)
+            self.assertEqual(ai_translated_fields(object()), ['title'])
+            self._saved_in_another_worker(False)
+            self.assertEqual(ai_translated_fields(object()), ['title'])
+            self.plugin._config_read_at -= self.plugin.config_fresh_s
+            self.assertEqual(ai_translated_fields(object()), [])

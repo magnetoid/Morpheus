@@ -20,6 +20,9 @@ class AIContentPlugin(Plugin):
     has_models = False
     # metafields holds the marks of AI-written text (marks.py).
     requires = ['catalog', 'ai_assistant', 'metafields']
+    # A save clears only the worker that made it. The marks it switches render on
+    # every page, so each worker reads the settings again once this window passes.
+    config_fresh_s = 30.0
 
     def ready(self) -> None:
         from morpheus.core import events  # noqa: PLC0415
