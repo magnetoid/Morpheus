@@ -90,3 +90,14 @@ class TranslationMarkTests(MontenegroThemeMixin, TestCase):
             body = self._body(path)
             self.assertNotIn('data-ai-generated', body, path)
             self.assertNotIn(GENERATED, body, path)
+
+    def test_the_store_can_stop_marking_translations(self):
+        from plugins.testing import set_app_settings
+
+        set_app_settings(self, 'ai_content', mark_ai_translations=False)
+        self._experience(machine=True)
+        self._place(machine=True)
+        for path in ('/sr/bookings/bay-kayak-tour/', '/sr/places/perast-old-town/'):
+            body = self._body(path)
+            self.assertNotIn('data-ai-generated', body, path)
+            self.assertNotIn(GENERATED, body, path)

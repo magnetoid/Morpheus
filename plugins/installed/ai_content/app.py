@@ -173,6 +173,18 @@ class AIContentPlugin(Plugin):
                         'structured data mark that text for search engines either way.'
                     ),
                 },
+                'mark_ai_translations': {
+                    'type': 'boolean',
+                    'default': True,
+                    'title': 'Mark translations an AI drafted',
+                    'description': (
+                        'Mark a translated page as written with AI when its translation '
+                        'began as an AI draft. The EU guidelines on Article 50 of the AI Act '
+                        '(C/2026/6005) treat translation as standard editing, so the law does '
+                        "not ask for this mark; turn it off and only a product's own "
+                        'AI-written text is marked.'
+                    ),
+                },
             },
         }
 

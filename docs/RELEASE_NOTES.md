@@ -15,6 +15,12 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.193.0 — 2026-11-27
+
+**Translations an AI drafted can go unmarked**
+
+- AI → Brand voice & AI content has "Mark translations an AI drafted" (on by default, as before). The EU's guidelines on Article 50 of the AI Act (C/2026/6005) count translation as standard editing, so the law does not ask for the mark; switched off, a translated page carries no AI mark, while a product's own AI-written text keeps its mark.
+
 ## v0.192.0 — 2026-11-26
 
 **Translate the store from an outside tool over MCP**
