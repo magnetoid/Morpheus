@@ -174,17 +174,18 @@ def inbox_list(request):
     if account:
         qs = qs.filter(account=account)
     search = (request.GET.get('q') or '').strip()
+    matches = qs
     if search:
         from django.db.models import Q
 
-        qs = qs.filter(
+        matches = qs.filter(
             Q(subject__icontains=search)
             | Q(from_address__icontains=search)
             | Q(to_addresses__icontains=search)
             | Q(body_text__icontains=search)
         )
     # Not `messages`: that name belongs to the messages framework's toasts.
-    mail_messages = list(qs[:200])
+    threads = _threads(qs, matches)
     return render(
         request,
         'crm/inbox.html',
@@ -192,7 +193,7 @@ def inbox_list(request):
             'accounts': accounts,
             'account': account,
             'mailbox_tabs': _mailbox_tabs(accounts, account, direction, search),
-            'mail_messages': mail_messages,
+            'threads': threads,
             'direction': direction,
             'account_id': account_id,
             'search': search,
@@ -214,16 +215,20 @@ def inbox_message(request, message_id):
         MailMessage.objects.select_related('account', 'customer'),
         pk=message_id,
     )
-    if not msg.is_read and msg.direction == 'in':
-        msg.is_read = True
-        # Read here is read on the server too: pushed now, and by the next poll if
-        # this fails, which never undoes it in between.
-        msg.seen_pending = msg.imap_uid is not None
-        msg.save(update_fields=['is_read', 'seen_pending'])
-        if msg.seen_pending:
-            from django.db import transaction
+    # Opening a conversation reads all of it. Read here is read on the server too:
+    # pushed now, and by the next poll if this fails, which never undoes it.
+    unread = MailMessage.objects.filter(direction='in', is_read=False)
+    unread = (
+        unread.filter(thread_key=msg.thread_key) if msg.thread_key else unread.filter(pk=msg.pk)
+    )
+    synced = list(unread.filter(imap_uid__isnull=False).values_list('pk', flat=True))
+    unread.filter(pk__in=synced).update(is_read=True, seen_pending=True)
+    unread.update(is_read=True)
+    if synced:
+        from django.db import transaction
 
-            transaction.on_commit(lambda: _queue_push_read(msg.pk))
+        transaction.on_commit(lambda: [_queue_push_read(pk) for pk in synced])
+    msg.refresh_from_db(fields=['is_read', 'seen_pending'])
 
     # A reply goes to the other side: the sender of mail we received, the
     # recipients of mail we sent (not our own address).
@@ -463,6 +468,74 @@ def inbox_accounts(request):
             'active_nav': 'crm',
         },
     )
+
+
+def _threads(qs, matches=None, limit: int = 100) -> list[dict]:
+    """The inbox as conversations: one row per thread, the newest first.
+
+    A thread is the messages sharing a ``thread_key`` (a message without one is its
+    own). ``matches`` (a search) picks the threads; each row is still built from the
+    whole thread in ``qs``: its newest message, how many there are, whether any
+    received one is unread, the mailboxes it is in and a line of the newest text.
+    Only the newest message of each row is loaded whole.
+    """
+    from django.db.models import Case, CharField, Count, F, Max, Q, Value, When
+    from django.db.models.functions import Cast, Concat
+    from django.utils.html import strip_tags
+
+    from plugins.installed.crm.models import MailMessage
+
+    key = Case(
+        When(thread_key='', then=Concat(Value('id:'), Cast('id', CharField()))),
+        default=F('thread_key'),
+        output_field=CharField(),
+    )
+    keyed = qs.order_by().annotate(tk=key)
+    if matches is not None and matches is not qs:
+        keyed = keyed.filter(tk__in=matches.order_by().annotate(tk=key).values('tk'))
+    grouped = list(
+        keyed.values('tk')
+        .annotate(
+            last=Max(_mail_time()),
+            n=Count('id'),
+            unread=Count('id', filter=Q(direction='in', is_read=False)),
+        )
+        .order_by('-last')[:limit]
+    )
+    if not grouped:
+        return []
+    latest: dict[str, object] = {}
+    mailboxes: dict[str, list[str]] = {}
+    rows = (
+        keyed.filter(tk__in=[g['tk'] for g in grouped])
+        .order_by(_mail_time().desc())
+        .values_list('tk', 'pk', 'account__label')
+    )
+    for tk, pk, label in rows:
+        latest.setdefault(tk, pk)
+        labels = mailboxes.setdefault(tk, [])
+        if label not in labels:
+            labels.append(label)
+    messages_by_pk = MailMessage.objects.select_related('account', 'customer').in_bulk(
+        list(latest.values())
+    )
+    threads = []
+    for g in grouped:
+        m = messages_by_pk.get(latest.get(g['tk']))
+        if m is None:
+            continue
+        text = m.body_text or strip_tags(m.body_html or '')
+        lines = [ln for ln in text.splitlines() if ln.strip() and not ln.lstrip().startswith('>')]
+        threads.append(
+            {
+                'message': m,
+                'count': g['n'],
+                'unread': g['unread'] > 0,
+                'mailboxes': mailboxes.get(g['tk'], []),
+                'snippet': ' '.join(' '.join(lines).split())[:140],
+            }
+        )
+    return threads
 
 
 def _mail_time():

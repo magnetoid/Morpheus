@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.196.0 — 2026-11-27
+
+**The CRM inbox lists conversations, under a tab per mailbox**
+
+- The inbox shows one row per conversation: its newest message, how many it holds and a line of the newest text, bold while any received message is unread.
+- The mailbox tabs sit at the top of the list itself, with the search and the direction filter on one line under them.
+- Opening a conversation reads all of it, and the read is pushed to the mail server like any other.
+
 ## v0.195.0 — 2026-11-27
 
 **The CRM inbox syncs with each mailbox both ways**
