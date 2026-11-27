@@ -23,13 +23,22 @@ KNOWN_UNTAGGED = {
 }
 
 
+def _from_a_test(module: str) -> bool:
+    # Other suites register throwaway handlers and leave them on the bus, so in a
+    # whole-suite run they are still there when this test reads it.
+    parts = module.split('.')
+    return 'tests' in parts or parts[-1].startswith(('test_', 'tests_'))
+
+
 def _untagged() -> set[tuple[str, str]]:
     found = set()
     for entries in hook_registry._handlers.values():
         for entry in entries:
             _priority, handler, _mode, owner = hook_registry._unpack(entry)
             module = getattr(handler, '__module__', '') or ''
-            if owner is None and module.startswith('plugins.installed.'):
+            if owner is not None or not module.startswith('plugins.installed.'):
+                continue
+            if not _from_a_test(module):
                 found.add((module, getattr(handler, '__qualname__', repr(handler))))
     return found
 
@@ -37,6 +46,16 @@ def _untagged() -> set[tuple[str, str]]:
 class HookOwnerTagTests(SimpleTestCase):
     def test_every_app_handler_names_its_owner(self):
         self.assertEqual(_untagged() - KNOWN_UNTAGGED, set())
+
+    def test_a_handler_a_test_left_behind_is_not_an_apps(self):
+        def leftover(**_kwargs):
+            return None
+
+        leftover.__module__ = 'plugins.installed.payments.tests.test_paypal'
+        hook_registry.register('test.owner_tags.leftover', leftover)
+        self.addCleanup(hook_registry._handlers.pop, 'test.owner_tags.leftover', None)
+        self.assertEqual(_untagged() - KNOWN_UNTAGGED, set())
+        self.assertFalse(_from_a_test('plugins.installed.testimonials.handlers'))
 
     def test_the_known_untagged_handlers_belong_to_protected_apps(self):
         for module, _name in KNOWN_UNTAGGED:
