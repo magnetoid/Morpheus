@@ -52,7 +52,9 @@ def _compiled_view(blank_lines: int):
     """A view whose raise moves down the file, as an edit above it would move it."""
     source = '\n' * blank_lines + 'def view_c():\n    return {}["missing"]\n'
     namespace: dict = {}
-    exec(compile(source, 'plugins/installed/shop/views.py', 'exec'), namespace)  # noqa: S102
+    # A path outside the source tree: under it, coverage records a file that does
+    # not exist and its report fails on "No source for code".
+    exec(compile(source, '/srv/shop/views.py', 'exec'), namespace)  # noqa: S102
     return namespace['view_c']
 
 
