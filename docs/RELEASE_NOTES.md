@@ -15,6 +15,15 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.195.0 — 2026-11-27
+
+**The CRM inbox syncs with each mailbox both ways**
+
+- Read in the CRM is read on the mail server and the other way round; mail deleted, archived or moved on the server leaves the inbox and its unread counts (its thread and the contact's history keep it).
+- A reply sent from the CRM is filed in the mailbox's Sent folder (Gmail files it itself), and replies sent from another mail app are picked up from the Sent folder into their threads. A first sync reaches a month back.
+- Mail imported before this release is matched to the server by its Message-ID on the first sync, not imported again; a renumbered folder is matched the same way. Nothing is ever deleted on the server: the CRM only marks mail read and adds its own replies.
+- Mail accounts gains a Sent folder field, found automatically when blank.
+
 ## v0.194.0 — 2026-11-27
 
 **Each mailbox has its own tab in the CRM inbox**

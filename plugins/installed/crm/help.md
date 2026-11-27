@@ -4,7 +4,7 @@ summary: Tracks leads and deals, brings email and live chat into one inbox, and 
 
 ## What it's for
 
-This app keeps a pipeline of deals through stages you define, a timeline of every interaction with a lead or customer, and follow-up tasks for your team. A connected mailbox brings email into a shared inbox, and a chat bubble on the storefront lets shoppers message you directly, which staff answer from the dashboard. Linda can also create leads, log interactions, advance deals, and reply to a shopper's chat on your behalf.
+This app keeps a pipeline of deals, a timeline of every interaction with a lead or customer, and follow-up tasks. A connected mailbox brings email into a shared inbox, and a chat bubble on the storefront lets shoppers message you directly, which staff answer from the dashboard. Linda can also create leads, log interactions, advance deals, and reply to a shopper's chat on your behalf.
 
 ## Set it up
 
@@ -13,8 +13,7 @@ Connect a support mailbox — its address and sign-in details — from the [Inbo
 ## Common tasks
 
 - Find a lead by email, name or company, and filter by status, on [Leads](page:leads).
-- Reply to a customer's email from the shared [Inbox](page:inbox).
-- Read one mailbox at a time from its tab at the top of the [Inbox](page:inbox); each tab counts its unread mail.
+- Read and answer email in the [Inbox](page:inbox), one mailbox per tab, each counting its unread mail.
 - Answer a shopper's live chat message from [Support chat](page:chat).
 - Move a deal to its next stage on the [Pipeline](page:pipeline) board.
 - Check what is due today or overdue on [Tasks](page:tasks).
@@ -22,6 +21,6 @@ Connect a support mailbox — its address and sign-in details — from the [Inbo
 
 ## Good to know
 
-A lead is created automatically when someone registers, places an order, subscribes to the newsletter, or messages support; a cart left abandoned creates a 24-hour follow-up task. Someone who registers becomes a converted lead and is listed with the other accounts in [Customers](section:customers). The leads with no account also show there, under the Leads tab, for staff who may read the CRM. The Open leads number on the [Overview](page:home) opens the Leads tab at its open leads. A connected mailbox is checked for new mail every five minutes, and Sync now says how many new messages arrived or which mailbox could not be reached. Staff are notified the first time a chat thread has an unanswered message waiting.
+A lead is created automatically when someone registers, places an order, subscribes to the newsletter, or messages support; a cart left abandoned creates a 24-hour follow-up task. Converted leads are listed in [Customers](section:customers), and leads with no account under its Leads tab. The Open leads number on the [Overview](page:home) opens the Leads tab at its open leads. Every five minutes the inbox syncs with each mailbox both ways: read here is read on the server and back, mail deleted or archived there leaves the inbox (its thread keeps it), and replies go to the mailbox's Sent folder, where replies from another mail app are picked up. Nothing is deleted on the server. Staff are notified the first time a chat thread has an unanswered message waiting.
 
 The inbox shows an email's text, links and layout without its styles, scripts or images, so an email cannot change the page or tell the sender you opened it. The earlier message an email quotes is folded under "Show quoted text". A reply goes to the other side of the conversation and stays in the same thread.

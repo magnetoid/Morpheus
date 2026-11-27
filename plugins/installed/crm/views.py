@@ -154,7 +154,13 @@ def inbox_list(request):
         return redirect('/dashboard/crm/inbox/')
 
     accounts = list(MailAccount.objects.all())
-    qs = MailMessage.objects.select_related('account', 'customer').order_by(_mail_time().desc())
+    # Mail gone from the server (deleted, archived) leaves the inbox; it stays in
+    # its thread and the contact's history.
+    qs = (
+        MailMessage.objects.filter(removed_at__isnull=True)
+        .select_related('account', 'customer')
+        .order_by(_mail_time().desc())
+    )
     direction = (request.GET.get('dir') or '').lower()
     if direction in ('in', 'out'):
         qs = qs.filter(direction=direction)
@@ -207,7 +213,16 @@ def inbox_message(request, message_id):
     )
     if not msg.is_read and msg.direction == 'in':
         msg.is_read = True
-        msg.save(update_fields=['is_read'])
+        # Read here is read on the server too: pushed now, and by the next poll if
+        # this fails, which never undoes it in between.
+        msg.seen_pending = msg.imap_uid is not None
+        msg.save(update_fields=['is_read', 'seen_pending'])
+        if msg.seen_pending:
+            from django.db import transaction
+
+            from plugins.installed.crm.tasks import push_read
+
+            transaction.on_commit(lambda: push_read.delay(str(msg.pk)))
 
     # A reply goes to the other side: the sender of mail we received, the
     # recipients of mail we sent (not our own address).
@@ -246,6 +261,16 @@ def inbox_message(request, message_id):
             .select_related('account', 'customer')
             .order_by(_mail_time())
         )
+        # One email sent to two connected mailboxes is stored once per mailbox
+        # (each tab mirrors its own); the thread shows it once.
+        seen_ids: set[str] = set()
+        kept = []
+        for m in thread:
+            if m.message_id and m.message_id in seen_ids and m.pk != msg.pk:
+                continue
+            seen_ids.add(m.message_id)
+            kept.append(m)
+        thread = kept
     return render(
         request,
         'crm/inbox_message.html',
@@ -272,7 +297,7 @@ def _mailbox_tabs(accounts, current, direction: str, search: str) -> list[dict]:
     from plugins.installed.crm.models import MailMessage
 
     unread = dict(
-        MailMessage.objects.filter(direction='in', is_read=False)
+        MailMessage.objects.filter(direction='in', is_read=False, removed_at__isnull=True)
         .values('account_id')
         .annotate(n=Count('id'))
         .values_list('account_id', 'n')
@@ -381,6 +406,7 @@ def inbox_accounts(request):
             'imap_username': (request.POST.get('imap_username') or '').strip(),
             'imap_password': request.POST.get('imap_password') or '',
             'imap_folder': (request.POST.get('imap_folder') or 'INBOX').strip(),
+            'sent_folder': (request.POST.get('sent_folder') or '').strip()[:255],
             'smtp_host': (request.POST.get('smtp_host') or '').strip(),
             'smtp_port': smtp_port,
             'smtp_use_ssl': request.POST.get('smtp_use_ssl') == 'on',
@@ -398,6 +424,7 @@ def inbox_accounts(request):
         else:
             account_id = (request.POST.get('id') or '').strip()
             if account_id:
+                _reset_sync_if_moved(account_id, data)
                 MailAccount.objects.filter(pk=account_id).update(
                     **{
                         # Don't overwrite passwords if blank.
@@ -436,6 +463,32 @@ def _mail_time():
     from django.db.models.functions import Coalesce
 
     return Coalesce('received_at', 'sent_at', 'created_at')
+
+
+def _reset_sync_if_moved(account_id, data: dict) -> None:
+    """Forget the stored UIDs when an edit points the account at other mail.
+
+    A UID means something only on one server, for one sign-in, in one folder:
+    kept across a change, the sync would take the new folder's messages for the
+    old ones and mark the old ones removed.
+    """
+    from plugins.installed.crm.models import MailAccount, MailMessage
+
+    before = MailAccount.objects.filter(pk=account_id).first()
+    if before is None:
+        return
+    moved = any(
+        str(getattr(before, field)).strip().lower() != str(data[field]).strip().lower()
+        for field in ('imap_host', 'imap_username', 'imap_folder')
+    )
+    if moved:
+        data.update(uid_validity=0, last_uid=0, sent_uid_validity=0, sent_last_uid=0)
+        MailMessage.objects.filter(account_id=account_id).update(imap_uid=None, imap_folder='')
+    elif (before.sent_folder or '') != data['sent_folder']:
+        data.update(sent_uid_validity=0, sent_last_uid=0)
+        MailMessage.objects.filter(account_id=account_id, direction='out').update(
+            imap_uid=None, imap_folder=''
+        )
 
 
 def _port(value, default: int) -> int | None:

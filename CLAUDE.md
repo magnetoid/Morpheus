@@ -2302,6 +2302,19 @@ shell drew one empty toast per email down the right side (up to 200) and never s
 The shell reads `{% flash_messages %}` (the request's own storage) now; still never name a context
 key `messages`. Guarded by `admin_dashboard/tests/test_flash_toasts.py`.
 
+**Convention — the CRM inbox mirrors each mailbox, and never deletes on the server (v0.195.0).**
+`crm/imap_sync.py` syncs the inbox folder and the server's Sent folder (flagged `\Sent`, else by name)
+every five minutes and on Sync now, one sync per mailbox at a time (a cache lock). It fetches with
+`BODY.PEEK[]` (a plain `BODY[]` or `RFC822` marks the mail read on the server) and keeps each row's
+`imap_folder` and `imap_uid`; a first sync, or a new UIDVALIDITY, matches stored rows by Message-ID
+instead of importing them again. A read in the CRM sets `seen_pending` and is pushed as `\Seen` before
+the server's flags are read, so the poll never undoes it. A UID gone from its folder sets `removed_at`:
+the row leaves the inbox and its counts, never its thread. A CRM reply carries its own Message-ID and is
+appended to Sent unless the folder already holds it (Gmail's SMTP files it itself). An account edit that
+changes host, sign-in or folder forgets the UIDs. The sync only sets `\Seen` and appends; never add a
+`STORE \Deleted` or `EXPUNGE`. Guarded by `crm/tests/test_imap_sync.py` (a fake server with the real
+rules).
+
 **Landmine — a setting Django removed is ignored without a word.** `STATICFILES_STORAGE` and
 `DEFAULT_FILE_STORAGE` were removed in Django 5.1 and stayed in `settings.py`: static files were
 served under fixed names with a 4-hour cache, so a CDN-fronted store kept the old CSS and JS for
