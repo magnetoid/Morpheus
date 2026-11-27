@@ -16,51 +16,47 @@
   </div>
 </div>
 
-{% if accounts %}<div class="mb-4">{% include "admin_dashboard/_tabs.html" with tabs=mailbox_tabs %}</div>{% endif %}
-
-<form method="get" class="card card-padded mb-4 flex flex-wrap gap-2 items-end">
-  {% if account %}<input type="hidden" name="account" value="{{ account.id }}">{% endif %}
-  <div class="flex-1 min-w-[200px]">
-    <label class="text-xs text-[color:var(--text-muted)] block mb-1">Search</label>
-    <input type="text" name="q" value="{{ search }}" placeholder="Subject, sender, body…" class="input w-full">
-  </div>
-  <div>
-    <label class="text-xs text-[color:var(--text-muted)] block mb-1">Direction</label>
-    <select name="dir" class="input">
-      <option value="" {% if not direction %}selected{% endif %}>Both</option>
+<div class="card overflow-hidden">
+  {% if accounts %}
+  {# Each mailbox is a tab, right above its mail. #}
+  <div class="px-4 pt-2">{% include "admin_dashboard/_tabs.html" with tabs=mailbox_tabs %}</div>
+  <form method="get" class="flex flex-wrap gap-2 items-center px-4 py-3">
+    {% if account %}<input type="hidden" name="account" value="{{ account.id }}">{% endif %}
+    <input type="text" name="q" value="{{ search }}" placeholder="Search subject, sender, text…" aria-label="Search mail" class="input" style="flex:1 1 220px;width:auto;">
+    <select name="dir" class="input" aria-label="Direction" style="width:auto;">
+      <option value="" {% if not direction %}selected{% endif %}>Received and sent</option>
       <option value="in" {% if direction == 'in' %}selected{% endif %}>Received</option>
       <option value="out" {% if direction == 'out' %}selected{% endif %}>Sent</option>
     </select>
-  </div>
-  <button type="submit" class="btn btn-secondary text-sm">Filter</button>
-</form>
+    <button type="submit" class="btn btn-secondary text-sm">Filter</button>
+  </form>
+  {% endif %}
 
-<div class="card overflow-hidden">
-  {% if mail_messages %}
+  {% if threads %}
   <table class="morph-table">
     <thead>
       <tr>
-        <th>From / To</th><th>Subject</th>{% if not account %}<th>Account</th>{% endif %}<th>When</th>
+        <th>With</th><th>Conversation</th>{% if not account %}<th>Mailbox</th>{% endif %}<th>Last</th>
       </tr>
     </thead>
     <tbody>
-      {% for m in mail_messages %}
-      <tr style="{% if m.direction == 'in' and not m.is_read %}font-weight:600;{% endif %}">
+      {% for t in threads %}{% with m=t.message %}
+      <tr style="{% if t.unread %}font-weight:600;{% endif %}">
         <td class="whitespace-nowrap">
           <a href="/dashboard/crm/inbox/{{ m.id }}/" class="hover:underline">
-            {% if m.direction == 'in' %}
-              <span class="pill pill-info">In</span> {{ m.from_address }}
-            {% else %}
-              <span class="pill pill-neutral">Out</span> {{ m.to_addresses|mail_header|truncatechars:60 }}
-            {% endif %}
-            {% if m.customer %}<span class="text-xs text-[color:var(--text-muted)] ml-1">· {{ m.customer.email }}</span>{% endif %}
+            {% if m.direction == 'in' %}{{ m.from_address }}{% else %}<span class="text-[color:var(--text-muted)]">To:</span> {{ m.to_addresses|mail_header|truncatechars:48 }}{% endif %}
           </a>
+          {% if t.count > 1 %}<span class="pill pill-neutral pill-xs" title="{{ t.count }} messages">{{ t.count }}</span>{% endif %}
+          {% if m.customer %}<div class="text-xs text-[color:var(--text-muted)]">{{ m.customer.email }}</div>{% endif %}
         </td>
-        <td><a href="/dashboard/crm/inbox/{{ m.id }}/" class="hover:underline">{{ m.subject|mail_header|default:"(no subject)" }}</a></td>
-        {% if not account %}<td class="text-[color:var(--text-muted)]">{{ m.account.label }}</td>{% endif %}
+        <td class="min-w-0">
+          <a href="/dashboard/crm/inbox/{{ m.id }}/" class="hover:underline">{{ m.subject|mail_header|default:"(no subject)" }}</a>
+          {% if t.snippet %}<div class="text-xs text-[color:var(--text-muted)] font-normal">{{ t.snippet }}</div>{% endif %}
+        </td>
+        {% if not account %}<td class="text-[color:var(--text-muted)]">{{ t.mailboxes|join:", " }}</td>{% endif %}
         <td class="text-[color:var(--text-muted)] whitespace-nowrap">{{ m.occurred_at|date:"M j, H:i" }}</td>
       </tr>
-      {% endfor %}
+      {% endwith %}{% endfor %}
     </tbody>
   </table>
   {% else %}

@@ -13,7 +13,7 @@ Connect a support mailbox — its address and sign-in details — from the [Inbo
 ## Common tasks
 
 - Find a lead by email, name or company, and filter by status, on [Leads](page:leads).
-- Read and answer email in the [Inbox](page:inbox), one mailbox per tab, each counting its unread mail.
+- Read and answer email in the [Inbox](page:inbox): one row per conversation, one tab per mailbox. Opening a conversation reads all of it.
 - Answer a shopper's live chat message from [Support chat](page:chat).
 - Move a deal to its next stage on the [Pipeline](page:pipeline) board.
 - Check what is due today or overdue on [Tasks](page:tasks).
@@ -23,4 +23,4 @@ Connect a support mailbox — its address and sign-in details — from the [Inbo
 
 A lead is created automatically when someone registers, places an order, subscribes to the newsletter, or messages support; a cart left abandoned creates a 24-hour follow-up task. Converted leads are listed in [Customers](section:customers), and leads with no account under its Leads tab. The Open leads number on the [Overview](page:home) opens the Leads tab at its open leads. Every five minutes the inbox syncs with each mailbox both ways: read here is read on the server and back, mail deleted or archived there leaves the inbox (its thread keeps it), and replies go to the mailbox's Sent folder, where replies from another mail app are picked up. Nothing is deleted on the server. Staff are notified the first time a chat thread has an unanswered message waiting.
 
-The inbox shows an email's text, links and layout without its styles, scripts or images, so an email cannot change the page or tell the sender you opened it. The earlier message an email quotes is folded under "Show quoted text". A reply goes to the other side of the conversation and stays in the same thread.
+The inbox shows an email's text, links and layout without its styles, scripts or images, so an email cannot change the page or tell the sender you opened it. The earlier message an email quotes is folded under "Show quoted text". A reply goes to the other side and stays in the same conversation.
