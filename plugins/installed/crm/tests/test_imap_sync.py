@@ -122,7 +122,7 @@ class FakeConn:
         raise AssertionError(cmd)
 
 
-class ImapSyncTests(_InboxCase):
+class _SyncCase(_InboxCase):
     def setUp(self):
         super().setUp()
         cache.clear()
@@ -145,6 +145,8 @@ class ImapSyncTests(_InboxCase):
     def row(self, mid):
         return MailMessage.objects.get(account=self.account, message_id=mid)
 
+
+class ImapSyncTests(_SyncCase):
     def test_new_mail_is_imported_without_marking_it_read_on_the_server(self):
         uid = self.inbox.add(_raw('<a@g.test>'))
         self.inbox.add(_raw('<b@g.test>'), '\\Seen')
@@ -314,3 +316,70 @@ class ImapSyncTests(_InboxCase):
         self.assertEqual(m.subject, 'Potvrda Č')
         self.assertEqual(m.to_addresses, 'Podrška <support@shop.test>')
         self.assertEqual(m.from_address, 'ana@guest.test')
+
+
+class ImapSyncReviewTests(_SyncCase):
+    """The three holes the review of v0.195.0 found."""
+
+    def test_an_immediate_read_waits_when_the_folder_was_renumbered(self):
+        first = self.inbox.add(_raw('<a@g.test>'))
+        self.sync()
+        self.inbox.renumber()  # <a> is UID 100 now; UID 1 is free for another message
+        other = self.inbox.add(_raw('<other@g.test>'))
+        self.inbox.msgs[first] = self.inbox.msgs.pop(other)
+        with self.captureOnCommitCallbacks(execute=True):
+            self.c.get(f'/dashboard/crm/inbox/{self.row("<a@g.test>").pk}/')
+        self.assertNotIn('\\Seen', self.inbox.msgs[first][1])  # the other message stays unread
+        self.assertTrue(self.row('<a@g.test>').seen_pending)
+        self.sync()  # matched again, then pushed
+        self.assertIn('\\Seen', self.inbox.msgs[100][1])
+        self.assertFalse(self.row('<a@g.test>').seen_pending)
+
+    def test_a_broker_that_is_down_leaves_the_read_to_the_poll(self):
+        self.inbox.add(_raw('<a@g.test>'))
+        self.sync()
+        with (
+            mock.patch(
+                'plugins.installed.crm.tasks.push_read.delay', side_effect=ConnectionError('down')
+            ),
+            self.captureOnCommitCallbacks(execute=True),
+        ):
+            response = self.c.get(f'/dashboard/crm/inbox/{self.row("<a@g.test>").pk}/')
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(self.row('<a@g.test>').seen_pending)
+
+    def test_a_renumbered_sent_folder_keeps_its_old_mail(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        self.sync()  # finds the Sent folder
+        self.sent.add(_raw('<old-reply@shop.test>', sender='support@shop.test'), '\\Seen')
+        old = MailMessage.objects.create(
+            account=self.account,
+            direction='out',
+            message_id='<old-reply@shop.test>',
+            from_address='support@shop.test',
+            sent_at=timezone.now() - timedelta(days=200),
+        )
+        MailAccount.objects.filter(pk=self.account.pk).update(sent_last_uid=1)
+        MailMessage.objects.filter(pk=old.pk).update(imap_folder='Sent', imap_uid=1)
+        with (
+            mock.patch('plugins.installed.crm.imap_sync.SENT_LOOKBACK_DAYS', 0),
+            mock.patch.object(FakeConn, 'uid', _no_recent(FakeConn.uid)),
+        ):
+            self.sent.renumber()
+            self.sync()
+        old.refresh_from_db()
+        self.assertEqual(old.imap_uid, 100)
+
+
+def _no_recent(uid):
+    """``SINCE`` finds nothing: every message in the folder is older than the lookback."""
+
+    def wrapped(self, cmd, *args):
+        if cmd == 'SEARCH' and str(args[1]).startswith('SINCE'):
+            return 'OK', [b'']
+        return uid(self, cmd, *args)
+
+    return wrapped

@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import logging
 import re
 
 from core.authz import require_capability
 from morpheus.app.views import render, staff_member_required
+
+logger = logging.getLogger('morpheus.crm.views')
 
 
 @staff_member_required
@@ -220,9 +223,7 @@ def inbox_message(request, message_id):
         if msg.seen_pending:
             from django.db import transaction
 
-            from plugins.installed.crm.tasks import push_read
-
-            transaction.on_commit(lambda: push_read.delay(str(msg.pk)))
+            transaction.on_commit(lambda: _queue_push_read(msg.pk))
 
     # A reply goes to the other side: the sender of mail we received, the
     # recipients of mail we sent (not our own address).
@@ -283,6 +284,16 @@ def inbox_message(request, message_id):
             'active_nav': 'crm',
         },
     )
+
+
+def _queue_push_read(message_pk) -> None:
+    """Queue the server-side read; a broker that cannot take it leaves it to the poll."""
+    from plugins.installed.crm.tasks import push_read
+
+    try:
+        push_read.delay(str(message_pk))
+    except Exception as e:  # noqa: BLE001 — seen_pending is stored; the next poll pushes it
+        logger.warning('crm: could not queue the read of %s: %s', message_pk, e)
 
 
 def _mailbox_tabs(accounts, current, direction: str, search: str) -> list[dict]:

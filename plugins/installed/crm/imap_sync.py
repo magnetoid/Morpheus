@@ -213,21 +213,24 @@ def sync_folder(conn, account, folder: str, *, sent: bool, max_messages: int, im
     stored = getattr(account, validity_field)
     last_uid = getattr(account, last_field)
 
-    if stored and validity and stored != validity:
+    renumbered = bool(stored and validity and stored != validity)
+    if renumbered:
         # The server renumbered the folder: every stored UID names another message.
         rows.filter(imap_folder=folder).update(imap_uid=None)
         last_uid = 0
     if validity and stored != validity:  # a first sync, or a renumbered folder
+        everything = search(conn, 'ALL')
+        if renumbered:
+            # Every row the folder held is matched again across the whole folder,
+            # however old: a row left without a UID would never leave the inbox.
+            _attach(conn, rows, folder, direction, everything)
+        elif not sent:
+            _attach(conn, rows, folder, direction, [u for u in everything if u <= last_uid])
         if sent and not last_uid:
-            # A first Sent sync starts a month back, not at the account's first mail.
+            # New Sent mail is imported from a month back, not from the first ever.
             since = (timezone.now() - timedelta(days=SENT_LOOKBACK_DAYS)).strftime('%d-%b-%Y')
             recent = search(conn, f'SINCE {since}')
-            everything = search(conn, 'ALL')
             last_uid = (recent[0] - 1) if recent else (everything[-1] if everything else 0)
-        else:
-            _attach(
-                conn, rows, folder, direction, [u for u in search(conn, 'ALL') if u <= last_uid]
-            )
         setattr(account, validity_field, validity)
 
     if not sent:
@@ -329,7 +332,11 @@ def push_read(message) -> None:
         return
     conn = connect(account)
     try:
-        select(conn, message.imap_folder or account.imap_folder or 'INBOX')
+        validity = select(conn, message.imap_folder or account.imap_folder or 'INBOX')
+        if validity != account.uid_validity:
+            # Renumbered since the UID was stored: it may name another message now.
+            # The poll matches the row again and pushes the read then.
+            return
         _push_reads(conn, type(message).objects.filter(pk=message.pk))
     finally:
         logout(conn)
