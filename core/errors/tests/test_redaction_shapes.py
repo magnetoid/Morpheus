@@ -16,16 +16,20 @@ from core.errors.services import record_client_error, redact_secrets
 
 _TURN_TOKEN = 'lt1.' + signing.dumps({'u': 1, 'c': 'chat:9'}, salt='t', compress=True)
 
+# Made up, and built from two parts: written whole, a secret scanner reports it
+# as a live Google key.
+GOOGLE_KEY = 'AIza' + 'SyD4abcdefghijklmnopqrstuvwxyz01234'
+
 #: (what the error said, the secret in it)
 LEAKS = (
     (
         '400 Client Error: Bad Request for url: https://generativelanguage.googleapis.com/v1beta/'
-        'models/gemini-2.5-flash:generateContent?key=AIzaSyD4abcdefghijklmnopqrstuvwxyz01234',
-        'AIzaSyD4abcdefghijklmnopqrstuvwxyz01234',
+        f'models/gemini-2.5-flash:generateContent?key={GOOGLE_KEY}',
+        GOOGLE_KEY,
     ),
     (
-        'GOOGLE_API_KEY=AIzaSyD4abcdefghijklmnopqrstuvwxyz01234',
-        'AIzaSyD4abcdefghijklmnopqrstuvwxyz01234',
+        f'GOOGLE_API_KEY={GOOGLE_KEY}',
+        GOOGLE_KEY,
     ),
     ('OPENROUTER_API_KEY=or-v1-0123abcd4567efgh', 'or-v1-0123abcd4567efgh'),
     ('Error 111 connecting to redis://:r3dis-pass@redis:6379/0', 'r3dis-pass'),
