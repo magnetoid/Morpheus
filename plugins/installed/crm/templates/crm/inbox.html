@@ -7,7 +7,7 @@
   <h1 class="text-xl font-semibold">Inbox{% if account %} <span class="text-[color:var(--text-muted)] font-normal">· {{ account.email_address }}</span>{% endif %}</h1>
   <div class="flex items-center gap-2">
     <a href="/dashboard/crm/inbox/accounts/" class="btn btn-secondary text-sm">Mail accounts</a>
-    <a href="/dashboard/crm/inbox/compose/{% if account %}?account={{ account.id }}{% endif %}" class="btn btn-primary text-sm">Compose</a>
+    {% if account and not account.is_active %}<button type="button" class="btn btn-primary text-sm" disabled title="This mailbox is switched off on Mail accounts.">Compose</button>{% else %}<a href="/dashboard/crm/inbox/compose/{% if account %}?account={{ account.id }}{% endif %}" class="btn btn-primary text-sm">Compose</a>{% endif %}
     <form method="post" class="inline">
       {% csrf_token %}
       <input type="hidden" name="action" value="sync">

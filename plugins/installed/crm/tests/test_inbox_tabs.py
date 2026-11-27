@@ -67,3 +67,17 @@ class InboxTabTests(_InboxCase):
     def test_compose_from_a_tab_sends_from_that_mailbox(self):
         response = self.c.get(f'/dashboard/crm/inbox/compose/?account={self.sales.pk}')
         self.assertContains(response, f'<option value="{self.sales.pk}" selected>')
+
+    def test_a_switched_off_mailbox_never_hands_compose_another_sender(self):
+        MailAccount.objects.filter(pk=self.sales.pk).update(is_active=False)
+        response = self.c.get(f'/dashboard/crm/inbox/?account={self.sales.pk}')
+        self.assertNotContains(response, f'/dashboard/crm/inbox/compose/?account={self.sales.pk}')
+        self.assertContains(response, 'disabled title="This mailbox is switched off')
+        compose = self.c.get(f'/dashboard/crm/inbox/compose/?account={self.sales.pk}')
+        self.assertContains(compose, '<option value="" disabled selected>Choose a mailbox</option>')
+        self.assertNotContains(compose, ' selected>Support')
+        posted = self.c.post(
+            '/dashboard/crm/inbox/compose/',
+            {'account': str(self.sales.pk), 'to': 'a@b.test', 'body': 'Hi'},
+        )
+        self.assertContains(posted, 'Pick an account')

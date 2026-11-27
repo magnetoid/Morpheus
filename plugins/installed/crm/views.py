@@ -306,10 +306,11 @@ def inbox_compose(request):
     from plugins.installed.crm.models import MailAccount
 
     accounts = list(MailAccount.objects.filter(is_active=True))
+    from_account = request.POST.get('account') or request.GET.get('account') or ''
     error = ''
     if request.method == 'POST':
         try:
-            account = MailAccount.objects.get(pk=request.POST.get('account'))
+            account = MailAccount.objects.get(pk=request.POST.get('account'), is_active=True)
         except (MailAccount.DoesNotExist, ValueError, TypeError):
             account = None
         to = (request.POST.get('to') or '').strip()
@@ -333,8 +334,12 @@ def inbox_compose(request):
         'crm/inbox_compose.html',
         {
             'accounts': accounts,
-            # Compose from a mailbox's tab sends from that mailbox.
-            'from_account': request.POST.get('account') or request.GET.get('account') or '',
+            # Compose from a mailbox's tab sends from that mailbox. One that cannot
+            # send (switched off, gone) selects nothing: the browser would otherwise
+            # pick the first mailbox and send under another address.
+            'from_account': from_account,
+            'from_unavailable': bool(from_account)
+            and all(str(a.pk) != from_account for a in accounts),
             'error': error,
             'active_nav': 'crm',
         },
