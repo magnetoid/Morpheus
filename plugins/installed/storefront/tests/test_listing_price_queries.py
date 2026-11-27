@@ -6,6 +6,7 @@ all-books page grew by three queries per book.
 
 from __future__ import annotations
 
+import time
 from decimal import Decimal
 from unittest import mock
 
@@ -58,3 +59,20 @@ class ListingPriceQueryTests(TestCase):
         four, html = self._queries()
         self.assertIn('Compass', html)
         self.assertEqual(four, one)
+
+    @mock.patch('core.errors.mode._MEMO_S', 3600.0)
+    def test_a_slow_runner_changes_nothing(self):
+        # Ten seconds between the two measured pages cost the later one four
+        # queries: the theme read its saved settings again (CI: 65 != 61).
+        from core.errors import mode
+
+        mode.forget()
+        self.addCleanup(mode.forget)
+        hold_app_settings(self)
+        _variable('atlas')
+        self._queries()
+        one, _ = self._queries()
+        now = time.monotonic
+        with mock.patch('time.monotonic', lambda: now() + 30):
+            later, _ = self._queries()
+        self.assertEqual(later, one)
