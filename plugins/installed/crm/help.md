@@ -14,6 +14,7 @@ Connect a support mailbox — its address and sign-in details — from the [Inbo
 
 - Find a lead by email, name or company, and filter by status, on [Leads](page:leads).
 - Reply to a customer's email from the shared [Inbox](page:inbox).
+- Read one mailbox at a time from its tab at the top of the [Inbox](page:inbox); each tab counts its unread mail.
 - Answer a shopper's live chat message from [Support chat](page:chat).
 - Move a deal to its next stage on the [Pipeline](page:pipeline) board.
 - Check what is due today or overdue on [Tasks](page:tasks).

@@ -158,9 +158,12 @@ def inbox_list(request):
     direction = (request.GET.get('dir') or '').lower()
     if direction in ('in', 'out'):
         qs = qs.filter(direction=direction)
-    account_id = request.GET.get('account')
-    if account_id:
-        qs = qs.filter(account_id=account_id)
+    # Each mailbox is a tab; an id that names none shows them all (it used to 500).
+    wanted = request.GET.get('account') or ''
+    account = next((a for a in accounts if str(a.pk) == wanted), None)
+    account_id = str(account.pk) if account else ''
+    if account:
+        qs = qs.filter(account=account)
     search = (request.GET.get('q') or '').strip()
     if search:
         from django.db.models import Q
@@ -178,6 +181,8 @@ def inbox_list(request):
         'crm/inbox.html',
         {
             'accounts': accounts,
+            'account': account,
+            'mailbox_tabs': _mailbox_tabs(accounts, account, direction, search),
             'mail_messages': mail_messages,
             'direction': direction,
             'account_id': account_id,
@@ -255,6 +260,43 @@ def inbox_message(request, message_id):
     )
 
 
+def _mailbox_tabs(accounts, current, direction: str, search: str) -> list[dict]:
+    """The inbox's tabs: every mailbox, then each one, with its unread count.
+
+    A tab keeps the search and direction, so switching mailbox keeps the filter.
+    """
+    from urllib.parse import urlencode
+
+    from django.db.models import Count
+
+    from plugins.installed.crm.models import MailMessage
+
+    unread = dict(
+        MailMessage.objects.filter(direction='in', is_read=False)
+        .values('account_id')
+        .annotate(n=Count('id'))
+        .values_list('account_id', 'n')
+    )
+
+    def href(account_id: str = '') -> str:
+        query = {k: v for k, v in (('account', account_id), ('dir', direction), ('q', search)) if v}
+        return '/dashboard/crm/inbox/' + (f'?{urlencode(query)}' if query else '')
+
+    tabs = [
+        {'label': 'All', 'count': sum(unread.values()), 'active': current is None, 'href': href()}
+    ]
+    tabs += [
+        {
+            'label': a.label,
+            'count': unread.get(a.pk, 0),
+            'active': current is not None and a.pk == current.pk,
+            'href': href(str(a.pk)),
+        }
+        for a in accounts
+    ]
+    return tabs
+
+
 @staff_member_required
 @require_capability('crm.write')
 def inbox_compose(request):
@@ -291,6 +333,8 @@ def inbox_compose(request):
         'crm/inbox_compose.html',
         {
             'accounts': accounts,
+            # Compose from a mailbox's tab sends from that mailbox.
+            'from_account': request.POST.get('account') or request.GET.get('account') or '',
             'error': error,
             'active_nav': 'crm',
         },

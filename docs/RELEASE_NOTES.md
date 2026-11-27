@@ -15,6 +15,12 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.194.0 — 2026-11-27
+
+**Each mailbox has its own tab in the CRM inbox**
+
+- The CRM inbox shows "All" and then one tab per connected mailbox, each with its unread count, in place of the Account dropdown. A tab keeps the search and direction, shows the mailbox's address in the heading, and Compose from it sends from that mailbox. An unknown mailbox in the link shows every mailbox instead of an error.
+
 ## v0.192.0 — 2026-11-26
 
 **Translate the store from an outside tool over MCP**

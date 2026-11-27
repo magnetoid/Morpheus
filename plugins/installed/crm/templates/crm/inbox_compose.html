@@ -19,7 +19,7 @@
     <div class="mb-3">
       <label class="text-xs text-[color:var(--text-muted)] block mb-1">From account</label>
       <select name="account" class="input w-full" required>
-        {% for a in accounts %}<option value="{{ a.id }}">{{ a.label }} &lt;{{ a.email_address }}&gt;</option>{% endfor %}
+        {% for a in accounts %}<option value="{{ a.id }}"{% if from_account == a.id|stringformat:'s' %} selected{% endif %}>{{ a.label }} &lt;{{ a.email_address }}&gt;</option>{% endfor %}
       </select>
     </div>
     <div class="mb-3">
