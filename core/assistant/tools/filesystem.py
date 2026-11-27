@@ -153,7 +153,10 @@ def search_files_tool(*, query: str, path: str = '.', limit: int = 30) -> ToolRe
                 '--exclude-dir=venv',  # noqa: S607
                 '--exclude-dir=.git',
                 '--exclude-dir=node_modules',
+                # A query starting with `-` is text to find, not an option.
+                '-e',
                 query,
+                '--',
                 str(target),
             ],
             capture_output=True,

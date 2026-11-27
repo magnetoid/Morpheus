@@ -172,7 +172,7 @@ passes the same gates as Linda's in-process loop (`core/assistant/gates.py`):
   entitlement to that mode is re-checked on every call.
 - **Consent** — every write is refused with an `isError` result starting
   `approval_required:` until the merchant's own next message in that conversation
-  is an affirmative reply: any tool with `requires_approval`, any write-scoped
+  (the first one after the proposal, v0.197.0) is an affirmative reply: any tool with `requires_approval`, any write-scoped
   tool, plus `delegate.spawn_workers` and `meta.sync_audience`
   (`linda_turn.needs_consent`), except two that only store their own report:
   `seo.audit_product` and `reports.file` (a defect in Morpheus's code, for the
@@ -231,7 +231,10 @@ store, and does the work itself. Design:
   Every tool that deletes, cancels, refunds or revokes is protected, and so is
   `loyalty.adjust_points` (v0.124.0). The shop memory's writes (`memory.remember`,
   `memory.forget`) are never offered to a token, directly or through Janus
-  (`gates.NOT_FOR_TOKENS`): every Linda turn reads that memory.
+  (`gates.NOT_FOR_TOKENS`): every Linda turn reads that memory. Since v0.197.0 the
+  same set holds the four `delegate.*` tools: the Worker they start has every
+  merchant scope, so a token must not hand it a job. An external turn also runs
+  without Janus's memory tool and neither reads nor writes what Janus learned.
   Nothing said in the conversation is consent: on an external conversation
   (`ext:<token id>:chat:<id>`) the consent kernel is never consulted
   (`core/assistant/gates.py`). Audit rows name the token as `janus:<label>`.

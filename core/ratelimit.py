@@ -22,6 +22,7 @@ Design notes
 
 from __future__ import annotations
 
+import ipaddress
 import logging
 import re
 import time
@@ -71,6 +72,18 @@ def client_ip(request) -> str:
     that counts or limits visitors by address reads this instead.
     """
     return _client_id(request)
+
+
+def client_ip_address(request) -> str | None:
+    """:func:`client_ip` when it is an IP address, else None.
+
+    A forwarded header holds whatever the visitor sent, so this is what may go
+    into an address column (Postgres refuses anything else) or an audit row.
+    """
+    try:
+        return str(ipaddress.ip_address(_client_id(request)))
+    except ValueError:
+        return None
 
 
 def _client_id(request) -> str:

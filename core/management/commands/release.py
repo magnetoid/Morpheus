@@ -197,7 +197,8 @@ def versioned_changes(changed_paths: list[str]) -> list[str]:
     return out
 
 
-_MIGRATION_FILE = re.compile(r'/migrations/\d{4}_\w+\.py$')
+# What Django loads: every module in migrations/ whose name does not start with _ or ~.
+_MIGRATION_FILE = re.compile(r'/migrations/[^_~/][^/]*\.py$')
 
 
 def _added_migration_files(base: str) -> list[str]:
@@ -305,8 +306,11 @@ class Command(BaseCommand):
         today = datetime.date.today().isoformat()
         entry = render_entry(new_version, today, summary, opts['bullets'])
 
-        settings_path.write_text(set_settings_version(settings_text, new_version), encoding='utf-8')
-        notes_path.write_text(insert_entry(notes_text, entry), encoding='utf-8')
+        # Both texts first: insert_entry can refuse, and a bumped version alone is the desync.
+        new_settings = set_settings_version(settings_text, new_version)
+        new_notes = insert_entry(notes_text, entry)
+        settings_path.write_text(new_settings, encoding='utf-8')
+        notes_path.write_text(new_notes, encoding='utf-8')
 
         self.stdout.write(self.style.MIGRATE_HEADING(f'{current} -> {new_version}'))
         self.stdout.write(self.style.SUCCESS('  ✓ morph/settings.py       MORPHEUS_VERSION'))

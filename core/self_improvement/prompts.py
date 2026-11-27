@@ -117,31 +117,6 @@ OUTPUT (JSON):
 """
 
 
-WEEKLY_DIGEST_PROMPT_VERSION = 'digest_v1'
-
-
-def weekly_digest_v1(
-    *, accepted: int, rejected: int, rollback_rate: float, top_classes: list[dict]
-) -> str:
-    """Tiny prompt for the weekly digest email body. The LLM has just
-    enough freedom to add narrative + recommendations."""
-    return f"""\
-Generate a 4-paragraph weekly digest email for the engineering team
-about the self-improvement engine's activity this week.
-
-Inputs:
-- accepted = {accepted}
-- rejected = {rejected}
-- rollback_rate = {rollback_rate:.1%}
-- top classes by volume: {json.dumps(top_classes, default=str)}
-
-Tone: factual, no marketing. Include: (1) what the engine did,
-(2) which classes are working well, (3) which classes need policy
-re-tuning, (4) the single highest-leverage suggestion for next week.
-Output plain text, no markdown headers.
-"""
-
-
 # ---------------------------------------------------------------------------
 
 

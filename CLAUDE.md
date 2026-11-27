@@ -436,7 +436,12 @@ this way; fixed by moving it to `PRODUCT_FORM_CARDS`/`PRODUCT_FORM_SAVED`).
 Render an optional plugin's surface via its hook/contribution, never a
 try/except import (a `try/except ImportError` guards *absence*, not *disable* —
 a disabled plugin is still importable). Guarded by
-`core/tests/test_hook_disable_gating.py`. (bookvault — the old still-open
+`core/tests/test_hook_disable_gating.py`. The gate reads the owner a handler
+was registered with, so an app's handler registered straight on
+`hook_registry` carries none and keeps running: loyalty_points wired its
+`ORDER_PAID` handler from `AppConfig.ready`, and points were still earned while
+the app was off (until v0.197.0). Register through `self.register_hook`;
+`core/tests/test_hook_owner_tags.py` fails on an untagged app handler. (bookvault — the old still-open
 example — is repaid: its list column + fulfilment card + bulk action arrive
 via `PRODUCT_LIST_COLUMNS` / `PRODUCT_FORM_CARDS`, guarded by
 `test_disable_guards.py::ProductShellContributionGuards`.)
@@ -597,7 +602,11 @@ is recorded against `sha256(tool + canonical args)`; it is spent only when the
 **human's own next message** (a `role='user'` turn — the one thing injected
 content can never be) reads affirmative, and the grant is single-use and
 argument-bound. Negation always beats affirmation ("yes, but not that one"
-denies). **The human message must also postdate the proposal** (v0.64.0): without
+denies; since v0.197.0 so does an amended yes: "ok except the second", "yes, only
+the first"). Only the FIRST human message after the proposal answers it
+(`gates.first_human_turn_after`, v0.197.0): a declined proposal used to stay
+pending for its ten minutes, and the merchant's next yes, given to another
+change, approved it too. **The human message must also postdate the proposal** (v0.64.0): without
 that, "set the price to 20, ok?" approved itself — the first attempt is refused
 and recorded, and a retry in the same turn found the turn's own "ok" waiting.
 Every caller passes `human_message_at`; the edge reads it from the stored message. **Never gate a new write tool on an argument alone** — add
@@ -815,7 +824,10 @@ new-issue form in their own browser, so no store holds a token; the destination 
 `MORPHEUS_REPORTS_URL` env var, never a store setting (Janus writes settings). A merchant's turn
 gets Linda's profile narrowed to their role while the store enforces roles (`gates.person_scopes`):
 a scope mapped to a capability no role holds would take that work from every staff member's Janus
-(`test_role_tiers.py`). Learned content can steer but never authorize — store writes still need the
+(`test_role_tiers.py`). An external agent's turn never reads or writes
+Janus's learning (`janus_engine.learns`, v0.197.0): it runs as one shared service user, so the
+store's notes reached a token with no such read, every token shared one `USER.md`, and what a
+token's turn wrote was loaded into every merchant turn. Learned content can steer but never authorize — store writes still need the
 merchant's own "yes" at the edge — and the merchant reviews and deletes it on
 Settings → AI → Janus. Guarded by `core/assistant/tests/test_janus_learning.py`.
 
@@ -912,7 +924,9 @@ when ticked in `approved_tools`), and the edge re-reads the token on every call,
 stops the turn. A write scope is the merchant's advance yes for everyday changes, so a tool
 that destroys or creates value must carry the flag: `loyalty.adjust_points` (on `crm.write`),
 `reviews.delete` and `subscriptions.cancel` did not until v0.124.0, and the shop memory's writes
-were open to any token (now `gates.NOT_FOR_TOKENS`). **Never close a token gap by flagging an
+were open to any token (now `gates.NOT_FOR_TOKENS`). The Worker's four `delegate.*` tools joined
+that set in v0.197.0: the Worker holds every merchant scope and runs the job it is handed, so a
+token with `system.write` could make changes its own scopes forbid. **Never close a token gap by flagging an
 everyday write:** the Worker cannot resume an approved call (a spawned Worker has no run to
 attach one to), so a flagged `catalog.update_product` would silently stop every bulk job Linda
 hands to Workers. Guarded by `agent_mcp/tests/test_token_writes.py`. `janus.chat` must be listed explicitly (the wildcard does not confer it, like
@@ -1035,7 +1049,7 @@ adding an event, wire **both ends** in the same change, and when you find a
 never-fired event, decide deliberately — fire it or delete the subscriber, never
 leave it armed. `grep -rn EVENT_NAME | grep -c fire` is the cheap check.
 
-**Convention — one webhook trigger (v0.113.0).** Core's `_dispatch_remote` decides when (after commit) and to whom (an endpoint's events, or `'*'`); the delivery goes through the `WEBHOOK_DELIVER` filter, which webhooks_ui answers (log, retries, dead-letter, replay), and core posts itself when nothing answers. webhooks_ui used to subscribe its own fan-out as well, so an endpoint got two POSTs in two shapes, one of them before commit. Never add a second subscriber that posts. The staff-entered URLs the server posts to or imports from (webhook endpoints, the workflow action, the OpenAI feed push, the importers) go through `core.net.outbound_request` (public hosts, no redirects); AI provider base URLs do not (a local Ollama is private by design). Guarded by `webhooks_ui/tests/test_one_trigger.py` and `core/tests/test_outbound_request.py`.
+**Convention — one webhook trigger (v0.113.0).** Core's `_dispatch_remote` decides when (after commit) and to whom (an endpoint's events, or `'*'`); the delivery goes through the `WEBHOOK_DELIVER` filter, which webhooks_ui answers (log, retries, dead-letter, replay), and core posts itself when nothing answers. webhooks_ui used to subscribe its own fan-out as well, so an endpoint got two POSTs in two shapes, one of them before commit. Never add a second subscriber that posts. The staff-entered URLs the server posts to or imports from (webhook endpoints, the workflow action, the OpenAI feed push, the importers) go through `core.net.outbound_request` (public hosts, no redirects); AI provider base URLs do not (a local Ollama is private by design). The check refuses a backslash, a space or a control character in the address's host part (v0.197.0): `http://127.0.0.1:8000\@example.com/` read as example.com to `urlparse` and as 127.0.0.1 to `requests`, so the check passed one host and the call reached the other. It also refuses the carrier-NAT range (100.64.0.0/10). Guarded by `webhooks_ui/tests/test_one_trigger.py` and `core/tests/test_outbound_request.py`.
 
 **Convention — a public form asks the bot check (v0.145.0).** A form a visitor can post without an account carries `{% bot_check "<kind>" %}` before its `</form>`, and its view calls `core.bot_check.passes(request, kind)` before it writes, emails or signs anyone in. Kinds: `contact` (contact, CMS forms, Do not sell), `newsletter`, `sign_in` (allauth's sign-in, sign-up and password reset, wrapped in `morph/urls.py` under their own names, plus the emailed code) and `affiliates`. The Cloudflare app answers with Turnstile for each kind its settings switch on, once both keys are set; with no answer every form passes. A script that posts a form with `fetch` sends the whole form and resets the widget after each answer (a token works once). The checkout asks for none (owner, 2026-11-08). The answer is checked as Cloudflare's Turnstile Spin wires siteverify (`cloudflare/services.py:verify_turnstile`): `success`, the widget's `action` (`turnstile_action(kind)`, rendered and checked from one function), a `hostname` the store answers on (a Spin widget allows localhost and 127.0.0.1, which production refuses), a token of at most 2,048 characters, fail closed when siteverify does not answer. Reading `success` alone let a token solved on any site sharing the widget, or for another form, pass. Guarded by `core/tests/test_bot_check.py` (every protected form in every theme carries its tag) and `cloudflare/tests/test_turnstile_forms.py`.
 
@@ -1360,6 +1374,12 @@ gap from the same fallback chain the `<head>` uses
 test** — nothing ever had, which is the only reason a three-month-dead nightly
 job stayed invisible. Guarded by
 `core/self_improvement/tests/test_collectors.py::SeoGapCollectorTests`.
+Same loop, v0.197.0: the analyzer cut to its 50 highest-scoring clusters and
+only then skipped the ones that already had an open recommendation, so a store
+with 50 standing gaps never got a recommendation for anything new. Filter
+first, then cut (`recommend._standing_down`); a rejected recommendation stands
+down for good, and after the first failed model call the rest of the run writes
+plain advisories (`test_analyzer_backlog.py`).
 
 **Landmine — a deferred djmoney field raises `KeyError`, which `getattr`'s
 default does NOT catch, and one unguarded read can cost a whole node.** A view
@@ -1452,7 +1472,10 @@ contributes the tags to `global_head` / `global_below_body` (themes call nothing
 loads gtag.js when no container is set, sends `consent update` from the visitor's
 choice, reads `_ga` / `_ga_<stream>` for every server hit and stamps them on the order
 (`metadata['ga']`) for the payment webhook. A page rendered for a consent choice is
-never edge-cached (`morpheus_consent` is a private cookie). A product page or listing
+never edge-cached (`morpheus_consent` is a private cookie). Both cache layers ask one rule,
+`core.storefront_cache.may_be_public` (v0.197.0): the outer one, which applies the header saved
+under Settings → Caching, checked no cookie, so on a store that saved that page a cart, a checkout
+step and any page served to a visitor with a session or consent cookie went out `public`. A product page or listing
 hands the tags a GraphQL dict whose price is `{amount, currency}`: the first live
 `view_item` said 0 USD for an $8 book until v0.127.1, because the test passed a number.
 Guarded by `tracking/tests/test_browser_tags.py` and `test_server_identity.py`.
@@ -1490,7 +1513,9 @@ dotbooks' paid PDFs, and the flipbook preview printed each file's address in its
 page. `core/media.py:serve_media` now answers `digital/` to staff only; a buyer
 gets the file through a `digital_products` download token, and the preview is a
 PDF of the first pages built on the server. Never put a sold file's `.url` in a
-storefront page. Guarded by `flipbook/tests/test_private_source.py`.
+storefront page. Every answer under a private prefix is `private, no-store`
+(v0.197.0): a staff download had no `Cache-Control`, and a CDN in front of
+`/media/` caches a PDF by its extension. Guarded by `flipbook/tests/test_private_source.py`.
 
 **Convention — a digital line delivers itself, and the buyer's Library lists it (v0.148.0).**
 One rule, `digital_products/library.py:is_delivered`: a digital line (variant type `digital` or
@@ -2410,6 +2435,11 @@ turn tokens, passwords in URLs) before PII scrubbing; a group quiet for 14 days 
 the nightly prune and shows as regressed if it returns; and a failure the user feels (a Janus
 turn with no reply) logs at ERROR, because a WARNING is kept only during detailed capture and
 container logs vanish at every deploy (`docs/plans/errors-and-logging-2026-10.md`).
+Since v0.197.0 a group is the exception class plus the three innermost frames of our own code,
+without line numbers. It was the three outermost, which are Django's handler and middleware, so
+every error of one class on any app page was one group and resolving it hid the rest. An exception
+is stored once however many handlers log it (the middleware and the `django.request` handler both
+did), and the anonymous browser-error endpoint is capped per real address and store-wide.
 
 **Landmine — a payment method offered without its credentials fails at the
 payment step, and absence meant "on".** `payments.is_enabled()` treats a missing
@@ -2599,6 +2629,10 @@ container's `run_migrations` runs `manage.py safe_migrate`, not `migrate`:
   exits non-zero without migrating.
 - It writes a `DeployEvent` (after migrating, when that table is itself being
   migrated), then migrates.
+- `morph_backup` refuses a destination inside `MEDIA_ROOT` or `STATIC_ROOT`
+  (v0.197.0): those folders are served to anyone, and the backups app's folder
+  is a setting staff can edit. It also refuses a database it cannot dump, where
+  it used to write an archive without one and exit 0.
 
 It is one process on purpose: each `manage.py` start costs about 3 s of every
 deploy's 503. A restart of the same container skips the backup (a marker in
@@ -2620,6 +2654,8 @@ the old code still runs on the new schema. `manage.py release` refuses, and `rel
 - `core.migration_ops.forget_apps()`: the release before still records those apps' migrations;
 - an `AlterField` that makes a nullable column NOT NULL (even with a default: the old
   model still writes NULL);
+- an `AlterField` that changes the column's name (`db_column`), and
+  `AlterOrderWithRespectTo` turned on or off (both since v0.197.0);
 - an `AddField` of a NOT NULL column without `db_default`. Django drops a Python
   `default` from the table once the column exists, so the old code's inserts fail. Add
   booleans as `default=False, db_default=False`.

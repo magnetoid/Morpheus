@@ -6,7 +6,8 @@ literal newlines inside string bodies. Each caller used to roll their
 own parser; this module is the canonical extractor so the same
 robustness lives in one place.
 
-Public API: ``parse_llm_json(raw)`` — returns ``dict | list | None``.
+Public API: ``parse_llm_json(raw)`` — returns ``dict | list | None``;
+``parse_llm_object(raw)`` — the same for a prompt that asked for one object.
 
 Returns ``None`` only when no JSON object/array can be recovered
 even after repair. Empty dicts / lists return as-is.
@@ -72,6 +73,13 @@ def parse_llm_json(raw: str) -> Any:
             candidate[:200],
         )
         return None
+
+
+def parse_llm_object(raw: str) -> dict | None:
+    """``parse_llm_json`` for a prompt that asked for ONE object: a dict, or
+    ``None`` (also when the model answered with a list or a bare value)."""
+    parsed = parse_llm_json(raw)
+    return parsed if isinstance(parsed, dict) else None
 
 
 def _outermost_block(txt: str) -> str | None:

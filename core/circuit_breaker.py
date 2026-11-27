@@ -8,13 +8,12 @@ cooldown to probe whether the dependency has recovered.
 Three states:
   CLOSED    — normal operation; calls pass through.
   OPEN      — circuit tripped; calls fail-fast with ``CircuitOpenError``.
-  HALF_OPEN — cooldown elapsed; the NEXT call probes the dependency. On success
-              we transition back to CLOSED; on failure we re-arm OPEN.
+  HALF_OPEN — cooldown elapsed; calls probe the dependency again. A success
+              closes the circuit; the first failure re-arms OPEN for another
+              cooldown.
 
-State is process-local + cached in Redis so the breaker state survives gunicorn
-worker rotation (most outages outlive a worker process). When Redis is
-unavailable, the breaker degrades to in-memory state — still functional, just
-not shared across workers.
+State is per process: each web and Celery worker keeps its own count, and a
+worker that restarts starts closed.
 
 Usage::
 
@@ -66,7 +65,6 @@ class CircuitOpenError(RuntimeError):
 class _BreakerState:
     consecutive_failures: int = 0
     opened_at: float = 0.0  # unix-ts when last tripped
-    half_open_probe_in_flight: bool = False
 
 
 class CircuitBreaker(ContextDecorator):
@@ -179,12 +177,16 @@ class CircuitBreaker(ContextDecorator):
     def _record_failure(self, exc: BaseException) -> None:
         with self._lock:
             self._state.consecutive_failures += 1
-            should_trip = (
-                self._state.opened_at == 0
-                and self._state.consecutive_failures >= self.failure_threshold
-            )
-            if should_trip:
-                self._state.opened_at = time.time()
+            if self._state.consecutive_failures < self.failure_threshold:
+                return
+            if self.state_label() == 'open':
+                return  # a call that started before the trip finished late
+            # The first trip, or a probe that failed after the cooldown: without
+            # re-arming here the breaker stayed half-open for good and every
+            # call waited out the dependency again.
+            first_trip = self._state.opened_at == 0
+            self._state.opened_at = time.time()
+            if first_trip:
                 logger.warning(
                     'circuit_breaker[%s]: TRIPPED OPEN after %d failures; '
                     'last error: %s. Cooldown %ss.',
@@ -201,14 +203,7 @@ class CircuitBreaker(ContextDecorator):
             self._state.opened_at = 0.0
 
 
-# ── A few named breakers the core wires by default. Plugins import + reuse. ──
-
-# Fallback/default LLM breaker
-LLM_BREAKER = CircuitBreaker(
-    name='llm',
-    failure_threshold=5,
-    cooldown_seconds=30,
-)
+# ── Named breakers ────────────────────────────────────────────────────────────
 
 
 def get_llm_breaker(provider_name: str) -> CircuitBreaker:
@@ -222,19 +217,3 @@ def get_llm_breaker(provider_name: str) -> CircuitBreaker:
             cooldown_seconds=30,
         )
     return breaker
-
-
-# Outbound HTTP to merchant-defined webhooks. Higher tolerance — webhook
-# endpoints flap more than commercial APIs.
-WEBHOOK_BREAKER = CircuitBreaker(
-    name='webhook_outbound',
-    failure_threshold=10,
-    cooldown_seconds=60,
-)
-
-# Cloudflare API + IndexNow + similar single-purpose APIs. Conservative.
-CDN_BREAKER = CircuitBreaker(
-    name='cdn_api',
-    failure_threshold=8,
-    cooldown_seconds=45,
-)

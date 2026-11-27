@@ -10,6 +10,7 @@ from __future__ import annotations
 import logging
 
 from core.self_improvement.healers.base import Healer, HealResult, register_healer
+from core.text import plain_text
 
 logger = logging.getLogger('morpheus.self_improvement.healers.meta_description')
 
@@ -88,8 +89,12 @@ class MetaDescriptionHealer(Healer):
 
     @staticmethod
     def _summarise(text: str, *, fallback: str) -> str:
-        """Return a 100-160 char summary preferring sentence boundaries."""
-        text = (text or '').strip()
+        """Return a 100-160 char summary preferring sentence boundaries.
+
+        A description is rich HTML: it is made plain text first, or the cut
+        lands inside a tag and the page's description ends in ``<a…``.
+        """
+        text = plain_text(text)
         if not text:
             return (fallback or '')[:TARGET_MAX]
         # Try the first sentence (period/?/!) within range.

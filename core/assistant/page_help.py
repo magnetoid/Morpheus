@@ -6,7 +6,8 @@ from __future__ import annotations
 
 import json
 import logging
-import re
+
+from core.llm_parsing import parse_llm_object
 
 logger = logging.getLogger('morpheus.assistant')
 
@@ -23,22 +24,6 @@ _SYSTEM = (
 )
 
 _MIN_TEXT = 3  # below this the page is effectively empty — skip the LLM
-
-
-def _parse_json(text: str) -> dict | None:
-    if not text:
-        return None
-    try:
-        return json.loads(text)
-    except json.JSONDecodeError:
-        pass
-    m = re.search(r'\{.*\}', text, re.DOTALL)  # first {...} block
-    if m:
-        try:
-            return json.loads(m.group(0))
-        except json.JSONDecodeError:
-            return None
-    return None
 
 
 def build_page_help(context: dict, provider=None) -> dict:
@@ -80,7 +65,7 @@ def build_page_help(context: dict, provider=None) -> dict:
         logger.warning('page_help: provider call failed: %s', e, exc_info=True)
         return {**fail, 'message': 'Linda is unavailable right now.'}
 
-    data = _parse_json(getattr(resp, 'text', '') or '')
+    data = parse_llm_object(getattr(resp, 'text', '') or '')
     if not isinstance(data, dict):
         return {**fail, 'message': 'Linda could not read this page.'}
 

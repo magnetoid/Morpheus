@@ -74,3 +74,25 @@ class ScrubSpanAttributesTests(SimpleTestCase):
         self.assertEqual(second, 0)
         self.assertEqual(span._attributes, snapshot)
         self.assertIn('<redacted:', span._attributes['user.email'])
+
+
+class EndedSdkSpanTests(SimpleTestCase):
+    """A real ended span: its map is an immutable BoundedAttributes, so a write
+    raises, and the old in-place rewrite exported the PII unscrubbed."""
+
+    def test_an_ended_span_is_scrubbed(self):
+        try:
+            from opentelemetry.sdk.trace import TracerProvider
+        except ImportError:
+            self.skipTest('opentelemetry-sdk is not installed')
+        tracer = TracerProvider().get_tracer('test')
+        with tracer.start_as_current_span('checkout') as span:
+            span.set_attribute('user.email', 'jane.doe@example.com')
+            span.set_attribute('n', 5)
+
+        self.assertEqual(scrub_span_attributes(span), 1)
+        self.assertIn('<redacted:', span.attributes['user.email'])
+        self.assertEqual(span.attributes['n'], 5)
+        # Still the SDK's own immutable map, with its limits kept.
+        with self.assertRaises(TypeError):
+            span._attributes['n'] = 6

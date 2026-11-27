@@ -27,7 +27,7 @@ from datetime import datetime
 from pathlib import Path
 
 from django.conf import settings
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 
 logger = logging.getLogger('morpheus.backup')
 
@@ -55,6 +55,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         started = time.time()
         dest = Path(options['dest']).resolve()
+        self._refuse_served_folder(dest)
         dest.mkdir(parents=True, exist_ok=True)
 
         ts = datetime.utcnow().strftime('%Y%m%dT%H%M%SZ')
@@ -88,12 +89,22 @@ class Command(BaseCommand):
 
         self._prune(dest, keep=options['keep'], started=started)
 
+    def _refuse_served_folder(self, dest: Path) -> None:
+        # The backups app passes a folder staff can edit, and a dump holds the whole database.
+        for name in ('MEDIA_ROOT', 'STATIC_ROOT'):
+            root = getattr(settings, name, None)
+            if root and dest.is_relative_to(Path(root).resolve()):
+                raise CommandError(
+                    f'Not backing up into {dest}: it is inside {name}, whose files are served '
+                    'to anyone, and a backup holds the whole database. Choose a folder outside it.'
+                )
+
     def _dump_database(self, workdir: Path) -> None:
         db = settings.DATABASES.get('default') or {}
         engine = db.get('ENGINE') or ''
         out = workdir / 'db.dump'
 
-        if 'postgres' in engine or 'psycopg' in engine:
+        if 'postgres' in engine or 'postgis' in engine or 'psycopg' in engine:
             cmd = ['pg_dump', '--no-owner', '--no-acl', '-Fc', '-f', str(out)]
             env = os.environ.copy()
             if db.get('HOST'):
@@ -112,8 +123,10 @@ class Command(BaseCommand):
             shutil.copy2(db['NAME'], out)
             self.stdout.write(f'  copied sqlite db → {out.name}')
         else:
-            self.stdout.write(
-                self.style.WARNING(f'Unsupported engine: {engine} — skipping db dump')
+            # An archive without the database would pass for a backup: safe_migrate
+            # migrates behind it.
+            raise CommandError(
+                f'Cannot back up a {engine or "unset"} database: only Postgres and SQLite.'
             )
 
     def _snapshot_media(self, workdir: Path) -> None:

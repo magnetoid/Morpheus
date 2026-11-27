@@ -107,6 +107,16 @@ class AddedMigrationFilesTests(SimpleTestCase):
             ],
         )
 
+    def test_a_hand_named_migration_is_found_as_django_loads_it(self):
+        # Django loads every module in migrations/ not starting with _ or ~.
+        from core.management.commands.release import _added_migration_files
+
+        for name in ('drop_legacy.py', '__init__.py', '_helper.py', '~0005_tmp.py'):
+            self.write(f'shop/migrations/{name}')
+        (self.repo / 'shop' / 'migrations' / 'sub').mkdir()
+        self.write('shop/migrations/sub/0001_nested.py')
+        self.assertEqual(_added_migration_files(self.base), ['shop/migrations/drop_legacy.py'])
+
 
 class ReleaseGateTests(SimpleTestCase):
     def setUp(self):

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 
@@ -16,7 +17,8 @@ from django.views.decorators.http import require_POST
 
 from core.authz import require_capability
 from core.errors.models import ErrorEvent, ErrorGroup
-from core.errors.services import _ip_hash, record_client_error
+from core.errors.services import record_client_error
+from core.ratelimit import client_ip
 
 logger = logging.getLogger('morpheus.errors')
 
@@ -28,12 +30,19 @@ _MAX_BODY = 64 * 1024  # 64 KB — generous for a stack trace.
 # ignoring the JS and POSTing in a tight loop to fill the table.
 _RL_MAX = 50  # requests
 _RL_WINDOW = 60  # seconds
+#: Anonymous reports the whole store takes in a minute, whatever address they
+#: claim. A real incident on a busy page stays well under it, and past it more
+#: reports of the same error add nothing.
+_ANON_ROWS_PER_MINUTE = 300
+_ANON_ROWS_KEY = 'errs:client:anonymous'
 
 
-def _rate_limited(request) -> bool:
-    """Return True if this IP has exhausted its quota in the current window."""
-    bucket = _ip_hash(request) or 'anon'
-    key = f'errs:client:{bucket}'
+def _bucket_key(request) -> str:
+    ip = client_ip(request) or 'anon'
+    return 'errs:client:' + hashlib.sha256(ip.encode('utf-8')).hexdigest()[:16]
+
+
+def _over(key: str, limit: int) -> bool:
     # cache.incr requires the key to exist; add with timeout if missing.
     if not cache.add(key, 1, timeout=_RL_WINDOW):
         try:
@@ -42,8 +51,17 @@ def _rate_limited(request) -> bool:
             # Race: the key expired between add() and incr(). Re-add.
             cache.add(key, 1, timeout=_RL_WINDOW)
             return False
-        return count > _RL_MAX
+        return count > limit
     return False
+
+
+def _rate_limited(request) -> bool:
+    """True when this address, or the store's anonymous reports, used up the window."""
+    if _over(_bucket_key(request), _RL_MAX):
+        return True
+    if getattr(getattr(request, 'user', None), 'is_authenticated', False):
+        return False
+    return _over(_ANON_ROWS_KEY, _ANON_ROWS_PER_MINUTE)
 
 
 @csrf_exempt
@@ -79,7 +97,7 @@ def client_error_ingest(request: HttpRequest) -> HttpResponse:  # noqa: PLR0911
 
     try:
         payload = json.loads(request.body.decode('utf-8') or '{}')
-    except json.JSONDecodeError:
+    except ValueError:  # not UTF-8, or not JSON
         return JsonResponse({'error': 'bad json'}, status=400)
 
     if not isinstance(payload, dict) or not payload.get('message'):

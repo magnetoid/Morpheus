@@ -418,6 +418,22 @@ class EngineLearningTests(TestCase):
             release.set()
         self.assertFalse(JanusLearning.objects.exists())
 
+    def test_an_external_agents_turn_neither_reads_nor_writes_what_janus_learned(self):
+        # Its turns run as one shared service user: the store's notes would reach
+        # a token with no such read, and its own would load into merchant turns.
+        self._turn(_FakeJanus({jl.MEMORY_FILE: 'Margins are thin'}), key='c1', home=self.tmp)
+        key = 'ext:token-1:chat:9'
+        outside = _FakeJanus({jl.MEMORY_FILE: 'planted', jl.USER_FILE: 'about the caller'})
+
+        self._turn(outside, key=key, home=self.tmp)
+
+        self.assertEqual(outside.seen, {})
+        self.assertNotIn('memory', outside.argv[outside.argv.index('-t') + 1].split(','))
+        config = (self.tmp / 'conv' / eng._session_id(key) / 'config.yaml').read_text()
+        self.assertIn('memory_enabled: false', config)
+        self.assertEqual(JanusLearning.objects.get(path=jl.MEMORY_FILE).content, 'Margins are thin')
+        self.assertFalse(JanusLearning.objects.filter(path=jl.USER_FILE).exists())
+
     def test_learning_switched_off_keeps_nothing_and_loads_nothing(self):
         self._turn(_FakeJanus({jl.MEMORY_FILE: 'old note'}), key='c1', home=self.tmp)
         PluginConfig.objects.update_or_create(

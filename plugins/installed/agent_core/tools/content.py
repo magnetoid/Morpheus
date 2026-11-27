@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 
 from core.agents import get_llm_provider
-from core.agents.llm import LLMMessage
+from core.agents.llm import LLMMessage, is_degraded_response
 from morpheus.core import ToolError, ToolResult, tool
 
 logger = logging.getLogger('morpheus.agents.content')
@@ -98,15 +98,20 @@ def draft_product_description_tool(*, slug: str, tone: str = 'literary') -> Tool
     },
     requires_approval=True,
 )
-def fill_missing_content_tool(  # noqa: PLR0912
-    *, slug: str = '', limit: int = 10, tone: str = 'literary'
+def fill_missing_content_tool(  # noqa: PLR0912, PLR0915
+    *, slug: str = '', limit: int = 10, tone: str = 'literary', agent=None, context=None
 ) -> ToolResult:  # noqa: PLR0912
     from django.db.models import Q
 
+    from core.agents.provenance import ai_author, mark_ai_written
     from plugins.installed.catalog.models import Category, Product
 
     limit = max(1, min(int(limit or 10), 50))
     provider = get_llm_provider()
+    # Without a provider, and during an outage, the reply is a notice, never copy.
+    if getattr(provider, 'name', '') == 'unconfigured':
+        raise ToolError('No AI provider is set up for this store.')
+    degraded = False
 
     if slug:
         qs = Product.objects.filter(slug=slug)
@@ -151,7 +156,9 @@ def fill_missing_content_tool(  # noqa: PLR0912
                     max_tokens=120,
                 )
                 short = (resp.text or '').strip().strip('"').strip()
-                if short:
+                if is_degraded_response(short):
+                    degraded = True
+                elif short:
                     p.short_description = short[:600]
                     updated_fields.append('short_description')
             except Exception as e:  # noqa: BLE001
@@ -184,7 +191,9 @@ def fill_missing_content_tool(  # noqa: PLR0912
                     max_tokens=400,
                 )
                 long_desc = (resp.text or '').strip()
-                if long_desc:
+                if is_degraded_response(long_desc):
+                    degraded = True
+                elif long_desc:
                     p.description = long_desc[:5000]
                     updated_fields.append('description')
             except Exception as e:  # noqa: BLE001
@@ -217,7 +226,9 @@ def fill_missing_content_tool(  # noqa: PLR0912
                     max_tokens=40,
                 )
                 guess = (resp.text or '').strip().strip('"').strip()
-                if guess and guess.upper() != 'NONE':
+                if is_degraded_response(guess):
+                    degraded = True
+                elif guess and guess.upper() != 'NONE':
                     cat = Category.objects.filter(name__iexact=guess).first()
                     if cat:
                         p.category = cat
@@ -229,6 +240,10 @@ def fill_missing_content_tool(  # noqa: PLR0912
             save_fields = list(updated_fields)
             save_fields.append('updated_at')
             p.save(update_fields=save_fields)
+            # The model wrote this copy (EU AI Act Art. 50; core/agents/provenance.py).
+            mark_ai_written(
+                p, [f for f in updated_fields if f != 'category'], ai_author(agent, context)
+            )
 
         processed.append(
             {
@@ -239,6 +254,8 @@ def fill_missing_content_tool(  # noqa: PLR0912
         )
 
     filled = sum(1 for r in processed if r['updated'])
+    if degraded and not filled:
+        raise ToolError('The AI provider is not answering. Nothing was saved; try again later.')
     return ToolResult(
         output={
             'processed_count': len(processed),

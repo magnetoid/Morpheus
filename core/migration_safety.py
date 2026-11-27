@@ -5,12 +5,15 @@ works on the new schema, and release 4 will do it automatically. ``review``
 names the operations in a migration that the previous release would trip over:
 
 - RemoveField and DeleteModel: it still reads the column or the table.
-- RenameField, RenameModel and AlterModelTable: it still uses the old name.
+- RenameField, RenameModel, AlterModelTable and an AlterField that changes the
+  column's name (``db_column``): it still uses the old name.
 - AddField of a NOT NULL column without ``db_default``: it inserts rows without
   that column, and Django drops a Python ``default`` from the table once the
   column exists, so those inserts fail.
 - AlterField that makes a nullable column NOT NULL: it still writes NULL there,
   whatever default the new field has.
+- AlterOrderWithRespectTo that turns ordering on (a NOT NULL ``_order`` column
+  without ``db_default``) or off (it still writes ``_order``).
 - RunSQL: nothing can tell what raw SQL does.
 - RunPython of ``core.migration_ops.forget_apps``: it still records those apps'
   migrations and switches, and would find their tables with no record of them.
@@ -131,6 +134,13 @@ def _finding(app_label, op, state) -> str:  # noqa: PLR0911 — one rule per ope
             f'AlterField {op.model_name}.{op.name}: becomes NOT NULL while the previous '
             'release still writes NULL there.'
         )
+    if isinstance(op, migrations.AlterField) and (columns := _renamed_column(app_label, op, state)):
+        return (
+            f'AlterField {op.model_name}.{op.name}: renames its column from {columns[0]} to '
+            f'{columns[1]}; the previous release still uses the old name.'
+        )
+    if isinstance(op, migrations.AlterOrderWithRespectTo):
+        return _order_change(app_label, op, state)
     return ''
 
 
@@ -146,6 +156,41 @@ def _becomes_not_null(app_label, op, state) -> bool:
     except KeyError:
         return False  # not there before this migration: the AddField rule judged it
     return before.null and not op.field.null
+
+
+def _renamed_column(app_label, op, state) -> tuple[str, str] | None:
+    try:
+        before = state.models[app_label, op.model_name_lower].fields[op.name]
+    except KeyError:
+        return None
+    if before.many_to_many or op.field.many_to_many:
+        return None  # a join table, no column
+    old, new = _column(before, op.name), _column(op.field, op.name)
+    return (old, new) if old != new else None
+
+
+def _column(field, name) -> str:
+    # db_column, else the name Django derives (a foreign key's "<name>_id").
+    field = field.clone()
+    field.set_attributes_from_name(name)
+    return field.column
+
+
+def _order_change(app_label, op, state) -> str:
+    # Django adds or drops an _order column only when ordering is turned on or off.
+    model = state.models.get((app_label, op.name_lower))
+    before = model.options.get('order_with_respect_to') if model else None
+    if op.order_with_respect_to and not before:
+        return (
+            f'AlterOrderWithRespectTo {op.name}: adds a NOT NULL _order column without '
+            'db_default, so the rows the previous release inserts fail.'
+        )
+    if before and not op.order_with_respect_to:
+        return (
+            f'AlterOrderWithRespectTo {op.name}: removes the _order column the previous '
+            'release still writes.'
+        )
+    return ''
 
 
 def review_files(base_dir: Path, paths: list[str]) -> tuple[list[Review], list[str]]:

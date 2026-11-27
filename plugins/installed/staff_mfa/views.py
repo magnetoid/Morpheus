@@ -16,6 +16,7 @@ from django.contrib.auth import get_user_model, login
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils.safestring import mark_safe
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_http_methods
@@ -34,9 +35,12 @@ _CHALLENGE_WINDOW_SECONDS = 15 * 60
 AGENT_TOOLS = {'enroll': 'none: a second factor is set up by its owner, never by an agent'}
 
 
-def _safe_next(nxt: str | None) -> str:
+def _safe_next(request, nxt: str | None) -> str:
+    """`nxt` when it stays on this site (a browser reads `\\` as `/`), else the dashboard."""
     nxt = (nxt or '').strip()
-    if nxt.startswith('/') and not nxt.startswith('//'):
+    if url_has_allowed_host_and_scheme(
+        nxt, {request.get_host()}, require_https=request.is_secure()
+    ):
         return nxt
     return '/dashboard/'
 
@@ -48,7 +52,7 @@ def challenge(request):
     from plugins.installed.staff_mfa.models import StaffMfaDevice
 
     user_id = request.session.get('mfa_pending_user_id')
-    nxt = _safe_next(request.session.get('mfa_next'))
+    nxt = _safe_next(request, request.session.get('mfa_next'))
     if not user_id:
         # No pending second factor — nothing to challenge. Back to step one.
         return redirect(reverse('core_auth:otp_request'))

@@ -13,7 +13,7 @@ import logging
 from collections.abc import Callable
 from typing import Any, TypeVar
 
-from django.db import DatabaseError
+from django.db import DatabaseError, transaction
 
 logger = logging.getLogger('morpheus.utils.safe_db')
 
@@ -21,13 +21,18 @@ T = TypeVar('T')
 
 
 def safe_db(default: Any = None, *, log_level: int = logging.WARNING):
-    """Catch DatabaseError, log, return `default`."""
+    """Catch DatabaseError, log, return `default`.
+
+    The call runs in its own savepoint: on Postgres a failed statement aborts the
+    caller's transaction, and catching the error does not undo that.
+    """
 
     def decorator(fn: Callable[..., T]) -> Callable[..., T]:
         @functools.wraps(fn)
         def wrapper(*args, **kwargs):
             try:
-                return fn(*args, **kwargs)
+                with transaction.atomic():
+                    return fn(*args, **kwargs)
             except DatabaseError as e:
                 logger.log(
                     log_level,

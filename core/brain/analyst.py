@@ -12,12 +12,11 @@ schedule, never on every page load. Degrades cleanly when no AI is configured.
 
 from __future__ import annotations
 
-import contextlib
-import json
-import re
 from typing import Any
 
 from django.core.cache import cache
+
+from core.llm_parsing import parse_llm_object
 
 _CACHE_KEY = 'brain:analysis:v1'
 _TTL = 60 * 60 * 24  # a day; refreshed by the beat task or the Refresh button
@@ -97,23 +96,6 @@ def _summarize_signals(signals: dict) -> str:
     return '\n'.join(lines) or 'No signals available yet.'
 
 
-def _parse_json(text: str) -> dict | None:
-    """Lenient JSON extraction from an LLM reply (strips code fences / prose)."""
-    if not text:
-        return None
-    t = re.sub(r'^```(?:json)?|```$', '', text.strip(), flags=re.MULTILINE).strip()
-    candidates = [t]
-    start, end = t.find('{'), t.rfind('}')
-    if start != -1 and end > start:
-        candidates.append(t[start : end + 1])
-    for c in candidates:
-        with contextlib.suppress(ValueError, TypeError):
-            obj = json.loads(c)
-            if isinstance(obj, dict):
-                return obj
-    return None
-
-
 def analyze(signals: dict | None = None) -> dict[str, Any]:
     """Run the LLM over the signals → structured recommendations (uncached)."""
     from core.agents.llm import LLMMessage, get_llm_provider
@@ -145,7 +127,7 @@ def analyze(signals: dict | None = None) -> dict[str, Any]:
     except Exception as e:  # noqa: BLE001
         return {'configured': True, 'error': str(e)[:300], 'recommendations': []}
 
-    parsed = _parse_json(getattr(resp, 'text', '') or '')
+    parsed = parse_llm_object(getattr(resp, 'text', '') or '')
     if not isinstance(parsed, dict):
         return {
             'configured': True,

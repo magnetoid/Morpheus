@@ -49,7 +49,7 @@ DEFAULT_POLICY: dict[str, dict] = {
         'auto': 0.80,
         'propose': 0.60,
         'reversible': True,
-        'description': 'Searches returning no results — propose synonyms.',
+        'description': 'Searches returning no results.',
     },
     # Code-touching auto-PRs
     'dep_bump_patch': {
@@ -192,11 +192,21 @@ def decide_action(*, class_name: str, confidence: float, is_customization_safe: 
         pol.auto_apply_threshold > 0
         and confidence >= pol.auto_apply_threshold
         and is_customization_safe
+        and _can_heal(class_name)
     ):
         return 'auto_apply'
     if confidence >= pol.propose_threshold:
         return 'propose'
     return 'advise'
+
+
+def _can_heal(class_name: str) -> bool:
+    """Whether anything can apply a fix for this class. Without a healer an
+    auto-applied recommendation only fails as ``no_healer`` five minutes later,
+    out of the merchant's sight, and is proposed again."""
+    from core.self_improvement.healers.base import resolve_healers  # noqa: PLC0415
+
+    return bool(resolve_healers(class_name))
 
 
 def export_for_dashboard() -> list[dict[str, Any]]:

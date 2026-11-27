@@ -29,6 +29,7 @@ from __future__ import annotations
 import contextlib
 import ipaddress
 import logging
+import re
 import socket
 from urllib.parse import urlparse
 
@@ -65,11 +66,19 @@ class UnresolvableHostError(UnsafeUrlError):
     """
 
 
+#: In the authority urllib3 reads a backslash as the end of the host, so
+#: `http://127.0.0.1\@example.com/` passes urlparse as example.com and then
+#: connects to 127.0.0.1. Blanks and control characters are refused with it.
+_UNSAFE_AUTHORITY = re.compile(r'[\\\s\x00-\x1f\x7f]')
+
+
 def is_public_ip(ip) -> bool:
     """True iff `ip` is a routable public address."""
     if str(ip) in BLOCKED_LITERAL_IPS:
         return False
-    return not (
+    # is_global also refuses carrier-grade NAT (100.64.0.0/10, which is not
+    # is_private); the list stays for what is_global lets through (multicast).
+    return ip.is_global and not (
         ip.is_private
         or ip.is_loopback
         or ip.is_link_local
@@ -133,6 +142,8 @@ def check_outbound_url(url: str, *, field: str = 'url', require_https: bool = Tr
     allowed = ('https',) if require_https else ('https', 'http')
     if parsed.scheme not in allowed:
         raise UnsafeUrlError(f'{field} must be an {" or ".join(allowed)}:// URL')
+    if _UNSAFE_AUTHORITY.search(parsed.netloc):
+        raise UnsafeUrlError(f'{field} is not a valid URL')
     host = (parsed.hostname or '').lower()  # .hostname strips IPv6 brackets
     if not host:
         raise UnsafeUrlError(f'{field} is not a valid URL')

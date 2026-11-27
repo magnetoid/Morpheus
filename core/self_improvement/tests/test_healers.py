@@ -26,20 +26,18 @@ from core.self_improvement.healers.base import (
 
 
 class RegistryTests(TestCase):
-    def test_all_four_phase_2_healers_register(self):
+    def test_the_healers_register(self):
         # Import the modules so their @register_healer decorators fire.
         from core.self_improvement.healers import (  # noqa: F401, PLC0415
             alt_text,
             meta_description,
             redirect,
-            synonym,
         )
 
         classes = known_classes()
         self.assertIn('alt_text', classes)
         self.assertIn('meta_description', classes)
         self.assertIn('redirect', classes)
-        self.assertIn('synonym', classes)
 
     def test_analyzer_classes_resolve_to_healers(self):
         # Regression (July 2026 audit): the analyzer emits PROBLEM classes
@@ -51,7 +49,6 @@ class RegistryTests(TestCase):
             alt_text,
             meta_description,
             redirect,
-            synonym,
         )
         from core.self_improvement.healers.base import resolve_healers  # noqa: PLC0415
 
@@ -59,7 +56,6 @@ class RegistryTests(TestCase):
             [h.class_name for h in resolve_healers('seo_gap')],
             ['alt_text', 'meta_description'],
         )
-        self.assertEqual([h.class_name for h in resolve_healers('zero_search')], ['synonym'])
         self.assertEqual([h.class_name for h in resolve_healers('dead_link')], ['redirect'])
         # Exact capability names still resolve to themselves.
         self.assertEqual([h.class_name for h in resolve_healers('alt_text')], ['alt_text'])
@@ -106,6 +102,19 @@ class MetaDescriptionSummariserTests(TestCase):
         out = self.summarise(text, fallback='')
         self.assertTrue(out.endswith('.'))
         self.assertLess(len(out), 161)
+
+    def test_a_rich_description_is_summarised_as_plain_text(self):
+        html = (
+            '<p><span style="font-weight:400">A haunting novel about a lighthouse'
+            ' keeper &amp; the sea that nobody else can hear, told over one long winter'
+            ' on the island.</span> <a href="/more/">Read more about the author and'
+            ' the series it opens</a>, with notes on every chapter.</p>'
+        )
+        out = self.summarise(html, fallback='')
+        self.assertNotIn('<', out)
+        self.assertNotIn('&amp;', out)
+        self.assertTrue(out.startswith('A haunting novel about a lighthouse keeper & the sea'))
+        self.assertLessEqual(len(out), 161)
 
     def test_hard_truncate_falls_back_to_word_boundary(self):
         text = 'word ' * 80  # 400+ chars, no sentence boundaries
@@ -172,14 +181,6 @@ class HealerProposeReturnsExpectedShape(TestCase):
 
         rec = _StubRec(evidence_signal_ids=[])
         result = RedirectHealer().propose(rec)
-        self.assertEqual(result['kind'], 'apply_data')
-        self.assertEqual(result['count'], 0)
-
-    def test_synonym_empty(self):
-        from core.self_improvement.healers.synonym import SynonymHealer  # noqa: PLC0415
-
-        rec = _StubRec(evidence_signal_ids=[])
-        result = SynonymHealer().propose(rec)
         self.assertEqual(result['kind'], 'apply_data')
         self.assertEqual(result['count'], 0)
 

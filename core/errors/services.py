@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import logging
 import re
+import sysconfig
 import threading
 import time
 import traceback as _tb
@@ -20,21 +22,40 @@ _SECRETS = (
     # sk-… (OpenAI and others), sk_live_… / rk_test_… (Stripe), whsec_… (webhook secrets).
     (re.compile(r'\b(?:sk|pk|rk)[-_][A-Za-z0-9_\-]{16,}'), '<secret>'),
     (re.compile(r'\bwhsec_[A-Za-z0-9]{16,}'), '<secret>'),
+    # A Stripe client secret: the intent's id stays, it helps the fixer.
+    (re.compile(r'\b((?:pi|seti)_[A-Za-z0-9]+)_secret_[A-Za-z0-9]+'), r'\1_secret_<secret>'),
     (re.compile(r'(?i)\bbearer\s+[A-Za-z0-9._~+/=\-]{12,}'), 'Bearer <secret>'),
-    (re.compile(r'\blt1\.[A-Za-z0-9._\-]{8,}'), '<turn-token>'),
+    # A signed turn token is lt1.<payload>:<timestamp>:<signature>.
+    (re.compile(r'\blt1\.[A-Za-z0-9._:\-]{8,}'), '<turn-token>'),
     (
         re.compile(
             r'\b(?:gh[pousr]_[A-Za-z0-9]{20,}|xox[abprs]-[A-Za-z0-9\-]{10,}|AKIA[0-9A-Z]{16})\b'
         ),
         '<secret>',
     ),
-    (re.compile(r'(://[^:/\s@]+:)[^@\s/]+@'), r'\1<secret>@'),
+    # A Google key (Gemini), which a requests HTTPError quotes in its URL (?key=…).
+    (re.compile(r'\bAIza[0-9A-Za-z_\-]{30,}'), '<secret>'),
+    # The user may be empty (redis://:pw@host) and the password may hold a slash.
+    (re.compile(r'(://[^:/\s@]*:)[^@\s?#]+@'), r'\1<secret>@'),
     (
         re.compile(
-            r'(?i)\b(api[_-]?key|access[_-]?token|token|secret|password|passwd)(\s*[=:]\s*)[\'"]?[^\s\'",;)}]+'
+            r'(?i)((?<![A-Za-z0-9])authorization["\']?\s*[:=]\s*["\']?)(?:\w+\s+)?[^\s\'",;]+'
+        ),
+        r'\1<secret>',
+    ),
+    (
+        re.compile(r'(?i)((?<![A-Za-z0-9])(?:set-)?cookie["\']?\s*[:=]\s*["\']?)[^\r\n\'"]+'),
+        r'\1<secret>',
+    ),
+    # Not after a letter or digit, so client_secret, refresh_token and GOOGLE_API_KEY match.
+    (
+        re.compile(
+            r'(?i)(?<![A-Za-z0-9])(api[_-]?key|access[_-]?token|token|secret|password|passwd)(["\']?\s*[=:]\s*[\'"]?)[^\s\'",;)}]+'
         ),
         r'\1\2<secret>',
     ),
+    # payments' payment link carries the order's token in its path (/pay/<token>/).
+    (re.compile(r'(/pay/)[^/?#\s]+'), r'\1<token>'),
 )
 
 
@@ -56,18 +77,34 @@ def _scrub(text: str) -> str:
         return text
 
 
+_STDLIB = tuple({sysconfig.get_paths()['stdlib'], sysconfig.get_paths()['platstdlib']})
+
+
+def _is_library(filename: str) -> bool:
+    return (
+        filename.startswith('<')
+        or '/site-packages/' in filename
+        or '/dist-packages/' in filename
+        or filename.startswith(_STDLIB)
+    )
+
+
 def _fingerprint_server(exc: BaseException) -> str:
-    """Stable hash from exception class + first 3 frame file:line pairs."""
+    """Stable hash from exception class + the 3 innermost frames of our own code.
+
+    The outermost frames are Django's handler and middleware, the same for every
+    view. Library frames are left out (all of them only when nothing else is left),
+    and so are line numbers, so an edit elsewhere in the file keeps the group.
+    """
+    frames = _tb.extract_tb(exc.__traceback__)
+    picked = [f for f in frames if not _is_library(f.filename)][-3:] or frames[-3:]
     parts = [type(exc).__name__]
-    tb = exc.__traceback__
-    while tb and len(parts) < 4:
-        co = tb.tb_frame.f_code
+    for frame in picked:
         # Strip BASE_DIR-style prefixes so the fingerprint stays stable
         # across deploys (different container paths shouldn't shift it).
-        filename = co.co_filename.split('/site-packages/', 1)[-1]
+        filename = frame.filename.split('/site-packages/', 1)[-1]
         filename = filename.split('/app/', 1)[-1]
-        parts.append(f'{filename}:{co.co_name}:{tb.tb_lineno}')
-        tb = tb.tb_next
+        parts.append(f'{filename}:{frame.name}')
     return hashlib.sha256('|'.join(parts).encode('utf-8')).hexdigest()[:32]
 
 
@@ -151,7 +188,14 @@ def record_error(
     level: str = 'error',
     extra: dict[str, Any] | None = None,
 ) -> None:
-    """Write a server-side exception to the error log. Fail-soft."""
+    """Write a server-side exception to the error log, once. Fail-soft.
+
+    The middleware records a view's exception, then Django logs the same 500 with
+    ``exc_info`` and the log handler calls this again; the API's handlers log and
+    record too. The exception carries a mark, so the second call stores nothing.
+    """
+    if getattr(exc, '_morph_error_recorded', False):
+        return
     try:
         from core.errors.models import ErrorEvent
 
@@ -181,6 +225,8 @@ def record_error(
             ip_hash=_ip_hash(request),
             metadata=extra or {},
         )
+        with contextlib.suppress(Exception):  # a type that takes no attributes is recorded again
+            exc._morph_error_recorded = True
     except Exception:  # noqa: BLE001 — never raise from the capture path
         logger.exception('record_error failed')
 
@@ -333,6 +379,11 @@ def is_client_noise(name: str, message: str) -> bool:
     return any(name == n and message.startswith(prefix) for n, prefix in _CLIENT_NOISE)
 
 
+def _browser_address(url: str) -> str:
+    """A page or script address without its query or fragment, where emails and tokens ride."""
+    return _scrub(url[:500].split('?', 1)[0].split('#', 1)[0])
+
+
 def record_client_error(payload: dict[str, Any], *, request=None) -> None:
     """Write a JS error received from the browser. Validates payload shape."""
     from core.errors.models import ErrorEvent
@@ -349,11 +400,11 @@ def record_client_error(payload: dict[str, Any], *, request=None) -> None:
 
         if not detailed_active():
             return
-    source_url = (payload.get('source') or '')[:500]
+    source_url = _browser_address(payload.get('source') or '')
     lineno = int(payload.get('lineno') or 0)
     colno = int(payload.get('colno') or 0)
     stack = _truncate(payload.get('stack') or '', _TRACEBACK_LIMIT)
-    page_url = (payload.get('page') or '')[:500]
+    page_url = _browser_address(payload.get('page') or '')
     browser = (payload.get('browser') or '')[:120]
     level = (payload.get('level') or 'error').lower()
     if level not in ('error', 'warning', 'info'):

@@ -543,4 +543,13 @@ def _humanise_provider_error(exc: Exception) -> str:
             'Connection to the AI provider failed. Check the base URL '
             'in Settings → AI providers (or your network) and retry.'
         )
+    # The text reaches AgentRun.error, API answers and the agent itself, and an
+    # HTTPError quotes the request URL, so no key may survive it.
+    import re
+
+    from core.errors.services import redact_secrets
+
+    s = redact_secrets(s)
+    s = re.sub(r'(?i)([?&](?:key|api_key|token)=)[^&\s#]+', r'\1<secret>', s)
+    s = re.sub(r'\b(?:AIza|xai-)[0-9A-Za-z_\-]{20,}', '<secret>', s)
     return f'AI provider error: {s[:300]}'

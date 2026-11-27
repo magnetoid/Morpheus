@@ -15,6 +15,22 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.197.0 — 2026-11-27
+
+**Core audit: 38 fixes to approvals, sign-in, caching, the error log, backups and the nightly analyzer**
+
+- Approvals: a change Linda proposes is approved only by your next message. A yes given to something else no longer approves a change you declined, and "yes, but not that one" asks again.
+- API tokens can no longer start the Worker, which holds every permission, and an outside agent's turn no longer reads or writes what Linda has learned about the store.
+- Caching: on a store that saved Settings → Caching, the cart, checkout and account pages, and any page served to a visitor with a session or consent cookie, are no longer marked public. A sold file is never cached.
+- Sign-in: the link followed after an emailed code cannot lead to another site, a malformed forwarded address no longer breaks the sign-in, and a failed sign-in email is logged. While the cache is down, emailed codes are refused instead of unthrottled.
+- Addresses the store calls (webhooks, feeds, importers): the safety check can no longer be passed with a backslash in the address.
+- Error log: errors are grouped by where they happened (groups re-form once after this release), each is stored once, more kinds of secret are removed, and the public browser-error endpoint is capped.
+- Content fill: an AI outage or setup message is never saved as a product's text, and text the model writes there is marked as AI-written.
+- Backups and releases: a backup cannot be written into the public media folder or without its database, and the release check catches two more migrations that would break a rollback.
+- Nightly improvement run: standing recommendations no longer crowd out new ones, a rejected one stays rejected, it stops calling a provider that is failing and keeps to its token budget.
+- Loyalty points are no longer earned while the app is switched off, and an AI provider outage now fails fast after the first retry window.
+- Housekeeping: one JSON reader for model replies, one rule for both cache layers, unused code removed. docs/MIGRATING.md lists what an outside app might notice; docs/plans/core-refactor-debug-2026-11.md lists what is still open.
+
 ## v0.196.0 — 2026-11-27
 
 **The CRM inbox lists conversations, under a tab per mailbox**

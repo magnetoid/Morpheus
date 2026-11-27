@@ -22,28 +22,25 @@ from django.core.cache import cache
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_http_methods
 
 from core import bot_check
 from core.auth.services import consume_otp, issue_otp, send_otp_email
 from core.hooks import MorpheusEvents, hook_registry
+from core.ratelimit import client_ip_address
 from core.utils.rate_limit import RateLimitExceeded, check_and_consume
 
 logger = logging.getLogger('morpheus.core.auth.views')
 
 
-def _client_ip(request: HttpRequest) -> str | None:
-    forwarded = request.META.get('HTTP_X_FORWARDED_FOR', '')
-    if forwarded:
-        return forwarded.split(',', 1)[0].strip() or None
-    return request.META.get('REMOTE_ADDR') or None
-
-
 def _safe_next(request: HttpRequest) -> str:
-    """Pick a redirect target. Only honour same-origin paths."""
+    """Pick a redirect target on this site (a browser reads `\\` as `/`)."""
     nxt = (request.POST.get('next') or request.GET.get('next') or '').strip()
-    if nxt.startswith('/') and not nxt.startswith('//'):
+    if url_has_allowed_host_and_scheme(
+        nxt, {request.get_host()}, require_https=request.is_secure()
+    ):
         return nxt
     return '/account/'
 
@@ -80,7 +77,7 @@ def otp_request(request: HttpRequest) -> HttpResponse:
         elif not email or '@' not in email:
             error = 'Enter a valid email address.'
         else:
-            code, obj = issue_otp(email, request_ip=_client_ip(request))
+            code, obj = issue_otp(email, request_ip=client_ip_address(request))
             if code:
                 send_otp_email(to=email, code=code)
             # Even on rate-cap we proceed to the verify step + show a
@@ -120,7 +117,7 @@ def _otp_locked_response(request: HttpRequest, email: str, nxt: str) -> HttpResp
 
 @csrf_protect
 @require_http_methods(['GET', 'POST'])
-def otp_verify(request: HttpRequest) -> HttpResponse:
+def otp_verify(request: HttpRequest) -> HttpResponse:  # noqa: PLR0911 — one return per refusal
     email = request.session.get('morph_otp_email', '')
     nxt = request.session.get('morph_otp_next') or _safe_next(request)
     error = ''
@@ -132,13 +129,19 @@ def otp_verify(request: HttpRequest) -> HttpResponse:
 
     if request.method == 'POST':
         email_lower = email.strip().lower()
-        ip = _client_ip(request) or 'unknown'
+        ip = client_ip_address(request) or 'unknown'
 
         # Per-email hard lock after 5 cumulative failures in 15 min —
         # blocks the whole email regardless of source IP so the attacker
         # can't IP-rotate around the per-(email,ip) limiter below.
         if cache.get(_OTP_EMAIL_LOCK_KEY.format(email=email_lower)):
             logger.warning('otp_verify: email locked %s', email_lower)
+            return _otp_locked_response(request, email, nxt)
+        # While the cache is down (django-redis then answers None) nothing
+        # counts wrong codes, so no code is tried.
+        fail_key = _OTP_EMAIL_FAIL_KEY.format(email=email_lower)
+        if cache.add(fail_key, 0, timeout=_OTP_EMAIL_LOCK_TTL_SECONDS) is None:
+            logger.warning('otp_verify: cache unavailable, refusing %s', email_lower)
             return _otp_locked_response(request, email, nxt)
 
         # Per-(email, ip) sliding-window rate limit.
@@ -164,9 +167,8 @@ def otp_verify(request: HttpRequest) -> HttpResponse:
             error = "That code didn't work. Try again, or request a new one."
             # Track cumulative failures per-email. When it hits 5, set a
             # 15-min lock — blocks all sources, not just this IP.
-            fail_key = _OTP_EMAIL_FAIL_KEY.format(email=email_lower)
             try:
-                fails = cache.incr(fail_key)
+                fails = cache.incr(fail_key) or 0
             except ValueError:
                 cache.set(fail_key, 1, timeout=_OTP_EMAIL_LOCK_TTL_SECONDS)
                 fails = 1
@@ -183,7 +185,7 @@ def otp_verify(request: HttpRequest) -> HttpResponse:
                 )
         else:
             # Successful verify clears any pending fail counter.
-            cache.delete(_OTP_EMAIL_FAIL_KEY.format(email=email_lower))
+            cache.delete(fail_key)
             # The code reached the inbox, so this person controls the address.
             hook_registry.fire(
                 MorpheusEvents.CUSTOMER_EMAIL_VERIFIED, customer=user, email=user.email
