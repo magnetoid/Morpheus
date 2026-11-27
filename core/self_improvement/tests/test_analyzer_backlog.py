@@ -163,6 +163,18 @@ class ModelUseTests(TestCase):
 
         provider.respond.assert_not_called()
 
+    def test_an_answer_that_cannot_be_read_still_counts_its_tokens(self):
+        # The plan falls back to the plain advisory, but the call was paid for,
+        # and the day's budget is rebuilt from the recommendations' tokens.
+        _signal('gap')
+        provider = _answering(text='not json', prompt_tokens=80, completion_tokens=40)
+
+        with mock.patch(PROVIDER, return_value=provider):
+            recommend.run_analyzer()
+
+        # Planner and verifier each answered unreadably: 120 + 120.
+        self.assertEqual(SiRecommendation.objects.get().tokens_used, 240)
+
     def test_a_working_model_plans_and_verifies_every_cluster(self):
         for n in range(2):
             _signal(f'gap-{n}')

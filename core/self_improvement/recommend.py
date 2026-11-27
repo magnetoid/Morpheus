@@ -346,9 +346,9 @@ def _plan(cluster: Cluster, pol, model: _ModelUse | None = None) -> dict | None:
         )
         model.spent += tokens
         text = (getattr(response, 'text', '') or '').strip()
-        parsed = parse_llm_object(text)
-        if parsed is None:
-            return _heuristic_plan(cluster)
+        # An answer that cannot be read was still paid for: the recommendation
+        # carries its tokens either way, since that is what tomorrow's budget reads.
+        parsed = parse_llm_object(text) or _heuristic_plan(cluster)
         parsed['_tokens_used'] = tokens
         return parsed
     except SoftTimeLimitExceeded:
