@@ -20,6 +20,9 @@ class AIContentPlugin(Plugin):
     has_models = False
     # metafields holds the marks of AI-written text (marks.py).
     requires = ['catalog', 'ai_assistant', 'metafields']
+    # A save clears only the worker that made it. The marks it switches render on
+    # every page, so each worker reads the settings again once this window passes.
+    config_fresh_s = 30.0
 
     def ready(self) -> None:
         from morpheus.core import events  # noqa: PLC0415
@@ -171,6 +174,18 @@ class AIContentPlugin(Plugin):
                         'Under a description written with AI, show "This product\'s '
                         'description was written with the help of AI." The page and its '
                         'structured data mark that text for search engines either way.'
+                    ),
+                },
+                'mark_ai_translations': {
+                    'type': 'boolean',
+                    'default': True,
+                    'title': 'Mark translations an AI drafted',
+                    'description': (
+                        'Mark a translated page as written with AI when its translation '
+                        'began as an AI draft. The EU guidelines on Article 50 of the AI Act '
+                        '(C/2026/6005) treat translation as standard editing, so the law does '
+                        "not ask for this mark; turn it off and only a product's own "
+                        'AI-written text is marked.'
                     ),
                 },
             },

@@ -17,12 +17,13 @@ def ai_text_mark(context, product) -> dict:
     Empty when nothing is marked. ``fields`` lists the marked text the page shows
     that has words in it: the description and short description an AI wrote, unless
     the page shows them in a translation, and any field the page shows in a
-    translation that began as an AI draft (``core.i18n.services.ai_translated``). ``label`` is the merchant's choice to
+    translation that began as an AI draft, while the store marks those
+    (``marks.ai_translated_fields``). ``label`` is the merchant's choice to
     say so in words as well; ``translated`` says only the translation is the AI's,
     so the sentence says that.
     """
-    from core.i18n.services import ai_translated, shown_in_translation
-    from plugins.installed.ai_content.marks import marks_for, plain_text
+    from core.i18n.services import shown_in_translation
+    from plugins.installed.ai_content.marks import ai_translated_fields, marks_for, plain_text
     from plugins.installed.catalog.models import Product
     from plugins.registry import app_registry
 
@@ -49,7 +50,7 @@ def ai_text_mark(context, product) -> dict:
         # booking page shows the host's own text in its place.
         text = Product.objects.filter(pk=product.pk).values(*marked).first() or {}
         fields = [f for f in marked if plain_text(text.get(f) or '')]
-    shown_fields = list(dict.fromkeys([*fields, *ai_translated(product)]))
+    shown_fields = list(dict.fromkeys([*fields, *ai_translated_fields(product)]))
     if not shown_fields:
         return {}
     plugin = app_registry.get('ai_content')
@@ -65,10 +66,10 @@ def ai_page_mark(context) -> list[str]:
     ``seo_object``). A catalog Product is left out: its page marks it under the
     description (``ai_text_mark``).
     """
-    from core.i18n.services import ai_translated
+    from plugins.installed.ai_content.marks import ai_translated_fields
 
     obj = context.get('seo_content_object') or context.get('seo_object')
     meta = getattr(obj, '_meta', None)
     if meta is None or meta.label_lower == 'catalog.product':
         return []
-    return ai_translated(obj)
+    return ai_translated_fields(obj)
