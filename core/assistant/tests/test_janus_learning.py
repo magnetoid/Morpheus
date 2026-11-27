@@ -232,6 +232,34 @@ class SyncTests(TestCase):
         stored = JanusLearning.objects.get(path=jl.MEMORY_FILE).content
         self.assertEqual(stored, f'base{D}from a{D}from b')
 
+    def test_two_conversations_creating_the_same_new_file_keep_both(self):
+        # The day's first journal entry, written by two turns at once: both see no
+        # row, both insert. The second hit the unique key and lost its whole harvest.
+        home_a, home_b = self._fresh_home(), self._fresh_home()
+        snap_a, snap_b = jl.hydrate(home_a), jl.hydrate(home_b)
+        _put(home_a, JOURNAL, f'{HEAD}{_entry("from a")}')
+        _put(home_a, jl.MEMORY_FILE, 'from a')
+        _put(home_b, JOURNAL, f'{HEAD}{_entry("from b")}')
+        _put(home_b, jl.MEMORY_FILE, 'from b')
+        real_merge, others = jl.merge, [(home_a, snap_a)]
+
+        def other_commits_first(*args):
+            # Conversation a's harvest lands after b looked for the rows and
+            # before b inserts them.
+            if others:
+                jl.harvest(*others.pop(), conversation_key='a')
+            return real_merge(*args)
+
+        with mock.patch.object(jl, 'merge', side_effect=other_commits_first):
+            changed = jl.harvest(home_b, snap_b, conversation_key='b')
+
+        self.assertEqual(changed, [jl.MEMORY_FILE, JOURNAL])
+        self.assertEqual(
+            JanusLearning.objects.get(path=JOURNAL).content,
+            f'{HEAD}{_entry("from a")}{_entry("from b")}',
+        )
+        self.assertEqual(JanusLearning.objects.get(path=jl.MEMORY_FILE).content, f'from a{D}from b')
+
     def test_notes_about_a_person_stay_with_that_person(self):
         self._learn({jl.USER_FILE: 'Ana prefers short answers'}, user=self.ana)
         bo_home = self._fresh_home()

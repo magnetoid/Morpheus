@@ -826,8 +826,12 @@ class ProviderWiringTests(SimpleTestCase):
         args, _ = self._wire('openai', model='gpt-4o-mini')
         self.assertEqual(args[:2], ['--provider', 'openai-api'])
 
-    def test_unmapped_provider_leaves_janus_to_resolve(self):
-        self.assertEqual(self._wire('hermes'), ([], {}))
+    def test_unmapped_provider_is_refused_not_left_to_janus(self):
+        # Left to its own `auto`, Janus picks a model from whatever keys the
+        # container holds: one the store did not choose and may not have priced.
+        with self.assertRaises(eng.UnsupportedProvider) as refused:
+            self._wire('hermes')
+        self.assertEqual(str(refused.exception), 'hermes')
 
     def test_missing_key_leaves_janus_to_resolve(self):
         self.assertEqual(self._wire('deepseek', api_key=''), ([], {}))

@@ -203,6 +203,33 @@ class JanusPageSaveTests(TestCase):
         self.assertContains(response, 'Answered in 4.2s')
         self.assertEqual(run.call_args.kwargs['turn_token'], '')
 
+    def test_connection_test_is_refused_while_ai_is_paused(self):
+        # It is a real model call, so the merchant's kill switch covers it.
+        from core.agents import guardrails
+
+        with (
+            mock.patch.object(guardrails, 'agents_paused', return_value=True),
+            mock.patch.object(eng, 'run_janus_turn', side_effect=AssertionError('engine ran')),
+        ):
+            response = self.client.post(URL, {'action': 'test'})
+        self.assertContains(response, guardrails.PAUSED_MESSAGE)
+
+    def test_connection_test_counts_toward_the_spend_cap(self):
+        from core.agents.models import ModelUsageDay
+
+        usage = {
+            'model': 'deepseek-chat',
+            'input_tokens': 120,
+            'cache_read_tokens': 30,
+            'cache_write_tokens': 0,
+            'output_tokens': 4,
+        }
+        result = {'text': 'ok', 'error': '', 'duration_ms': 900, 'usage': usage}
+        with mock.patch.object(eng, 'run_janus_turn', return_value=result):
+            self.client.post(URL, {'action': 'test'})
+        row = ModelUsageDay.objects.get(model='deepseek-chat')
+        self.assertEqual((row.prompt_tokens, row.completion_tokens), (150, 4))
+
     def test_page_url_is_not_shadowed_by_the_settings_deep_link(self):
         # /dashboard/apps/<app>/settings/ belongs to the legacy settings-panel
         # route, so a contributed page with that slug is never reached.

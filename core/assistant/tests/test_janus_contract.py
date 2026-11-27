@@ -100,6 +100,9 @@ class ContractInStepTests(SimpleTestCase):
             TemporaryDirectory() as tmp,
             mock.patch.object(eng, 'janus_cmd', return_value=['/opt/janus/bin/janus']),
             mock.patch.object(eng, 'linda_janus_home', return_value=Path(tmp)),
+            # Janus's own options only: on Linux the turn starts under coreutils
+            # `timeout`, whose -k is not one of them.
+            mock.patch.object(eng, '_timeout_bin', return_value=''),
             mock.patch.object(
                 eng, '_provider_wiring', return_value=(['--provider', 'x', '-m', 'y'], {})
             ),

@@ -15,6 +15,17 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.198.0 — 2026-11-27
+
+**Linda finishes a turn you walked away from, and counts all of its cost**
+
+- If you close the page while Linda is working, she still finishes. Her answer is in the chat when you come back, and what it cost is counted.
+- Linda works on one message per chat at a time. A second message sent while she is still answering is asked to wait a moment.
+- Spend toward your daily cap is counted from the whole conversation, so a turn that was cut off, and a long conversation whose history Janus compressed, are no longer under-counted.
+- Janus is stopped at its time limit even when the web worker that started it has been restarted.
+- A provider Linda cannot run on is refused with what to do about it (Settings → AI → Janus). Until now she quietly ran on another model.
+- Two chats saving their first note of the day no longer lose one of them, and the Janus connection test obeys the AI pause and the spend cap.
+
 ## v0.197.0 — 2026-11-27
 
 **Core audit: 38 fixes to approvals, sign-in, caching, the error log, backups and the nightly analyzer**

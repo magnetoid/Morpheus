@@ -724,8 +724,23 @@ the reply and `session_id` went to /dev/null and the merchant got "no reply"
 (v0.68.0, live). The config sets `memory.nudge_interval` and
 `skills.creation_nudge_interval` to 0, and a clean exit with no output recovers the
 reply from the home's `state.db` (`_recover_reply`).
+**A turn runs to its end whoever is still watching (v0.198.0).** When the
+browser left mid-turn, the stream's generator was closed and nothing read the
+result: no answer, no usage, no run, no harvest. `Assistant.stream` now hands the
+suspended turn to a background drain (`runtime._finish_unwatched`; inline under
+tests), so never forward the turn with `yield from`, which would close it with its
+reader. One turn per conversation home at a time (`flock` on
+`.morpheus-turn.lock`): a second one is told Linda is still working. Janus starts
+under coreutils `timeout` where the host has it, so a recycled web worker cannot
+leave it running past its limit; Python waits longer than the wrapper, because
+killing the wrapper would orphan Janus. Spend is the home's total over every
+session in `state.db` less what was already billed (`counted` in
+`janus_session.json`): it used to be one session row's change, which lost a turn
+nobody counted, and everything spent on the parent session when Janus compressed
+the context and went on in a new one. A store provider Janus has no name for is
+refused with the reason; it used to fall to Janus's own `auto` (trap 4 above).
 Guarded by `core/assistant/tests/test_janus_engine.py`, `test_turn_identity.py`,
-`agent_mcp/tests/test_linda_turn.py` and the conformance suite.
+`test_turn_lifecycle.py`, `agent_mcp/tests/test_linda_turn.py` and the conformance suite.
 
 **Landmine — a Janus toolset is a bundle, and one argument of one tool can be a
 shell.** Before adding a toolset to a turn, read every tool in it down to what its

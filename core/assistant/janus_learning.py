@@ -397,7 +397,7 @@ def harvest(
 
 
 def _harvest(home: Path, snapshot: Snapshot, *, conversation_key: str, user: Any) -> list[str]:
-    from django.db import transaction
+    from django.db import IntegrityError, transaction
 
     from core.assistant.models import JanusLearning
 
@@ -429,12 +429,13 @@ def _harvest(home: Path, snapshot: Snapshot, *, conversation_key: str, user: Any
             )
         }
         count = JanusLearning.objects.count()
-        for path in changed:
-            row = rows.get((scope_of(path), path))
+
+        def store(path: str, row) -> bool:
+            nonlocal count
             current = row.content if row else None
             content = merge(path, base.get(path), after.get(path), current)
             if content == current:
-                continue
+                return False
             if content is None:
                 row.delete()
                 count -= 1
@@ -444,17 +445,30 @@ def _harvest(home: Path, snapshot: Snapshot, *, conversation_key: str, user: Any
                 row.save(update_fields=['content', 'conversation_key', 'updated_at'])
             elif count >= MAX_FILES:
                 logger.warning('janus learning: store full, %s not kept', path)
-                continue
+                return False
             else:
-                JanusLearning.objects.create(
-                    scope=scope_of(path),
-                    path=path,
-                    kind=kind_of(path),
-                    content=content,
-                    conversation_key=conversation_key[:120],
-                )
+                try:
+                    with transaction.atomic():
+                        JanusLearning.objects.create(
+                            scope=scope_of(path),
+                            path=path,
+                            kind=kind_of(path),
+                            content=content,
+                            conversation_key=conversation_key[:120],
+                        )
+                except IntegrityError:
+                    # Another conversation created the file since the lock above
+                    # (the day's first journal entry): merge into theirs.
+                    theirs = JanusLearning.objects.select_for_update().get(
+                        scope=scope_of(path), path=path
+                    )
+                    return store(path, theirs)
                 count += 1
-            applied.append(path)
+            return True
+
+        for path in changed:
+            if store(path, rows.get((scope_of(path), path))):
+                applied.append(path)
         _prune_journal()
     if applied:
         _audit('janus.learned', user, {'paths': applied[:50], 'conversation': conversation_key})
