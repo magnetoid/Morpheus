@@ -129,3 +129,13 @@ class Worker(MorpheusAgent):
     max_tokens = 1500
     max_steps = 12
     requires_approval = False  # per-tool write gates still apply
+
+    def get_tools(self):
+        """Every platform tool inside the Worker's scopes, minus the platform
+        internals (``gates.DEVELOPER_TOOLS``: files and logs on the server, the
+        server's own facts). Those are Linda's only in Developer mode, which is
+        for superusers, and any staff member can start a Worker: through Linda's
+        delegation, an automation, a workflow or the agents API."""
+        from core.assistant.gates import DEVELOPER_TOOLS
+
+        return [tool for tool in super().get_tools() if tool.name not in DEVELOPER_TOOLS]

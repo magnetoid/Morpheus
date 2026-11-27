@@ -23,12 +23,16 @@ from django.db import DatabaseError, transaction
 from django.utils import timezone
 
 
-def _run_with_timeout(*, runtime, user_message, history, context, run_id, timeout):
+def _run_with_timeout(
+    *, runtime, user_message, history, context, run_id, timeout, usage=None, on_late=None
+):
     """Execute `runtime.run(...)` on a worker thread; raise TimeoutError on cap.
 
     Python can't truly kill a stuck thread, so the worker thread keeps
     running after timeout — but the caller gets a clean error and the
-    request returns. The runaway thread will end on its next yield.
+    request returns. The runaway thread will end on its next yield, and then
+    calls ``on_late`` (in that thread): the provider call that was in flight
+    when the caller gave up was paid for, and ``usage`` holds it by then.
 
     In tests we run inline — SQLite test transactions don't share across
     threads and we don't need real wall-clock enforcement.
@@ -41,9 +45,13 @@ def _run_with_timeout(*, runtime, user_message, history, context, run_id, timeou
             history=history,
             context=context,
             run_id=run_id,
+            usage=usage,
         )
 
     box: dict[str, Any] = {}
+    # Guards the hand-over: either the caller takes the outcome, or the thread
+    # learns it was given up on. Never both, never neither.
+    handover = threading.Lock()
     # Stamp a cooperative deadline the runtime loop polls. join() below can't
     # KILL the worker thread when it times out — the thread is orphaned and,
     # without this, keeps driving the LLM and executing (writing) tools for
@@ -53,23 +61,44 @@ def _run_with_timeout(*, runtime, user_message, history, context, run_id, timeou
 
     def _wrap():
         try:
-            box['result'] = runtime.run(
-                user_message=user_message,
-                history=history,
-                context=context,
-                run_id=run_id,
+            outcome = (
+                'result',
+                runtime.run(
+                    user_message=user_message,
+                    history=history,
+                    context=context,
+                    run_id=run_id,
+                    usage=usage,
+                ),
             )
         except BaseException as e:  # noqa: BLE001 — capture for the main thread
-            box['error'] = e
+            outcome = ('error', e)
+        with handover:
+            box[outcome[0]] = outcome[1]
+            given_up = box.get('given_up', False)
+        if given_up and on_late is not None:
+            try:
+                on_late()
+            except Exception:  # noqa: BLE001 — nothing is waiting for this thread
+                logger.warning('agent_core: late run %s not recorded', run_id, exc_info=True)
 
     t = threading.Thread(target=_wrap, daemon=True)
     t.start()
     t.join(timeout)
-    if t.is_alive():
-        raise TimeoutError(f'agent runtime exceeded {timeout}s')
+    with handover:
+        if 'result' not in box and 'error' not in box:
+            box['given_up'] = True
+            raise TimeoutError(f'agent runtime exceeded {timeout}s')
     if 'error' in box:
         raise box['error']
     return box['result']
+
+
+def _close_thread_connection() -> None:
+    """Close the database connection of the thread a timeout left behind."""
+    from django.db import connection
+
+    connection.close()
 
 
 from core.agents import (  # noqa: E402 — deliberate late import
@@ -77,54 +106,13 @@ from core.agents import (  # noqa: E402 — deliberate late import
     LLMMessage,
     MorpheusAgent,
     RunResult,
-    TraceStep,
     get_llm_provider,
+    run_store,
 )
+from core.agents.usage import RunUsage  # noqa: E402 — deliberate late import
 from morpheus.core import agent_registry  # noqa: E402 — deliberate late import
 
 logger = logging.getLogger('morpheus.agents.services')
-
-
-def _persist_step(*, run, seq: int, step: TraceStep) -> None:
-    from plugins.installed.agent_core.models import AgentStep
-
-    output = step.output
-    if output is not None and not isinstance(output, (dict, list, str, int, float, bool)):
-        output = str(output)
-    AgentStep.objects.create(
-        run=run,
-        seq=seq,
-        kind=step.kind,
-        name=step.name,
-        content=step.content[:20_000] if step.content else '',
-        arguments=step.arguments or {},
-        output={'value': output}
-        if output is not None and not isinstance(output, dict)
-        else (output or {}),
-        metadata=step.metadata or {},
-    )
-
-    # Audit on the RESULT step, not the call step: a `tool_call` TraceStep is
-    # pre-invocation, so its output is always None — every agents.decision
-    # row used to carry an empty `output`. The tool_result step has the real
-    # outcome (args live on the AgentStep rows either way).
-    if step.kind == 'tool_result':
-        from morpheus.core import record_ai_decision
-
-        record_ai_decision(
-            agent=getattr(run, 'agent_name', '') or '',
-            tool=step.name or '',
-            run_id=str(run.pk),
-            args=step.arguments or {},
-            output=output
-            if isinstance(output, (dict, list, str, int, float, bool))
-            else str(output),
-            duration_ms=(step.metadata or {}).get('duration_ms'),
-            model=(step.metadata or {}).get('model', ''),
-            provider=(step.metadata or {}).get('provider', ''),
-            actor=getattr(run, 'customer', None),
-            target=f'agent_run/{run.pk}',
-        )
 
 
 def run_agent(  # noqa: PLR0915
@@ -173,33 +161,46 @@ def run_agent(  # noqa: PLR0915
         logger.warning('agent_core: AgentRun create failed, running in-memory: %s', e)
         run = None
 
-    # Subscriber → mirror into DB live.
-    seq_counter = {'i': 0}
-    audit_incomplete = {'value': False}
-    db_subscriber = None
-    if run is not None:
-
-        def _mirror(step: TraceStep) -> None:
-            seq_counter['i'] += 1
-            try:
-                _persist_step(run=run, seq=seq_counter['i'], step=step)
-            except DatabaseError as e:  # noqa: BLE001
-                audit_incomplete['value'] = True
-                logger.warning('agent_core: persist step failed: %s', e)
-            if on_step is not None:
-                try:  # noqa: SIM105
-                    on_step(step)
-                except Exception:  # noqa: BLE001, S110
-                    pass
-
-        db_subscriber = _mirror
+    # Steps are saved as they happen; the end of the run, and what it spent,
+    # are written by the same module (core/agents/run_store.py).
+    mirror = run_store.StepMirror(run, on_step=on_step) if run is not None else None
+    usage = RunUsage()
 
     provider = get_llm_provider(agent.provider, model=agent.model or None)
     runtime = AgentRuntime(
         agent,
         provider=provider,
-        on_step=db_subscriber or on_step,
+        on_step=mirror or on_step,
     )
+
+    # The request's thread and the thread a timeout leaves behind may both write
+    # what the run spent. One at a time: each reads the meter and saves under the
+    # lock, so the later write is never the older reading.
+    writing = threading.Lock()
+    counted: dict[str, tuple[int, int]] = {}
+
+    def _count() -> None:
+        # No row: what is new since the last count goes to the day's totals.
+        counted.update(run_store.record_unstored(provider, usage, counted=counted))
+
+    def _late() -> None:
+        # Runs in the thread a timeout left behind, once it ends.
+        try:
+            with writing:
+                if run is not None:
+                    run_store.save_usage(run, provider, usage)
+                else:
+                    _count()
+        finally:
+            _close_thread_connection()
+
+    def _close(error: str) -> None:
+        duration = int((time.monotonic() - started) * 1000)
+        with writing:
+            if run is not None:
+                run_store.fail(run, error, provider, usage, duration_ms=duration)
+            else:
+                _count()
 
     started = time.monotonic()
     timeout_seconds = float((context or {}).get('timeout_seconds') or 45.0)
@@ -214,56 +215,31 @@ def run_agent(  # noqa: PLR0915
             context={**(context or {}), 'customer': customer_obj, 'agent_run': run},
             run_id=str(run.id) if run else None,
             timeout=timeout_seconds,
+            usage=usage,
+            on_late=_late,
         )
     except TimeoutError as e:
         logger.warning('agent_core: runtime exceeded %ss: %s', timeout_seconds, e)
-        if run is not None:
-            run.state = 'failed'
-            run.error = f'timeout after {timeout_seconds}s'
-            run.ended_at = timezone.now()
-            run.save(update_fields=['state', 'error', 'ended_at'])
+        _close(f'timeout after {timeout_seconds}s')
         raise
     except Exception as e:  # noqa: BLE001 — final safety net
         logger.error('agent_core: runtime crashed: %s', e, exc_info=True)
-        if run is not None:
-            run.state = 'failed'
-            run.error = f'{type(e).__name__}: {e}'
-            run.ended_at = timezone.now()
-            run.save(update_fields=['state', 'error', 'ended_at'])
+        _close(f'{type(e).__name__}: {e}')
         raise
 
     duration_ms = int((time.monotonic() - started) * 1000)
 
     if run is not None:
-        run.state = result.state
-        run.final_text = (result.text or '')[:50_000]
-        run.error = (result.error or '')[:5_000]
-        run.tool_call_count = result.tool_calls
-        run.prompt_tokens = result.trace.prompt_tokens
-        run.completion_tokens = result.trace.completion_tokens
-        run.duration_ms = duration_ms
-        run.provider = provider.name
-        run.model = provider.model or ''
-        run.ended_at = timezone.now()
-        if audit_incomplete['value']:
-            md = dict(run.metadata or {})
-            md['audit_incomplete'] = True
-            run.metadata = md
-        run.save(
-            update_fields=[
-                'state',
-                'final_text',
-                'error',
-                'tool_call_count',
-                'prompt_tokens',
-                'completion_tokens',
-                'duration_ms',
-                'provider',
-                'model',
-                'ended_at',
-                'metadata',
-            ]
+        run_store.finish(
+            run,
+            result,
+            provider,
+            usage,
+            duration_ms=duration_ms,
+            audit_incomplete=mirror.incomplete,
         )
+    else:
+        _count()
 
     if conversation_id and run is not None:
         try:

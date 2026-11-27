@@ -28,6 +28,7 @@ budget exceeded) abort the run.
 
 from __future__ import annotations
 
+import functools
 import json
 import logging
 import time
@@ -51,6 +52,7 @@ from core.agents.llm import (
 from core.agents.policies import BudgetExceeded, ScopeDenied, enforce_budget, enforce_policy
 from core.agents.tools import Tool, ToolError, ToolResult
 from core.agents.trace import AgentTrace, TraceStep
+from core.agents.usage import RunUsage
 from core.hooks import hook_registry
 
 logger = logging.getLogger('morpheus.agents.runtime')
@@ -116,10 +118,16 @@ class AgentRuntime:
         history: list[LLMMessage] | None = None,
         context: dict[str, Any] | None = None,
         run_id: str | None = None,
+        usage: RunUsage | None = None,
     ) -> RunResult:
-        """Run the agent against `user_message`. Returns when the loop completes."""
+        """Run the agent against `user_message`. Returns when the loop completes.
+
+        ``usage`` is the caller's meter (``core/agents/usage.py``): pass one to
+        read what the run spent when it never returns (a timeout, a crash).
+        """
         context = dict(context or {})
         run_id = run_id or str(uuid.uuid4())
+        usage = usage if usage is not None else RunUsage()
         trace = AgentTrace(run_id=run_id, subscriber=self._on_step)
 
         try:
@@ -157,8 +165,13 @@ class AgentRuntime:
         # Merchant guardrail — daily circuit breakers (run-count + estimated
         # spend), checked ONCE at run start before any provider spend. The
         # current run's own row is already `running` in the table, so exclude
-        # it from its own count. 0/unset caps are no-ops (default off).
-        _block = run_start_block_reason(exclude_id=getattr(context.get('agent_run'), 'id', None))
+        # it from its own count: by the row when the caller put it in the
+        # context, else by the run id, which is the row's key (a spawned Worker
+        # passes only that, and was counted against the cap by its own row).
+        # 0/unset caps are no-ops (default off).
+        _block = run_start_block_reason(
+            exclude_id=getattr(context.get('agent_run'), 'id', None) or run_id
+        )
         if _block:
             return self._fail(trace, run_id, context, _block)
 
@@ -172,7 +185,10 @@ class AgentRuntime:
 
             # Context compaction — keep `messages` under a soft token budget by
             # summarizing the oldest turns. No-op for short conversations.
-            messages = compact(messages, summarizer=self._summarize_history)
+            messages = compact(
+                messages,
+                summarizer=functools.partial(self._summarize_history, trace=trace, usage=usage),
+            )
 
             # Token-budget guard — abort before the provider call that would
             # cross the agent's cap (0 = unlimited). Tokens accumulate on the
@@ -205,8 +221,7 @@ class AgentRuntime:
             except Exception as e:  # noqa: BLE001 — provider failure aborts the run
                 return self._fail(trace, run_id, context, _humanise_provider_error(e))
 
-            trace.prompt_tokens += response.prompt_tokens
-            trace.completion_tokens += response.completion_tokens
+            self._count(response, trace, usage)
 
             # A degraded sentinel from the breaker/fallback-router is an
             # outage marker returned as response TEXT — never treat it as
@@ -290,11 +305,17 @@ class AgentRuntime:
         if tool is None:
             self._tool_back(trace, messages, tc, error=f'Unknown tool: {tc.name}')
             return
+        # One name from here on. The model may have answered with the
+        # provider-safe spelling (`catalog__update_product`); the trace, the
+        # audit trail, usage counts and approval requests use the tool's own, or
+        # an approval recorded under one spelling is looked up under the other.
+        # Only the message sent back to the model keeps the model's spelling.
+        name = tool.name
 
         try:
             enforce_policy(scopes=self.agent.scopes, required=tool.scopes)
         except ScopeDenied as e:
-            self._tool_back(trace, messages, tc, error=str(e))
+            self._tool_back(trace, messages, tc, error=str(e), name=name)
             return
 
         # Filter hook — handlers can transform arguments or veto by raising.
@@ -303,11 +324,11 @@ class AgentRuntime:
                 AgentEvents.TOOL_CALLING,
                 value=dict(tc.arguments or {}),
                 agent=self.agent.name,
-                tool=tc.name,
+                tool=name,
                 run_id=run_id,
             )
         except Exception as e:  # noqa: BLE001
-            self._tool_back(trace, messages, tc, error=f'tool_call_vetoed: {e}')
+            self._tool_back(trace, messages, tc, error=f'tool_call_vetoed: {e}', name=name)
             return
 
         # Approval gate — FAIL-CLOSED. Triggers whenever the tool (or agent)
@@ -341,22 +362,24 @@ class AgentRuntime:
                 try:
                     approved = bool(self._approval_check(tool, args))
                 except Exception as e:  # noqa: BLE001
-                    self._tool_back(trace, messages, tc, error=f'approval_check_failed: {e}')
+                    self._tool_back(
+                        trace, messages, tc, error=f'approval_check_failed: {e}', name=name
+                    )
                     return
                 if not approved:
                     trace.push(
                         TraceStep(
                             kind='tool_call',
-                            name=tc.name,
+                            name=name,
                             arguments=args,
                             metadata={'rejected': True},
                         )
                     )
-                    self._tool_back(trace, messages, tc, error='not_approved_by_user')
+                    self._tool_back(trace, messages, tc, error='not_approved_by_user', name=name)
                     hook_registry.fire(
                         AgentEvents.STEP_REJECTED,
                         agent=self.agent.name,
-                        tool=tc.name,
+                        tool=name,
                         run_id=run_id,
                         arguments=args,
                     )
@@ -365,23 +388,23 @@ class AgentRuntime:
                 trace.push(
                     TraceStep(
                         kind='tool_call',
-                        name=tc.name,
+                        name=name,
                         arguments=args,
                         metadata={'rejected': True, 'approval_required': True},
                     )
                 )
-                self._tool_back(trace, messages, tc, error='approval_required')
+                self._tool_back(trace, messages, tc, error='approval_required', name=name)
                 hook_registry.fire(
                     AgentEvents.STEP_APPROVAL_REQUIRED,
                     agent=self.agent.name,
-                    tool=tc.name,
+                    tool=name,
                     run_id=run_id,
                     arguments=args,
                     context=context,
                 )
                 return
 
-        trace.push(TraceStep(kind='tool_call', name=tc.name, arguments=args))
+        trace.push(TraceStep(kind='tool_call', name=name, arguments=args))
 
         try:
             result: ToolResult = tool.invoke(
@@ -392,11 +415,11 @@ class AgentRuntime:
                 customer=context.get('customer'),
             )
         except ToolError as e:
-            self._tool_back(trace, messages, tc, error=str(e))
+            self._tool_back(trace, messages, tc, error=str(e), name=name)
             hook_registry.fire(
                 AgentEvents.TOOL_FAILED,
                 agent=self.agent.name,
-                tool=tc.name,
+                tool=name,
                 run_id=run_id,
                 error=str(e),
             )
@@ -414,7 +437,7 @@ class AgentRuntime:
         trace.push(
             TraceStep(
                 kind='tool_result',
-                name=tc.name,
+                name=name,
                 output=result.output,
                 content=result.display,
                 metadata=result.metadata,
@@ -423,7 +446,7 @@ class AgentRuntime:
         hook_registry.fire(
             AgentEvents.TOOL_CALLED,
             agent=self.agent.name,
-            tool=tc.name,
+            tool=name,
             run_id=run_id,
             arguments=args,
             output=result.output,
@@ -436,8 +459,11 @@ class AgentRuntime:
         tc: LLMToolCall,
         *,
         error: str,
+        name: str = '',
     ) -> None:
-        """Send an error back to the LLM as a tool result so it can recover."""
+        """Send an error back to the LLM as a tool result so it can recover.
+        ``name`` is the tool's own name once it is known; the message to the
+        model keeps the spelling the model used."""
         body = json.dumps({'error': error})
         messages.append(
             LLMMessage(
@@ -450,7 +476,7 @@ class AgentRuntime:
         trace.push(
             TraceStep(
                 kind='tool_result',
-                name=tc.name,
+                name=name or tc.name,
                 output={'error': error},
                 content=error,
                 metadata={'failed': True},
@@ -483,9 +509,30 @@ class AgentRuntime:
         self._on_end(run_id, context, result)
         return result
 
-    def _summarize_history(self, transcript: str) -> str:
+    def _count(self, response, trace: AgentTrace | None, usage: RunUsage | None) -> None:
+        """Add one provider answer to the run's totals, under the model that
+        answered (the fallback router's secondary is not the store's model)."""
+        if trace is not None:
+            trace.prompt_tokens += response.prompt_tokens
+            trace.completion_tokens += response.completion_tokens
+        if usage is not None:
+            usage.add(
+                response.model or getattr(self.provider, 'model', '') or '',
+                response.prompt_tokens,
+                response.completion_tokens,
+            )
+
+    def _summarize_history(
+        self,
+        transcript: str,
+        *,
+        trace: AgentTrace | None = None,
+        usage: RunUsage | None = None,
+    ) -> str:
         """Provider-backed summarizer for context compaction. A terse, low-cost
-        call; on any failure the caller (`compact`) falls back to truncation."""
+        call; on any failure the caller (`compact`) falls back to truncation.
+        Its tokens are the run's: the call answers inside `run_scope()`, so the
+        provider guard records nothing for it."""
         with run_scope():
             resp = self.provider.respond(
                 messages=[
@@ -503,6 +550,7 @@ class AgentRuntime:
                 temperature=0.0,
                 max_tokens=300,
             )
+        self._count(resp, trace, usage)
         return resp.text or ''
 
     def _on_end(self, run_id: str, context: dict[str, Any], result: RunResult) -> None:

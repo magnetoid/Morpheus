@@ -6,6 +6,26 @@ first. If a version isn't listed, it shipped no breaking change to a surface in
 
 ---
 
+## v0.199.0 — a tool has one name in events, and the Worker has no server tools
+
+- **Agent events name a tool by its own name.** `TOOL_CALLING`, `TOOL_CALLED`, `TOOL_FAILED`,
+  `STEP_REJECTED` and `STEP_APPROVAL_REQUIRED` carried the spelling the model answered with, which
+  for most providers is the provider-safe one (`catalog__update_product`). They now always carry
+  the tool's registered name (`catalog.update_product`), as do `AgentStep.name` and the
+  `agents.decision` audit rows. A subscriber that matched on the `__` spelling must match on the
+  dotted name.
+- **The Worker is no longer offered the seven server tools** (`fs.list_dir`, `fs.read_file`,
+  `fs.search_files`, `logs.search`, `system.disk_usage`, `system.git_log`, `system.server_info`).
+  They stay Linda's in Developer mode. An automation, workflow or `invokeAgent` call that relied
+  on the Worker reading files or logs gets "Unknown tool".
+- **`agent_core.services._persist_step` is gone.** Steps and the end of a run are saved by
+  `core.agents.run_store` (`StepMirror`, `finish`, `fail`). `AgentRuntime.run()` takes an optional
+  `usage=RunUsage()` meter (`core/agents/usage.py`); a caller that keeps its own run row should
+  pass one and save through the run store, or a run that times out is recorded as free.
+- **`core.assistant.janus_engine` is split** into `janus_binary`, `janus_providers`, `janus_home`
+  and `janus_sessions`. Every name is still importable from `janus_engine`; a test that patches a
+  moved helper must patch it where it now lives.
+
 ## v0.198.0 — a Janus turn finishes on its own, and names its provider
 
 - **A store provider Janus has no name for is refused.** With Janus set to use the store's

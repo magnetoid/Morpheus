@@ -39,7 +39,7 @@ from core.assistant.tools.filesystem import ToolError, ToolResult, tool
 logger = logging.getLogger('morpheus.assistant.spawn')
 
 
-def _execute_worker_run(  # noqa: PLR0915
+def _execute_worker_run(
     *,
     run_id: str,
     objective: str,
@@ -57,15 +57,14 @@ def _execute_worker_run(  # noqa: PLR0915
     picks up the relevant skill preludes and the tool list narrows to
     the skill's tool set ∪ default tools.
     """
-    from django.db import DatabaseError
-    from django.utils import timezone
-
     from core.agents import (
         AgentRuntime,
         agent_registry,
         get_llm_provider,
+        run_store,
     )
-    from core.agents.models import AgentRun, AgentStep
+    from core.agents.models import AgentRun
+    from core.agents.usage import RunUsage
 
     try:
         run = AgentRun.objects.get(id=run_id)
@@ -75,10 +74,7 @@ def _execute_worker_run(  # noqa: PLR0915
 
     agent = agent_registry.get_agent('worker')
     if agent is None:
-        run.state = 'failed'
-        run.error = 'worker agent not registered'
-        run.ended_at = timezone.now()
-        run.save(update_fields=['state', 'error', 'ended_at'])
+        run_store.fail(run, 'worker agent not registered')
         return
 
     # Per-job skill narrowing — instantiate a fresh Worker so the
@@ -87,47 +83,14 @@ def _execute_worker_run(  # noqa: PLR0915
         agent = type(agent)()
         agent.uses_skills = tuple(skills)
 
-    seq = {'i': 0}
-
-    def _mirror(step) -> None:
-        seq['i'] += 1
-        try:
-            output = step.output
-            if output is not None and not isinstance(output, (dict, list, str, int, float, bool)):
-                output = str(output)
-            AgentStep.objects.create(
-                run=run,
-                seq=seq['i'],
-                kind=step.kind,
-                name=step.name,
-                content=(step.content or '')[:20_000],
-                arguments=step.arguments or {},
-                output={'value': output}
-                if output is not None and not isinstance(output, dict)
-                else (output or {}),
-                metadata=step.metadata or {},
-            )
-        except DatabaseError as e:  # noqa: BLE001
-            logger.warning('spawn: persist step failed: %s', e)
-        # Spawned Workers' tool calls must reach core.audit like every other
-        # AI decision — before this, only Linda's own runs (via agent_core's
-        # _persist_step) were audited and parallel Workers were invisible to
-        # the compliance trail. record_ai_decision never raises.
-        if step.kind == 'tool_result':
-            from core.audit.services import record_ai_decision
-
-            record_ai_decision(
-                agent=getattr(agent, 'name', '') or 'worker',
-                tool=step.name or '',
-                run_id=str(run.pk),
-                args=step.arguments or {},
-                output=output if isinstance(output, (dict, list, str, int, float, bool)) else '',
-                duration_ms=(step.metadata or {}).get('duration_ms'),
-                target=f'agent_run/{run.pk}',
-            )
+    # Steps, the audit trail and the end of the run are saved by the one module
+    # every run uses (core/agents/run_store.py). Spawned Workers' tool calls
+    # must reach core.audit like every other AI decision.
+    mirror = run_store.StepMirror(run, agent_name=getattr(agent, 'name', '') or 'worker')
+    usage = RunUsage()
 
     provider = get_llm_provider(agent.provider, model=agent.model or None)
-    runtime = AgentRuntime(agent, provider=provider, on_step=_mirror)
+    runtime = AgentRuntime(agent, provider=provider, on_step=mirror)
 
     started = time.monotonic()
     try:
@@ -136,39 +99,26 @@ def _execute_worker_run(  # noqa: PLR0915
             history=[],
             context={**(context or {}), 'spawned_by': 'linda'},
             run_id=str(run.id),
+            usage=usage,
         )
     except Exception as e:  # noqa: BLE001 — surface everything onto the row
         logger.error('spawn: worker run %s failed: %s', run_id, e, exc_info=True)
-        run.state = 'failed'
-        run.error = f'{type(e).__name__}: {e}'[:5_000]
-        run.duration_ms = int((time.monotonic() - started) * 1000)
-        run.ended_at = timezone.now()
-        run.save(update_fields=['state', 'error', 'duration_ms', 'ended_at'])
+        run_store.fail(
+            run,
+            f'{type(e).__name__}: {e}',
+            provider,
+            usage,
+            duration_ms=int((time.monotonic() - started) * 1000),
+        )
         return
 
-    run.state = result.state
-    run.final_text = (result.text or '')[:50_000]
-    run.error = (result.error or '')[:5_000]
-    run.tool_call_count = result.tool_calls
-    run.prompt_tokens = result.trace.prompt_tokens
-    run.completion_tokens = result.trace.completion_tokens
-    run.duration_ms = int((time.monotonic() - started) * 1000)
-    run.provider = provider.name
-    run.model = provider.model or ''
-    run.ended_at = timezone.now()
-    run.save(
-        update_fields=[
-            'state',
-            'final_text',
-            'error',
-            'tool_call_count',
-            'prompt_tokens',
-            'completion_tokens',
-            'duration_ms',
-            'provider',
-            'model',
-            'ended_at',
-        ]
+    run_store.finish(
+        run,
+        result,
+        provider,
+        usage,
+        duration_ms=int((time.monotonic() - started) * 1000),
+        audit_incomplete=mirror.incomplete,
     )
 
 
