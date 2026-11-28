@@ -15,8 +15,15 @@ view recording, search logging).
 # hooks intentionally swallow errors. Pre-existing idioms.
 # ruff: noqa: PLC0415, S110, I001
 
+import time
+
 from morpheus.core import events
 from morpheus.app import Plugin, SettingsPanel
+
+
+#: How old this process's copy of the settings may be when the embeddings switch
+#: is read (seconds); see `on_embeddings_api_key`.
+_EMBEDDINGS_SETTINGS_FRESH_S = 10.0
 
 
 class AIAssistantPlugin(Plugin):
@@ -248,6 +255,11 @@ class AIAssistantPlugin(Plugin):
         """The OpenAI key saved here, for core's embeddings (Linda's shop memory
         and knowledge base), once the merchant switched that on. Off, core keeps
         the environment's key, or none."""
+        # Each web and Celery worker keeps its own copy of the settings, and this
+        # switch decides whether requests are paid for: a copy older than the
+        # window is read again, so switching it off stops every worker.
+        if time.monotonic() - self._config_read_at >= _EMBEDDINGS_SETTINGS_FRESH_S:
+            self.invalidate_config_cache()
         if not self.get_config_value('embeddings_use_store_key', False):
             return value
         return (self.get_config_value('openai_api_key') or '').strip() or value
@@ -586,15 +598,16 @@ class AIAssistantPlugin(Plugin):
                     # It starts calls to the provider that the daily spend cap
                     # does not count, so the merchant switches it, not an agent.
                     'x-agent-writable': False,
-                    'title': 'Use the OpenAI key above for memory and knowledge search',
+                    # The AI settings page prints this title and description as
+                    # they are (admin_dashboard reads them from here).
+                    'title': 'Memory and knowledge search with the OpenAI key',
                     'description': (
-                        "Linda's shop memory and knowledge base are searched by meaning with "
-                        'OpenAI embeddings made with the OpenAI key saved here. Each saved note '
-                        'and each search is one small paid request, outside the daily spend '
-                        'cap. Off, only a key set on the server is used. After switching it '
-                        'on, run `manage.py backfill_memory_embeddings --all` and '
-                        '`manage.py rebuild_knowledge --all` once, so what was kept before is '
-                        'searchable too.'
+                        "Search Linda's shop memory and knowledge base by meaning, using the "
+                        'OpenAI key saved above. Each note and each search is a small paid '
+                        'request outside the daily spend cap. Off, only a key set on the '
+                        'server is used. What was saved before stays searchable by keyword '
+                        'until the server commands backfill_memory_embeddings --all and '
+                        'rebuild_knowledge --all are run once.'
                     ),
                 },
                 'enable_dynamic_pricing': {

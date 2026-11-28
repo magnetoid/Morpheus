@@ -354,6 +354,8 @@ was remembered before the second call had worked; Reject overwrote an applied pr
 update lock file was opened through a link; a refused redirect was left open, and a followed one
 would have carried a body or a credential to another host (only a plain GET follows now).
 
+From Codex's review of the pull request, both fixed in it: the embeddings switch was read from each process's own copy of the settings, so switching it off left other workers paying (it is read again after 10 s); and the switch was added to the list the dashboard shell hard-codes, so it showed with ai_assistant off (the page now takes an undeclared switch from the app's schema and shows none while the app is off). The six older switches are still named in the shell.
+
 Left as they are, from the same review:
 
 - `OpsProposal.apply()` still accepts a proposal that is only 'proposed'. The view always approves

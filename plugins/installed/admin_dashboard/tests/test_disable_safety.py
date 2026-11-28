@@ -142,6 +142,20 @@ class ShellNeverFiveHundredTests(TestCase):
             with self.subTest(url=url, state='enabled'):
                 self.assertIn(self.client.get(url).status_code, (200, 302))
 
+    def test_the_ai_feature_switches_leave_with_ai_assistant(self):
+        # The switches are ai_assistant's settings. Shown while it is off, they
+        # posted to that app's settings and changed nothing.
+        url = '/dashboard/settings/ai/'
+        r = self.client.get(url)
+        self.assertContains(r, 'name="enable_semantic_search"')
+        self.assertContains(r, 'name="embeddings_use_store_key"')
+        with disabled('ai_assistant'):
+            r = self.client.get(url)
+            self.assertEqual(r.status_code, 200)
+            self.assertNotContains(r, 'name="enable_semantic_search"')
+            self.assertNotContains(r, 'name="embeddings_use_store_key"')
+            self.assertNotContains(r, 'Save features')
+
     def test_ai_probe_is_json_503_when_ai_assistant_disabled(self):
         # A JSON endpoint keeps the data-ajax contract (JSON on failure too).
         url = '/dashboard/settings/ai/probe/'

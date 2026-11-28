@@ -51,3 +51,15 @@ class AISettingsDedupeTests(TestCase):
         r = self.c.get('/dashboard/settings/ai/')
         self.assertEqual(r.status_code, 200)
         self.assertContains(r, 'AI providers')
+
+    def test_a_switch_the_app_declares_is_shown_with_the_apps_own_words(self):
+        # The page's list names six switches; one the app adds to its schema
+        # (the embeddings key) needs no edit in the dashboard to appear.
+        from plugins.registry import app_registry
+
+        schema = app_registry.get('ai_assistant').get_config_schema()['properties']
+        prop = schema['embeddings_use_store_key']
+        r = self.c.get('/dashboard/settings/ai/')
+        self.assertContains(r, 'name="embeddings_use_store_key"')
+        self.assertContains(r, prop['title'])
+        self.assertContains(r, 'Semantic search')  # the listed ones keep their words
