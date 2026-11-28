@@ -234,10 +234,9 @@ def process_outbox(self) -> None:
     """
     Drain pending OutboxEvent rows into NATS JetStream.
 
-    A row is locked with `SELECT ... FOR UPDATE SKIP LOCKED` so multiple
-    workers can run concurrently without double-publishing. Each event is
-    handled in its own transaction so a single failure does not roll back
-    successfully published siblings.
+    Each row is locked (`SELECT ... FOR UPDATE SKIP LOCKED`) in the transaction
+    that publishes it, so workers can run together without publishing a row
+    twice, and one failure does not roll back the rows already published.
 
     No-ops when NATS is not configured for this deployment (see
     `_nats_configured`) so the beat schedule doesn't error-spam a NATS-less prod.
@@ -250,15 +249,24 @@ def process_outbox(self) -> None:
 
     from core.models import OutboxEvent
 
-    with transaction.atomic():
-        events = list(
-            OutboxEvent.objects.select_for_update(skip_locked=True)
-            .filter(status='PENDING')
-            .order_by('created_at')[:100]
-        )
-
-    for event in events:
-        _process_outbox_event(event)
+    pending = list(
+        OutboxEvent.objects.filter(status='PENDING')
+        .order_by('created_at')
+        .values_list('pk', flat=True)[:100]
+    )
+    for pk in pending:
+        # The lock and the publish share one transaction. A lock taken for the
+        # whole batch was released before the first publish, so two drains
+        # running together both published every row. Under the lock the row is
+        # read again: another drain may have published it since the list was read.
+        with transaction.atomic():
+            event = (
+                OutboxEvent.objects.select_for_update(skip_locked=True)
+                .filter(pk=pk, status='PENDING')
+                .first()
+            )
+            if event is not None:
+                _process_outbox_event(event)
 
 
 # ── Async hook handler dispatch ───────────────────────────────────────────────
@@ -275,47 +283,28 @@ def run_hook_handler_async(self, event: str, handler_path: str, kwargs: dict) ->
     """Re-invoke a hook handler from a Celery worker.
 
     Used by HookRegistry when a handler was registered with mode='async'.
-    Resolves the handler from its dotted import path so we don't have to
-    pickle the callable, and invokes it with the serialised kwargs.
+    Finds the handler by name among this worker's own subscriptions, so the
+    callable is never pickled, and invokes it with the serialised kwargs.
 
     Failures here are NOT re-raised by default — async hook handlers that
     fail get a structured log line and a retry. After max_retries the
     event is dropped (we don't want stuck handlers to block the queue).
     Surfaced to the merchant via the existing observability error log.
     """
-    import importlib
+    from core.hooks import hook_registry
 
-    module_path, _, attr_name = handler_path.rpartition('.')
-    if not module_path or not attr_name:
-        logger.error('async hook: malformed handler path %s', handler_path)
-        return
-
-    # Walk through dotted attr lookups so `module.Class.method` works.
-    try:
-        mod = importlib.import_module(
-            module_path.split('.', 1)[0]
-            if '.' not in module_path
-            else module_path.rsplit('.', 1)[0]
-            if False
-            else module_path
+    # The handler is looked up in this worker's own registry, which holds the
+    # same subscriptions as the process that fired the event. Importing it by
+    # its dotted path never worked: the path was walked from the wrong module,
+    # and an app's handler is a bound method, which a path cannot name.
+    target = hook_registry.async_handler(event, handler_path)
+    if target is None:
+        logger.error(
+            'async hook: %s is not subscribed to %s in this worker (or its app is off)',
+            handler_path,
+            event,
         )
-    except Exception as exc:  # noqa: BLE001
-        # Handle qualnames like 'pkg.mod.Class.method' — split on the last dot
-        # of the module path, treat the remainder as attribute chain.
-        try:
-            mod_chain, _, tail = handler_path.rpartition('.')
-            mod = importlib.import_module(mod_chain.rsplit('.', 1)[0])
-        except Exception:  # noqa: BLE001
-            logger.error('async hook: cannot import module for %s: %s', handler_path, exc)
-            return
-
-    # Resolve the handler — walk dotted attrs to support nested methods.
-    target = mod
-    for part in handler_path.split('.')[1:]:
-        target = getattr(target, part, None)
-        if target is None:
-            logger.error('async hook: cannot resolve %s on %s', part, handler_path)
-            return
+        return
 
     try:
         target(**(kwargs or {}))

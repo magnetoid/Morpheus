@@ -423,3 +423,121 @@ class ReasoningRetryTests(SimpleTestCase):
             messages=[LLMMessage(role='user', content='reasoning-retry-loop')], max_tokens=1024
         )
         self.assertEqual((resp.text, len(p._calls)), ('', 2))
+
+
+class NewerParamsTests(SimpleTestCase):
+    """OpenAI's reasoning models (the o-series, GPT-5) refuse ``max_tokens`` and a
+    set ``temperature`` with a 400. The provider always sent both, so every call
+    to such a model failed. It now asks again the way the model wants and
+    remembers the model (v0.200.0)."""
+
+    class _Refusal(Exception):  # noqa: N818 — stands in for openai.BadRequestError
+        status_code = 400
+        param = 'max_tokens'
+
+        def __str__(self):
+            return (
+                "Unsupported parameter: 'max_tokens' is not supported with this model. "
+                "Use 'max_completion_tokens' instead."
+            )
+
+    def setUp(self):
+        from core.agents import llm
+
+        before = set(llm._NEWER_PARAMS)
+        self.addCleanup(lambda: (llm._NEWER_PARAMS.clear(), llm._NEWER_PARAMS.update(before)))
+
+    def _provider(self, model, refuses=True):
+        completion = SimpleNamespace(
+            choices=[
+                SimpleNamespace(
+                    message=SimpleNamespace(content='ok', tool_calls=[]), finish_reason='stop'
+                )
+            ],
+            usage=SimpleNamespace(prompt_tokens=5, completion_tokens=7),
+        )
+        calls = []
+
+        def create(**kw):
+            calls.append(kw)
+            if refuses and ('max_tokens' in kw or 'temperature' in kw):
+                raise self._Refusal()
+            return completion
+
+        p = OpenAIProvider.__new__(OpenAIProvider)
+        p.model = model
+        p._client = SimpleNamespace(
+            chat=SimpleNamespace(completions=SimpleNamespace(create=create))
+        )
+        return p, calls
+
+    def _ask(self, provider, text):
+        return provider.respond(messages=[LLMMessage(role='user', content=text)], max_tokens=900)
+
+    def test_a_model_that_refuses_max_tokens_is_asked_again_the_newer_way(self):
+        p, calls = self._provider('o4-mini-newer-a')
+        self.assertEqual(self._ask(p, 'newer-params-a').text, 'ok')
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(calls[1]['max_completion_tokens'], 900)
+        self.assertNotIn('max_tokens', calls[1])
+        self.assertNotIn('temperature', calls[1])
+
+    def test_the_model_is_remembered_so_the_refusal_costs_one_call(self):
+        p, calls = self._provider('o4-mini-newer-b')
+        self._ask(p, 'newer-params-b1')
+        self._ask(p, 'newer-params-b2')
+        self.assertEqual(len(calls), 3)
+        self.assertIn('max_completion_tokens', calls[2])
+
+    def test_a_model_that_takes_the_older_parameters_keeps_them(self):
+        p, calls = self._provider('gpt-4o-mini-older', refuses=False)
+        self._ask(p, 'newer-params-c')
+        self.assertEqual(len(calls), 1)
+        self.assertEqual((calls[0]['max_tokens'], calls[0]['temperature']), (900, 0.3))
+
+    def test_any_other_error_is_raised_as_it_is(self):
+        p, calls = self._provider('gpt-4o-mini-other', refuses=False)
+
+        def create(**kw):
+            calls.append(kw)
+            raise RuntimeError('rate limited')
+
+        p._client.chat.completions.create = create
+        with self.assertRaises(RuntimeError):
+            p._create({'model': p.model, 'messages': [], 'max_tokens': 5})
+        self.assertEqual(len(calls), 1)
+
+    def test_a_400_about_the_value_is_not_that_refusal(self):
+        # "max_tokens is too large" names the parameter and is about its value.
+        class TooLarge(Exception):  # noqa: N818
+            status_code = 400
+            param = 'max_tokens'
+
+            def __str__(self):
+                return 'max_tokens is too large: 64000. This model supports at most 16384.'
+
+        p, calls = self._provider('gpt-4o-mini-too-large', refuses=False)
+
+        def create(**kw):
+            calls.append(kw)
+            raise TooLarge()
+
+        p._client.chat.completions.create = create
+        with self.assertRaises(TooLarge):
+            self._ask(p, 'newer-params-d')
+        self.assertEqual(len(calls), 1)
+
+    def test_a_model_is_remembered_only_once_the_newer_way_worked(self):
+        from core.agents import llm
+
+        p, calls = self._provider('o4-mini-newer-e')
+
+        def create(**kw):
+            calls.append(kw)
+            raise self._Refusal() if 'max_tokens' in kw else RuntimeError('provider is down')
+
+        p._client.chat.completions.create = create
+        with self.assertRaises(RuntimeError):
+            p._create({'model': p.model, 'messages': [], 'max_tokens': 5, 'temperature': 0.3})
+        self.assertEqual(len(calls), 2)
+        self.assertNotIn(('OpenAIProvider', 'o4-mini-newer-e'), llm._NEWER_PARAMS)

@@ -105,18 +105,12 @@ class Command(BaseCommand):
         out = workdir / 'db.dump'
 
         if 'postgres' in engine or 'postgis' in engine or 'psycopg' in engine:
-            cmd = ['pg_dump', '--no-owner', '--no-acl', '-Fc', '-f', str(out)]
-            env = os.environ.copy()
-            if db.get('HOST'):
-                cmd.extend(['-h', db['HOST']])
-            if db.get('PORT'):
-                cmd.extend(['-p', str(db['PORT'])])
-            if db.get('USER'):
-                cmd.extend(['-U', db['USER']])
+            from core.restore import pg_connection
+
+            args, env = pg_connection(db)
+            cmd = ['pg_dump', '--no-owner', '--no-acl', '-Fc', '-f', str(out), *args]
             if db.get('NAME'):
                 cmd.append(db['NAME'])
-            if db.get('PASSWORD'):
-                env['PGPASSWORD'] = db['PASSWORD']
             self.stdout.write(f'  pg_dump → {out.name}')
             subprocess.run(cmd, check=True, env=env)  # noqa: S603
         elif 'sqlite' in engine:

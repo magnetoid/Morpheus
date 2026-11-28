@@ -70,6 +70,7 @@ from core.assistant.janus_home import (  # noqa: F401
     MAX_TOOL_TURNS,
     MCP_SERVER_NAME,
     STORE_SKILLS_DIR,
+    NoPublicAddress,
     _config_text,
     _copy_skill_tree,
     _default_host,
@@ -276,6 +277,14 @@ def run_janus_turn(**kwargs: Any) -> dict[str, Any]:
     return {'text': '', 'error': 'janus turn produced no result', 'duration_ms': 0}
 
 
+def _cannot_start(problem: Exception) -> str:
+    """The error a turn ends with when it cannot start: no way to run the store's
+    provider, or no address to reach the store's tools by."""
+    if isinstance(problem, NoPublicAddress):
+        return f'janus cannot reach the store: {problem}'
+    return f'janus cannot run on {problem}'
+
+
 def iter_janus_turn(
     *,
     message: str,
@@ -318,8 +327,9 @@ def iter_janus_turn(
     try:
         # The model picked for this message (validated in _provider_wiring).
         provider_args, provider_env = _provider_wiring(str((context or {}).get('provider') or ''))
-    except UnsupportedProvider as e:
-        yield {'text': '', 'error': f'janus cannot run on {e}', 'duration_ms': 0, 'build': build}
+        mcp_url, mcp_headers = _mcp_endpoint(context)
+    except (UnsupportedProvider, NoPublicAddress) as e:
+        yield {'text': '', 'error': _cannot_start(e), 'duration_ms': 0, 'build': build}
         return
     try:
         conv_home, lock = _open_home(conversation_key)
@@ -344,7 +354,6 @@ def iter_janus_turn(
         }
         return
     with lock:
-        mcp_url, mcp_headers = _mcp_endpoint(context)
         # The backups Janus may switch to when the turn's provider fails.
         fallbacks, fallback_env = _fallback_wiring(provider_env)
         learning = learns(conversation_key)

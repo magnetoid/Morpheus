@@ -160,7 +160,7 @@ def updates_apply(request: HttpRequest) -> HttpResponse:
         messages.error(
             request, result.get('reason') or 'Update failed — rolled back to the prior version.'
         )
-    elif status in ('diverged', 'apply_failed'):
+    elif status in ('diverged', 'apply_failed', 'backup_failed'):
         messages.error(request, result.get('reason') or 'Update could not be applied.')
     elif status == 'deps_changed':
         messages.error(

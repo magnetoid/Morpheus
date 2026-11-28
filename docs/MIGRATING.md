@@ -6,6 +6,44 @@ first. If a version isn't listed, it shipped no breaking change to a surface in
 
 ---
 
+## v0.200.0 — tokens lose `run_python`, and an update needs its backup
+
+- **An API token is no longer offered `run_python`.** Its script could call every read tool in
+  the catalogue whatever the token's scopes, so a token holding only `system.read` read orders,
+  customers and the shop memory through it. `tools/list` leaves it out for a token and
+  `tools/call` answers "not exposed". A client that used it makes the same calls itself, with
+  the scopes they need. Linda keeps it in Developer mode.
+- **A self-update stops when its backup fails.** `apply_platform_update` and
+  `apply_component_update` answer `backup_failed` and change nothing; they used to note the
+  failure and migrate anyway. Pass `allow_without_backup=True` (CLI `--allow-without-backup`) to
+  update without one on purpose. A second apply on the same install answers `busy` while the
+  first runs.
+- **A staged proposal is approved by someone whose role allows the change**, while the store
+  enforces roles: `OpsProposal.approve()` raises `PermissionError` for a staff member without the
+  write capability of the app the proposal changes (`capabilities_needed()`). In "log only" it
+  records the would-be denial and lets it through, like the dashboard. Approving twice raises
+  `ValueError` the second time, and `reject()` (new) leaves a proposal that is no longer
+  'proposed' as it is.
+- **`i18n.translate_product` refuses a translation nobody would see**: the store's own language,
+  or one the store does not have. `translation_problem()` also refuses an object its owner leaves
+  out (`applies`), which it ignored.
+- **`core.embeddings`**: a caller that keeps a vector, or ranks kept ones, uses
+  `embed_comparable()`, which answers `None` while the provider cannot (store nothing, rank by
+  keyword). `embed()` is unchanged. The OpenAI key comes from the environment, and from
+  Settings → AI only while ai_assistant's `embeddings_use_store_key` is on (the
+  `EMBEDDINGS_API_KEY` filter).
+- **`core.net.outbound_request(max_redirects=N)`** follows up to N redirects, each checked like
+  the first address, and only for a plain GET (a body, headers or a credential would go to every
+  hop). The default is still none. catalog's `_download` goes through it, so a
+  product file named by URL may redirect at most three times, to https public addresses only;
+  `catalog.services._helpers._is_safe_remote_host` is gone.
+- **A handler registered with `mode='async'` now runs.** It never did. It gets the event's
+  arguments as JSON (a model instance as `{'id', 'model', …}`), so an out-of-tree handler that
+  was registered async and written for objects must read the row by its id.
+  `Plugin.register_hook` takes `mode`.
+- **`core.restore._pg_connection` is `pg_connection`**, and it passes the database's TLS options
+  (`sslmode`, `sslrootcert`, …) to `pg_dump` and `psql`.
+
 ## v0.199.0 — a tool has one name in events, and the Worker has no server tools
 
 - **Agent events name a tool by its own name.** `TOOL_CALLING`, `TOOL_CALLED`, `TOOL_FAILED`,

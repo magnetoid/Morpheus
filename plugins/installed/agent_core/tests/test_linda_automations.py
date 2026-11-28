@@ -16,7 +16,7 @@ from zoneinfo import ZoneInfo
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.utils import timezone
 
 from core.assistant.models import AssistantConversation
@@ -151,3 +151,19 @@ class PublicMcpEndpointTests(TestCase):
             url, headers = eng._mcp_endpoint({'mcp_public': True})
         self.assertEqual(url, 'https://shop.example/mcp/admin/v1/')
         self.assertEqual(headers, {})
+
+    @override_settings(ALLOWED_HOSTS=['*'], SITE_BASE_URL='https://shop.example/')
+    def test_the_site_address_stands_in_when_no_host_is_named(self):
+        from core.assistant import janus_engine as eng
+
+        url, _headers = eng._mcp_endpoint({'mcp_public': True})
+        self.assertEqual(url, 'https://shop.example/mcp/admin/v1/')
+
+    @override_settings(ALLOWED_HOSTS=['*', 'localhost'], SITE_BASE_URL='')
+    def test_a_store_with_no_address_gets_a_reason_not_a_hostless_url(self):
+        # It used to answer `https:///mcp/admin/v1/`: the turn started with no
+        # tools and nothing said why.
+        from core.assistant import janus_engine as eng
+
+        with self.assertRaises(eng.NoPublicAddress):
+            eng._mcp_endpoint({'mcp_public': True})

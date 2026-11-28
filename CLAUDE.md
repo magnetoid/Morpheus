@@ -98,6 +98,13 @@ itself. A capability Janus cannot reach is half-built, and since v0.182.0 CI say
 on one its module's `AGENT_TOOLS` does not map to a registered tool or to
 `'none: <reason>'` (the convention below).
 
+**Self-improvement is Janus's to run; Morpheus shows the results (owner rule, 2026-11-28).** The
+nightly loop in `core/self_improvement/` (collectors, analyzer, healers) is not extended or polished
+in place: the scans and fixes that matter to a store are to come as Janus skills and tools, which
+arrive with Janus and with each app, and the dashboard keeps only the pages that display what was
+found and done. Until that move is designed (`docs/plans/core-refactor-debug-2026-11.md`, "Direction
+for self-improvement"), fix there only what breaks a store, and add no collector, policy or healer.
+
 Examples (this is what's already shipped — mirror the pattern):
 
 - Reviews, loyalty, markets, notifications, workflows, metafields, media,
@@ -589,7 +596,11 @@ tool that *does* stage but forgets the flag just double-gates (fails safe, but b
 the staged-routine UX). Guarded by `core/agents/tests/test_staged_gate.py`.
 **Linda enforces the same contract** — `core/assistant/gates.py:gate_reason`
 mirrors the Worker's chain (scope → budget → deadline → approval), so the
-`supports_staging` rule above applies identically to her.
+`supports_staging` rule above applies identically to her. A staged proposal is approved by a staff member whose role allows the
+change (`OpsProposal.capabilities_needed`, asked through `core.authz.check`, so it denies only
+while roles are enforced), and `approve()` swaps the status in the database: of two clicks only
+one goes on to apply (v0.200.0; the second used to find every change drifted and overwrite
+`applied` with `failed`), and `reject()` leaves a proposal that is no longer 'proposed' as it is.
 
 **Landmine — an LLM-supplied argument is NOT consent.** Linda's write tools take
 `confirmed=True` (+ `hard_gate_ack`/`echo` on the destructive tier), and their
@@ -948,7 +959,7 @@ that destroys or creates value must carry the flag: `loyalty.adjust_points` (on 
 `reviews.delete` and `subscriptions.cancel` did not until v0.124.0, and the shop memory's writes
 were open to any token (now `gates.NOT_FOR_TOKENS`). The Worker's four `delegate.*` tools joined
 that set in v0.197.0: the Worker holds every merchant scope and runs the job it is handed, so a
-token with `system.write` could make changes its own scopes forbid. **Never close a token gap by flagging an
+token with `system.write` could make changes its own scopes forbid. `run_python` joined it in v0.200.0: its script bridge checks no scope for a caller that is not an agent run, so a token holding only `system.read` read orders, customers and the shop memory through it. **Never close a token gap by flagging an
 everyday write:** the Worker cannot resume an approved call (a spawned Worker has no run to
 attach one to), so a flagged `catalog.update_product` would silently stop every bulk job Linda
 hands to Workers. Guarded by `agent_mcp/tests/test_token_writes.py`. `janus.chat` must be listed explicitly (the wildcard does not confer it, like
@@ -1069,9 +1080,9 @@ gateways already confirm directly, so the day anyone fired the event it would
 re-run a `source='pending'` transition and raise on every confirmed order. When
 adding an event, wire **both ends** in the same change, and when you find a
 never-fired event, decide deliberately — fire it or delete the subscriber, never
-leave it armed. `grep -rn EVENT_NAME | grep -c fire` is the cheap check.
+leave it armed. `grep -rn EVENT_NAME | grep -c fire` is the cheap check. The same goes for a mode nothing uses: a handler registered with `mode='async'` never ran until v0.200.0 (the Celery task looked it up by a dotted path it walked from the wrong module, and nothing in the tree registered one). The worker now finds the handler in its own registry, so an app's bound method works, and it gets the event's arguments as JSON.
 
-**Convention — one webhook trigger (v0.113.0).** Core's `_dispatch_remote` decides when (after commit) and to whom (an endpoint's events, or `'*'`); the delivery goes through the `WEBHOOK_DELIVER` filter, which webhooks_ui answers (log, retries, dead-letter, replay), and core posts itself when nothing answers. webhooks_ui used to subscribe its own fan-out as well, so an endpoint got two POSTs in two shapes, one of them before commit. Never add a second subscriber that posts. The staff-entered URLs the server posts to or imports from (webhook endpoints, the workflow action, the OpenAI feed push, the importers) go through `core.net.outbound_request` (public hosts, no redirects); AI provider base URLs do not (a local Ollama is private by design). The check refuses a backslash, a space or a control character in the address's host part (v0.197.0): `http://127.0.0.1:8000\@example.com/` read as example.com to `urlparse` and as 127.0.0.1 to `requests`, so the check passed one host and the call reached the other. It also refuses the carrier-NAT range (100.64.0.0/10). Guarded by `webhooks_ui/tests/test_one_trigger.py` and `core/tests/test_outbound_request.py`.
+**Convention — one webhook trigger (v0.113.0).** Core's `_dispatch_remote` decides when (after commit) and to whom (an endpoint's events, or `'*'`); the delivery goes through the `WEBHOOK_DELIVER` filter, which webhooks_ui answers (log, retries, dead-letter, replay), and core posts itself when nothing answers. webhooks_ui used to subscribe its own fan-out as well, so an endpoint got two POSTs in two shapes, one of them before commit. Never add a second subscriber that posts. The staff-entered URLs the server posts to or imports from (webhook endpoints, the workflow action, the OpenAI feed push, the importers) go through `core.net.outbound_request` (public hosts, no redirects); AI provider base URLs do not (a local Ollama is private by design). The check refuses a backslash, a space or a control character in the address's host part (v0.197.0): `http://127.0.0.1:8000\@example.com/` read as example.com to `urlparse` and as 127.0.0.1 to `requests`, so the check passed one host and the call reached the other. It also refuses the carrier-NAT range (100.64.0.0/10). A download that may redirect passes `max_redirects` (a plain GET only: whatever is sent goes to every hop), and each hop is then checked like the first address: catalog's `_download` (a product file named by URL) does since v0.200.0, when it stopped checking the first host by name and letting `requests` follow redirects on its own. Guarded by `webhooks_ui/tests/test_one_trigger.py` and `core/tests/test_outbound_request.py`.
 
 **Convention — a public form asks the bot check (v0.145.0).** A form a visitor can post without an account carries `{% bot_check "<kind>" %}` before its `</form>`, and its view calls `core.bot_check.passes(request, kind)` before it writes, emails or signs anyone in. Kinds: `contact` (contact, CMS forms, Do not sell), `newsletter`, `sign_in` (allauth's sign-in, sign-up and password reset, wrapped in `morph/urls.py` under their own names, plus the emailed code) and `affiliates`. The Cloudflare app answers with Turnstile for each kind its settings switch on, once both keys are set; with no answer every form passes. A script that posts a form with `fetch` sends the whole form and resets the widget after each answer (a token works once). The checkout asks for none (owner, 2026-11-08). The answer is checked as Cloudflare's Turnstile Spin wires siteverify (`cloudflare/services.py:verify_turnstile`): `success`, the widget's `action` (`turnstile_action(kind)`, rendered and checked from one function), a `hostname` the store answers on (a Spin widget allows localhost and 127.0.0.1, which production refuses), a token of at most 2,048 characters, fail closed when siteverify does not answer. Reading `success` alone let a token solved on any site sharing the widget, or for another form, pass. Guarded by `core/tests/test_bot_check.py` (every protected form in every theme carries its tag) and `cloudflare/tests/test_turnstile_forms.py`.
 
@@ -1726,7 +1737,7 @@ go through `ai_assistant`'s provider gateway, which ran with the switch off and 
 check (raises `AIPaused`, a message fit for the merchant; the run cap is skipped — a click is not
 a run), and the app reports its `AIInteraction` usage to the cap through the `AI_USAGE_TODAY`
 filter, so core never imports the app. A new way to call a model goes through that gateway or
-the agent runtime, never a raw provider. (5) **The provider class is guarded too (v0.113.0):** `core.agents.llm.LLMProvider.__init_subclass__` wraps every `respond` (`guardrails.guard_model_call`) — six callers reached a model there directly. A refusal raises `guardrails.AIPaused`; a call outside the runtime's own `run_scope()` is recorded in `ModelUsageDay`, which `daily_spend_usd` adds, so a tool that calls a model inside a run is counted while the runtime's own calls are neither re-checked nor re-counted (the loop's tokens are stored on the `AgentRun`). Embeddings and text-to-speech obey the kill switch. (6) **A run's tokens come from its meter, and one module saves a run (v0.199.0).** The runtime adds every provider answer to the caller's `RunUsage` (`core/agents/usage.py`), the compaction summary included, and `core/agents/run_store.py` writes the steps and the end of the run for `run_agent` and the spawned Worker, also when the run timed out or raised: a row closed with no tokens and no model counted as free, and the thread a timeout leaves behind writes its last tokens when it ends. A run the fallback router's secondary answered keeps the split in `metadata['usage_by_model']` and each share is priced by its own model; a run with no row (the daily briefing) is counted in `ModelUsageDay`. A new caller of `AgentRuntime.run` passes a meter and saves through the run store. After the tool lookup the runtime uses the tool's own name for the trace, the audit trail, the events and the approval request (the model's `catalog__update_product` spelling made an approval unfindable); only the message back to the model keeps the model's spelling. The Worker is never offered `gates.DEVELOPER_TOOLS`: any staff member can start one. Guarded by `core/agents/tests/test_provider_guard.py` +
+the agent runtime, never a raw provider. (5) **The provider class is guarded too (v0.113.0):** `core.agents.llm.LLMProvider.__init_subclass__` wraps every `respond` (`guardrails.guard_model_call`) — six callers reached a model there directly. A refusal raises `guardrails.AIPaused`; a call outside the runtime's own `run_scope()` is recorded in `ModelUsageDay`, which `daily_spend_usd` adds, so a tool that calls a model inside a run is counted while the runtime's own calls are neither re-checked nor re-counted (the loop's tokens are stored on the `AgentRun`). Embeddings and text-to-speech obey the kill switch. A caller that keeps a vector, or ranks kept ones, uses `core.embeddings.embed_comparable` (v0.200.0): it answers None while the provider cannot, because a hash vector stored among the provider's matches nothing by meaning for good. The OpenAI key is the environment's, and the one saved under Settings → AI only while ai_assistant's `embeddings_use_store_key` is on (the `EMBEDDINGS_API_KEY` filter). The app reads that switch again once its copy is older than 10 s, so switching it off stops every web and Celery worker, and the AI settings page shows a switch the app declares from the app's own schema, only while the app is on (the page's hard-coded list had the new switch in it, so it outlived a disable). (6) **A run's tokens come from its meter, and one module saves a run (v0.199.0).** The runtime adds every provider answer to the caller's `RunUsage` (`core/agents/usage.py`), the compaction summary included, and `core/agents/run_store.py` writes the steps and the end of the run for `run_agent` and the spawned Worker, also when the run timed out or raised: a row closed with no tokens and no model counted as free, and the thread a timeout leaves behind writes its last tokens when it ends. A run the fallback router's secondary answered keeps the split in `metadata['usage_by_model']` and each share is priced by its own model; a run with no row (the daily briefing) is counted in `ModelUsageDay`. A new caller of `AgentRuntime.run` passes a meter and saves through the run store. After the tool lookup the runtime uses the tool's own name for the trace, the audit trail, the events and the approval request (the model's `catalog__update_product` spelling made an approval unfindable); only the message back to the model keeps the model's spelling. The Worker is never offered `gates.DEVELOPER_TOOLS`: any staff member can start one. Guarded by `core/agents/tests/test_provider_guard.py` +
 `core/agents/tests/test_guardrails.py` + `test_run_usage.py` + `test_run_store.py` + `test_worker_tools.py` +
 `agent_core/tests/test_run_spend.py` +
 `catalog/tests/test_price_cap.py` + `orders/tests/test_refund_cap.py`.
@@ -1741,7 +1752,7 @@ the agent runtime, never a raw provider. (5) **The provider class is guarded too
 returns the unconfigured mock — the dashboard shows *"No AI provider selected"*
 even though the provider is offered in Settings (this shipped for apikey.fun:
 config + enum existed, the class did not). Add the resolution test alongside
-(`core/agents/tests/test_llm.py::ProviderResolutionTests`).
+(`core/agents/tests/test_llm.py::ProviderResolutionTests`). Both stacks (this one and ai_assistant's gateway) send a Chat Completions call through `core.agents.llm.chat_completion` (v0.200.0): a model that refuses `max_tokens` or a set `temperature` (OpenAI's o-series and GPT-5) is asked again with `max_completion_tokens`, and remembered once that worked.
 
 **Convention — a discount applies where it says, and the code box says why not (v0.150.0).**
 The cart's discount step is promotions' `on_cart_breakdown` (priority 10): the coupon first, then the
@@ -2656,6 +2667,10 @@ container's `run_migrations` runs `manage.py safe_migrate`, not `migrate`:
   (v0.197.0): those folders are served to anyone, and the backups app's folder
   is a setting staff can edit. It also refuses a database it cannot dump, where
   it used to write an archive without one and exit 0.
+- The self-updater obeys the same rule since v0.200.0: `apply_platform_update` and
+  `apply_component_update` answer `backup_failed` and change nothing (they noted the
+  failure and migrated anyway), `busy` while another apply runs, and `pg_dump` and
+  `psql` get the database's TLS options (`core.restore.pg_connection`).
 
 It is one process on purpose: each `manage.py` start costs about 3 s of every
 deploy's 503. A restart of the same container skips the backup (a marker in

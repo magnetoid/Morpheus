@@ -7,7 +7,8 @@ floats so the rest of the system never has to know which backend was used.
 When no provider is configured (CI, local dev with no keys), falls back
 to a deterministic hash-based embedding so the rest of the pipeline
 still works. This is INTENTIONAL — callers can test the full retrieval
-flow without paying for tokens.
+flow without paying for tokens. A caller that keeps vectors goes through
+``embed_comparable``, so a store with a provider never keeps a hash vector.
 
 Lives in `core` (not `ai_assistant`) because agent-layer code, semantic
 search, RAG, and recommendations all need it independently of the AI
@@ -33,58 +34,83 @@ def _hash_embedding(text: str) -> list[float]:
     return [(b - 128) / 128.0 for b in raw]
 
 
+def _api_key() -> str:
+    """The OpenAI key embeddings are made with, or '' for none.
+
+    The environment's key, while the environment names OpenAI as the provider.
+    The key a merchant saved under Settings → AI is used only once they switch
+    that on (ai_assistant answers ``EMBEDDINGS_API_KEY``), because it starts
+    provider spend. Until v0.200.0 the store's key was looked up through a
+    registry method that does not exist, so it was never used.
+    """
+    provider = getattr(settings, 'AI_PROVIDER', 'openai')
+    key = (getattr(settings, 'OPENAI_API_KEY', '') or '') if provider == 'openai' else ''
+    try:
+        from core.hooks import MorpheusEvents, hook_registry
+
+        answer = hook_registry.filter(MorpheusEvents.EMBEDDINGS_API_KEY, key)
+    except Exception:  # noqa: BLE001 — the bus must never cost a turn its recall
+        return key
+    return answer if isinstance(answer, str) else key
+
+
+def provider_embedding(text: str) -> list[float] | None:
+    """The provider's vector for ``text``. None when there is no key, AI is
+    switched off, or the call failed."""
+    text = (text or '').strip()
+    api_key = _api_key()
+    if not text or not api_key:
+        return None
+    from core.agents.guardrails import agents_paused
+
+    if agents_paused():
+        return None
+    model = getattr(settings, 'AI_EMBEDDING_MODEL', 'text-embedding-3-small')
+    try:
+        from openai import OpenAI
+
+        # Bound the request-path cost: this runs inline on chat/RAG/recall
+        # turns, and the SDK default (600s timeout + 2 retries) can stall a
+        # turn far past the 30s worker budget when the endpoint hangs
+        # (audit H3).
+        client = OpenAI(api_key=api_key, timeout=10.0, max_retries=0)
+        # Pin the output dimension so the OpenAI path honours the module's
+        # fixed-dimension contract (text-embedding-3-* default to 1536).
+        resp = client.embeddings.create(model=model, input=text, dimensions=EMBEDDING_DIM)
+        vec = list(resp.data[0].embedding)
+        if len(vec) == EMBEDDING_DIM:
+            return vec
+        logger.warning('OpenAI embed returned %d dims (expected %d)', len(vec), EMBEDDING_DIM)
+    except Exception as e:  # noqa: BLE001
+        logger.warning('OpenAI embed failed (%s)', e)
+    return None
+
+
 def embed(text: str) -> list[float]:
+    """A vector for ``text``, always: the provider's, else the hash vector
+    (no provider, AI switched off, a failed call). To keep a vector, or to rank
+    kept ones, use ``embed_comparable``."""
     text = (text or '').strip()
     if not text:
         return [0.0] * EMBEDDING_DIM
+    vec = provider_embedding(text)
+    return vec if vec is not None else _hash_embedding(text)
 
-    provider = getattr(settings, 'AI_PROVIDER', 'openai')
-    model = getattr(settings, 'AI_EMBEDDING_MODEL', 'text-embedding-3-small')
 
-    if provider == 'openai' and getattr(settings, 'OPENAI_API_KEY', ''):
-        from core.agents.guardrails import agents_paused
+def embed_comparable(text: str) -> list[float] | None:
+    """A vector to keep, or to rank the kept ones with; None for "not now".
 
-        if agents_paused():
-            # AI is switched off: no provider call; the hash vector keeps
-            # retrieval working, the documented degrade path below.
-            return _hash_embedding(text)
-        try:
-            from openai import OpenAI
-
-            api_key = settings.OPENAI_API_KEY
-            try:
-                from plugins.registry import app_registry
-
-                ai_plugin = (
-                    app_registry.get_plugin('ai_assistant')
-                    if hasattr(app_registry, 'get_plugin')
-                    else None
-                )
-                if ai_plugin is not None:
-                    api_key = ai_plugin.get_config_value('openai_api_key') or api_key
-            except Exception:  # noqa: BLE001, S110
-                pass
-            # Bound the request-path cost: this runs inline on chat/RAG/recall
-            # turns, and the SDK default (600s timeout + 2 retries) can stall a
-            # turn far past the 30s worker budget when the endpoint hangs
-            # (audit H3). A missed embedding degrades to the hash fallback below.
-            client = OpenAI(api_key=api_key, timeout=10.0, max_retries=0)
-            # Pin the output dimension so the OpenAI path honours the module's
-            # fixed-dimension contract (text-embedding-3-* default to 1536).
-            # Without this, hash-fallback rows (384) and OpenAI rows (1536)
-            # coexist and `cosine_similarity` compares mismatched vectors.
-            resp = client.embeddings.create(model=model, input=text, dimensions=EMBEDDING_DIM)
-            vec = list(resp.data[0].embedding)
-            if len(vec) == EMBEDDING_DIM:
-                return vec
-            logger.warning(
-                'OpenAI embed returned %d dims (expected %d); using fallback',
-                len(vec),
-                EMBEDDING_DIM,
-            )
-        except Exception as e:  # noqa: BLE001
-            logger.warning('OpenAI embed failed (%s); using fallback', e)
-
+    A store with a provider keeps the provider's vectors, and a hash vector
+    among them matches nothing by meaning, for good. So while the provider
+    cannot answer (an outage, AI switched off) the caller gets None: it stores
+    no vector, and ranks by keyword alone. A store with no provider keeps hash
+    vectors throughout.
+    """
+    text = (text or '').strip()
+    if not text:
+        return None
+    if _api_key():
+        return provider_embedding(text)
     return _hash_embedding(text)
 
 

@@ -148,3 +148,33 @@ class AgentWrittenTranslationTests(TestCase):
             {'slug': product.slug, 'language_code': 'sr', 'name': 'Morski kajak'},
         )
         self.assertFalse(self._row(product).is_machine_translated)
+
+
+@override_settings(**BILINGUAL)
+class TranslationNobodySeesTests(TestCase):
+    """A translation its page would never show is refused (v0.200.0)."""
+
+    def test_translating_a_product_into_a_language_the_store_lacks_is_refused(self):
+        from core.agents.tools import ToolError
+        from core.i18n.models import Translation
+
+        product = _product()
+        for language in ('en', 'de'):
+            with self.subTest(language=language), self.assertRaises(ToolError):
+                _call(
+                    'i18n.translate_product',
+                    {'slug': product.slug, 'language_code': language, 'name': 'Seekajak'},
+                )
+        self.assertFalse(Translation.objects.exists())
+
+    def test_an_object_its_owner_leaves_out_takes_no_translation(self):
+        from unittest import mock
+
+        from core.i18n import services
+
+        product = _product()
+        spec = dict(services.spec_for(product))
+        self.assertEqual(services.translation_problem(product, 'name', 'sr'), '')
+        spec['applies'] = lambda obj: False
+        with mock.patch.object(services, 'spec_for', return_value=spec):
+            self.assertIn('never be shown', services.translation_problem(product, 'name', 'sr'))

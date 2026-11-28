@@ -80,3 +80,40 @@ class OutboxRetryTests(TestCase):
         e.refresh_from_db()
         self.assertEqual(e.status, 'PENDING')
         self.assertEqual(e.attempts, 0)
+
+
+class OutboxDrainLockTests(TestCase):
+    """The drain locked its batch in one transaction and published after it had
+    ended, so two drains running together both published every row."""
+
+    def test_a_row_another_drain_published_meanwhile_is_not_published_again(self):
+        first = OutboxEvent.objects.create(event_type='order.placed', payload={'id': 1})
+        second = OutboxEvent.objects.create(event_type='order.placed', payload={'id': 2})
+        sent = []
+
+        def publish(event_type, payload):
+            sent.append(payload['id'])
+            # Another worker's drain finishes the second row while this one is
+            # still publishing the first.
+            OutboxEvent.objects.filter(pk=second.pk).update(status='PUBLISHED')
+
+        with (
+            patch.dict(os.environ, {'NATS_URL': 'nats://nats.invalid:4222'}),
+            patch('core.tasks._publish_to_nats_sync', side_effect=publish),
+        ):
+            process_outbox()
+
+        self.assertEqual(sent, [1])
+        first.refresh_from_db()
+        self.assertEqual(first.status, 'PUBLISHED')
+
+    def test_every_pending_row_is_published_once(self):
+        for n in (1, 2, 3):
+            OutboxEvent.objects.create(event_type='order.placed', payload={'id': n})
+        with (
+            patch.dict(os.environ, {'NATS_URL': 'nats://nats.invalid:4222'}),
+            patch('core.tasks._publish_to_nats_sync') as pub,
+        ):
+            process_outbox()
+        self.assertEqual(pub.call_count, 3)
+        self.assertFalse(OutboxEvent.objects.filter(status='PENDING').exists())

@@ -141,7 +141,10 @@ def is_newer(candidate: str, current: str) -> bool:
     c, n = parse_version(candidate), parse_version(current)
     if not c or not n:
         return False
-    return c > n
+    # '1.0' is '1.0.0': compared as written, the longer one read as newer, so an
+    # app installed as '1.0' was offered the channel's '1.0.0' as an update for good.
+    width = max(len(c), len(n))
+    return c + (0,) * (width - len(c)) > n + (0,) * (width - len(n))
 
 
 class UpdateSource:

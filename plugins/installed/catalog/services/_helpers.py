@@ -33,6 +33,7 @@ _MAX_PDF_BYTES = 50 * 1024 * 1024  # 50 MB hard cap for PDF
 _MAX_IMAGE_BYTES = 8 * 1024 * 1024  # 8 MB hard cap for cover image
 _MAX_DOWNLOAD_BYTES = 50 * 1024 * 1024  # absolute response ceiling
 _DOWNLOAD_TIMEOUT = 10  # seconds — was 30, tightened
+_MAX_REDIRECTS = 3  # each hop is checked like the first address
 _ALLOWED_IMAGE_TYPES = {'image/jpeg', 'image/png', 'image/webp', 'image/gif'}
 
 # AWS IMDS — exact-literal block, in case the link-local check misses
@@ -80,19 +81,6 @@ class PublishError(Exception):
     Message is safe to surface to the caller (no internal paths)."""
 
 
-def _is_safe_remote_host(host: str) -> bool:
-    """Delegates to the core egress gate. This check used to live here in full;
-    it moved to `core/net.py` when webhook delivery needed the same guard —
-    two copies of a security check drift, and the looser copy becomes the hole.
-    """
-    from core.net import resolves_safely
-
-    # `resolves_safely` (not `is_safe_remote_host`) on purpose: this is a
-    # one-shot synchronous download, so an unresolvable host should fail the
-    # call with a clear message rather than raise the transient-retry variant.
-    return resolves_safely(host)
-
-
 def _validate_https_url(url: str, *, field: str) -> None:
     parsed = urlparse(url or '')
     if parsed.scheme != 'https':
@@ -102,19 +90,28 @@ def _validate_https_url(url: str, *, field: str) -> None:
 
 
 def _download(url: str, *, max_bytes: int, field: str) -> tuple[bytes, str, str]:
-    """Stream `url` → (body, content_type, filename). Hard size + timeout caps."""
-    # SSRF gate: reject loopback / private / IMDS hosts before any
-    # outbound socket. urlparse strips brackets from IPv6 hosts via
-    # .hostname (parsed.netloc would include them).
-    parsed = urlparse(url or '')
-    host = (parsed.hostname or '').lower()
-    if not _is_safe_remote_host(host):
-        raise PublishError(f'{field} host {host!r} is not a public address (SSRF guard)')
+    """Stream `url` → (body, content_type, filename). Hard size + timeout caps.
+
+    Goes out through core's one egress gate (`core.net.outbound_request`): an
+    https address on a public host, and every redirect on the way checked the
+    same. Until v0.200.0 only the first host was checked, by name alone, and
+    `requests` followed redirects on its own: an address that redirects to a
+    private one was fetched, and so was `https://127.0.0.1\\@example.com/`,
+    which reads as example.com and connects to 127.0.0.1.
+    """
+    from core.net import UnsafeUrlError, outbound_request
 
     # Cap response size at 50 MB regardless of what the caller asked for.
     cap = min(max_bytes, _MAX_DOWNLOAD_BYTES)
     try:
-        with requests.get(url, stream=True, timeout=_DOWNLOAD_TIMEOUT) as r:
+        with outbound_request(
+            'get',
+            url,
+            field=field,
+            max_redirects=_MAX_REDIRECTS,
+            stream=True,
+            timeout=_DOWNLOAD_TIMEOUT,
+        ) as r:
             r.raise_for_status()
             content_type = (r.headers.get('Content-Type') or '').split(';')[0].strip().lower()
             cl = r.headers.get('Content-Length')
@@ -131,6 +128,8 @@ def _download(url: str, *, max_bytes: int, field: str) -> tuple[bytes, str, str]
                     raise PublishError(f'{field} exceeds {cap // (1024 * 1024)} MB limit')
             url_name = PurePosixPath(urlparse(url).path).name or field
             return buf.getvalue(), content_type, url_name
+    except UnsafeUrlError as e:
+        raise PublishError(str(e)) from None
     except requests.RequestException as e:
         raise PublishError(f'{field} download failed: {e}') from None
 

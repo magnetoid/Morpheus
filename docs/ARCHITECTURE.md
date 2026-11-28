@@ -42,6 +42,10 @@ reviews, loyalty, markets, notifications, metafields, media, CMS, the
 agent gateway, the merchant-facing `workflows` automation plugin —
 lives in `plugins/installed/<name>/`.
 
+Direction (owner, 2026-11-28): Janus is to run self-improvement through its skills and the
+store's tools, and Morpheus keeps the pages that show the results. The loop is not extended
+until that move is designed (`docs/plans/core-refactor-debug-2026-11.md`).
+
 When in doubt, it's a plugin.
 
 ## The hook bus

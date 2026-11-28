@@ -38,7 +38,7 @@ class MemoryEmbeddingWriteTests(TestCase):
 
 
 class MemorySemanticRecallTests(TestCase):
-    @patch('core.embeddings.embed', side_effect=_ship_concept_embed)
+    @patch('core.embeddings.embed_comparable', side_effect=_ship_concept_embed)
     def test_semantic_match_without_substring(self, _mock):
         # Stored fact shares NO words with the query, but is the same concept.
         memory_remember_tool.handler(key='fulfilment', value='our warehouse is in Berlin')

@@ -391,6 +391,21 @@ def _default_host() -> str:
     return ''
 
 
+class NoPublicAddress(RuntimeError):  # noqa: N818 — a refusal with a reason, like PublishError
+    """The deployment names no host a Celery worker could reach the store by."""
+
+
+def _public_host() -> str:
+    """The host a turn outside the web container reaches the store by: the first
+    concrete ``ALLOWED_HOSTS`` entry, else ``SITE_BASE_URL``'s. '' for neither."""
+    host = _default_host()
+    if host:
+        return host
+    from urllib.parse import urlparse
+
+    return urlparse(getattr(_settings(), 'SITE_BASE_URL', '') or '').hostname or ''
+
+
 def _mcp_endpoint(context: dict[str, Any] | None) -> tuple[str, dict[str, str]]:
     """Where the subprocess reaches the store's MCP server, and the headers it needs.
 
@@ -413,7 +428,15 @@ def _mcp_endpoint(context: dict[str, Any] | None) -> tuple[str, dict[str, str]]:
         # A turn run by a Celery worker (an automation): the worker container has
         # no web server on loopback, so it reaches the store by its public address,
         # which routes to this store and no other.
-        return f'https://{_default_host()}/mcp/admin/v1/', {}
+        host = _public_host()
+        if not host:
+            # Never `https:///mcp/admin/v1/`: Janus would start a turn with no tools
+            # and no reason given.
+            raise NoPublicAddress(
+                'this store names no public address (ALLOWED_HOSTS or SITE_BASE_URL), '
+                'so a scheduled turn cannot reach its tools'
+            )
+        return f'https://{host}/mcp/admin/v1/', {}
     host, secure = '', False
     request = (context or {}).get('request')
     if request is not None:

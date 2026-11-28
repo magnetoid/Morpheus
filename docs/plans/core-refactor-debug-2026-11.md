@@ -40,12 +40,12 @@ a product decision).
 |---|---|---|---|
 | SI1 | high | `run_analyzer` slices the top 50 clusters before it drops those that already have an open recommendation, so a store with 50+ standing gaps never gets a new recommendation | **fixed** |
 | SI2 | medium | Rejecting or snoozing a recommendation older than 30 days writes no suppression (its evidence signals are pruned), so it returns the next night | **fixed** |
-| SI3 | medium | `seo_gap` flags a product or page whose description the head fills from a fallback field; page gaps have no healer | open |
+| SI3 | medium | `seo_gap` flags a product or page whose description the head fills from a fallback field; page gaps have no healer | not fixed here: self-improvement moves to Janus (owner, 2026-11-28) |
 | SI4 | medium | The meta-description healer slices raw HTML | **fixed** |
 | SI5 | medium | A class with no healer can be auto-applied or approved, then fails as `no_healer` out of the merchant's sight | **fixed** |
 | SI6 | medium | The synonym healer writes to `catalog.SearchSynonym`, a model that does not exist | **fixed** |
 | SI7 | medium | The nightly run keeps calling the model after a failure, swallows Celery's soft time limit, and `daily_token_budget` has no reader | **fixed** |
-| SI8 | low | `code_quality` and `upstream_drift` collect nothing in the image (no ruff, bandit or git) and still record `ok` | open |
+| SI8 | low | `code_quality` and `upstream_drift` collect nothing in the image (no ruff, bandit or git) and still record `ok` | not fixed here: self-improvement moves to Janus (owner, 2026-11-28) |
 
 Refactor candidates: the weekly digest that sends nothing (`digest_weekly`, `weekly_digest_v1`,
 `digest_recipients`); policy classes and the `dead_link` healer with no producer; `Healer.propose()`
@@ -62,9 +62,9 @@ that do not exist.
 | D3 | low | The gate's file pattern (`\d{4}_\w+\.py`) skips a hand-named migration file that Django still loads | **fixed** |
 | D4 | low | A backup on an engine that is neither postgres nor sqlite (`postgis://`) writes no dump and exits 0 | **fixed** |
 | D5 | low | `release` writes `settings.py` before it builds the notes entry, so a notes failure leaves the version bumped alone | **fixed** |
-| D6 | low | Self-update (git installs only) migrates after a failed backup, and nothing stops two applies at once | open |
+| D6 | low | Self-update (git installs only) migrates after a failed backup, and nothing stops two applies at once | **fixed** (v0.200.0) |
 | D7 | low | `restore.spawn` passes `--confirm <name>`; a store or user name starting with `-` fails argparse and records nothing | **fixed** |
-| D8 | low | `pg_dump` and `psql` ignore the configured `sslmode` | open |
+| D8 | low | `pg_dump` and `psql` ignore the configured `sslmode` | **fixed** (v0.200.0) |
 
 Refactor candidates: version parsing in five places with different rules (`core/deploys.py`,
 `scripts/deploy_guard.py`, `release.py`, `core/update_sources.py`, `plugins/compat.py`; the update
@@ -100,7 +100,7 @@ writes; `HasScopePermission` (no callers); `core/images.py` drops the config cac
 | A5 | medium-low | After the tool lookup the runtime keeps the model's spelling (`catalog__update_product`) for approvals, usage counts and the audit trail | **fixed** (v0.199.0) |
 | A6 | low-medium | The Worker gets the Developer-mode tools (`fs.*`, `logs.search`, `system.*`) | **fixed** (v0.199.0) |
 | A7 | low | The breaker's response cache keeps empty replies for an hour and reports the original tokens again on a hit | **fixed** |
-| A8 | low | `OpenAIProvider` always sends `max_tokens` and `temperature`, which o4-mini and gpt-5 are said to reject | open |
+| A8 | low | `OpenAIProvider` always sends `max_tokens` and `temperature`, which o4-mini and gpt-5 are said to reject | **fixed** (v0.200.0) |
 
 The July item: the reaper exists (`agent_core.sweep_stuck_runs`); `awaiting_approval` can still stick,
 and a live spawned Worker older than 15 minutes is swept while it runs.
@@ -133,10 +133,10 @@ of `_turn_result` are dead; three state.db helpers each open their own connectio
 | G1 | high | A declined proposal stays pending for its 10 minutes, so the next "yes" (to another proposal) approves it too | **fixed** |
 | G2 | high | `delegate.spawn_workers` and `delegate.invoke_agent` need only `system.write`: a narrowed token can start the every-scope Worker | **fixed** |
 | G3 | medium-high | "yes, but not that one", "ok except the second" read as a yes | **fixed** |
-| G4 | medium | On the admin MCP `run_python` reaches `memory.recall` and other tools kept off tokens; Developer-mode tools are listed for plain tokens | open |
-| G5 | medium | Under rbac `enforce`, only the admin role keeps the `system.read` tools | verified by the reviewer; owner's call |
+| G4 | medium | On the admin MCP `run_python` reaches `memory.recall` and other tools kept off tokens; Developer-mode tools are listed for plain tokens | **fixed** (v0.200.0) |
+| G5 | medium | Under rbac `enforce`, only the admin role keeps the `system.read` tools | owner's call; belongs with role grants and the enforce dry-run (row 17 of the platform order) |
 | G6 | medium-low | `consume` reads then deletes: two concurrent identical calls can both spend one grant | **fixed** |
-| G7 | low | Any staff member can apply a staged proposal; a double POST overwrites `applied` with `failed` | open |
+| G7 | low | Any staff member can apply a staged proposal; a double POST overwrites `applied` with `failed` | **fixed** (v0.200.0) |
 | G8 | low | `fs.search_files` passes the query to grep without `--` | **fixed** |
 
 Refactor candidates: `linda_turn.catalogue` rebuilds `gates.linda_tool`; `consent.clear()` hashes with
@@ -149,10 +149,10 @@ say `confirmed=True` means consent.
 |---|---|---|---|
 | K1 | medium | The circuit breaker trips once: a failed half-open probe never re-opens it, so every later call waits out the provider | **fixed** |
 | K2 | medium | loyalty_points registers its `ORDER_PAID` handler untagged, so points are still earned while the app is off | **fixed** |
-| K3 | medium | `core/embeddings.py` calls `app_registry.get_plugin`, which does not exist, so the dashboard key is never used; hash-vector fallbacks are stored as real embeddings | open |
-| K4 | medium-low | `StoreSettings.primary_currency` and `core_language` are on the settings form and nothing reads them; three rules for "store currency" disagree | verified by the reviewer; owner's call |
-| K5 | low | Async hook handlers never run (the resolver walks the wrong path), and the SDK README documents a `mode='async'` argument `register_hook` does not take | open |
-| K6 | low | The outbox drain releases its row locks before publishing (dormant: no `NATS_URL`) | open |
+| K3 | medium | `core/embeddings.py` calls `app_registry.get_plugin`, which does not exist, so the dashboard key is never used; hash-vector fallbacks are stored as real embeddings | **fixed** (v0.200.0) |
+| K4 | medium-low | `StoreSettings.primary_currency` is on the settings form and nothing reads it (`core_language` beside it came with the localization plan and has no reader yet either); three rules for "store currency" disagree: `settings.STORE_CURRENCY` (`core.pricing`), the currency most active products carry (`plugins/dropshipping/importer.py`, which shipping rates use), and the unread column | owner's call |
+| K5 | low | Async hook handlers never run (the resolver walks the wrong path), and the SDK README documents a `mode='async'` argument `register_hook` does not take | **fixed** (v0.200.0) |
+| K6 | low | The outbox drain releases its row locks before publishing (dormant: no `NATS_URL`) | **fixed** (v0.200.0) |
 
 Refactor candidates: `core/channels.py` per-channel pricing has no caller; `LLM_BREAKER`,
 `WEBHOOK_BREAKER` and `CDN_BREAKER` have no users; webhook signing exists three times; every `fire()`
@@ -168,9 +168,9 @@ fired (`SEO_ENTITY_ADAPTERS`, `SEO_SITEMAP_SOURCES`, `AI_DESCRIPTION_GENERATED`,
 | E3 | medium-high | One view exception is stored twice: by the middleware and by the `django.request` log handler | **fixed** |
 | E4 | medium-high | Redaction misses `?key=AIza…`, `client_secret=`, `redis://:pw@`, `Cookie:`, the whole `lt1.` token; the client page URL is stored raw | **fixed** |
 | E5 | medium | Anonymous text is fenced with three backticks in "Copy for Claude Code" and can close the fence | **fixed** |
-| E6 | medium | Settings → General → Permalinks saves templates nothing reads | verified by the reviewer; owner's call |
+| E6 | medium | Settings → General → Permalinks: only the travel app's menus read the templates (`booking_marketplace/context_processors.py`); an override changes the link and no route follows it. The reviewer's "nothing reads them" was wrong | owner's call |
 | E7 | medium-low | `audit.record` takes an unvalidated IP; on Postgres a junk value drops the row (`safe_db`) | **fixed** |
-| E8 | low | `translation_problem` ignores a spec's `applies`; `i18n.translate_product` skips the check | open |
+| E8 | low | `translation_problem` ignores a spec's `applies`; `i18n.translate_product` skips the check | **fixed** (v0.200.0) |
 
 Refactor candidates: the `morph_i18n` template tags and `translated()` / `get_translation()` have no
 users; `PermalinkResolver` and `core/graphql/types.ErrorType` have no callers; `core/errors/services.py`
@@ -192,17 +192,52 @@ dashboard shell.
 
 ## Next batches
 
-Batches 1 to 3 are shipped (v0.197.0, v0.198.0, v0.199.0; see the sections below). Still open:
+Batches 1 to 4 are shipped (v0.197.0 to v0.200.0; see the sections below). What is left is not a
+batch of fixes:
 
-1. **Self-improvement, second pass (SI3, SI8)** and its unreachable surface: policy classes with no
-   producer, `Healer.propose()`, the `dead_link` healer.
-2. **Owner's calls.** K4 (which of three "store currency" rules is the one), E6 (wire or remove
-   Permalinks), G5 (which roles read `system.*` tools under enforce), K3 (embeddings would start
-   calling the provider on stores whose key is in the dashboard), the `morph_i18n` template tags
-   (unused here, but a theme outside this repository could load them).
-3. **Smaller open items.** G4, G7, D6, D8, K5, K6, E8, A8, the five copies of version parsing, the
-   two provider stacks, `catalog/services/_helpers._download` (its own copy of the outbound check,
-   and it follows redirects), and the notes under v0.199.0 below.
+1. **Self-improvement moves to Janus** (owner, 2026-11-28; the section below). SI3, SI8 and the
+   unreachable surface (policy classes with no producer, `Healer.propose()`, the `dead_link`
+   healer, the weekly digest that sends nothing) are not fixed in place.
+2. **Owner's calls.**
+   - K4: which rule is "the store currency". Making the dashboard's field win would re-price a
+     store whose field still holds its `USD` default, so it needs each store's values first.
+   - E6: route the permalink templates, or keep them to the travel menus and say so on the page.
+   - G5: which roles read the `system.read` tools under enforce; planned with role grants.
+   - The `morph_i18n` template tags: unused here, but a theme outside this repository could load
+     them.
+3. **Not code.** Forwarded client addresses (`CF-Connecting-IP`, `X-Forwarded-For`) can be forged
+   only by reaching the origin past Cloudflare. A list of trusted proxies in the app would not help
+   on these servers: every request reaches Django from the same reverse proxy, forged or not. The
+   fix is at the network: let only Cloudflare's ranges reach the origin's ports.
+4. **Left as they are.** The five version parsers read different things (a release tag, an app
+   version with a pre-release, a manifest's); the one wrong answer among them is fixed. The two
+   provider stacks (`core/agents/llm.py`, ai_assistant's gateway) are both guarded and counted;
+   merging them is a project of its own. Dead code named by the reviewers (`core/channels.py`
+   pricing, the three unused breakers, `morph_ask`, `bundled_skill_names()`) stays until someone
+   needs the file: three of their "dead" claims were wrong, and E6 made four.
+
+## Direction for self-improvement (owner, 2026-11-28)
+
+The owner's rule: Janus controls self-improvement, and Morpheus only displays the results. When
+Janus is updated, or arrives in a Morpheus install as the external app it is, it brings the skills
+and plugins that do this work for a store.
+
+What that means for `core/self_improvement/` (about 3,300 lines without tests: collectors, the
+analyzer, healers, policies, the nightly task):
+
+- Nothing new is added there, and nothing is polished. Only a defect that breaks a store is fixed.
+- The scans (SEO gaps, search misses, code quality, upstream drift) and the fixes become Janus's:
+  a store skill per job (`core/assistant/janus_skills/`, an app's own `janus_skills/`), run by an
+  automation on the store's clock, working through the store's tools under the one gate chain, so
+  a write still needs the merchant's yes.
+- Morpheus keeps the record and the page that shows it: what was found, what was proposed, what
+  was applied (`SiRecommendation`, the dashboard's self-improvement page in
+  `admin_dashboard/views_split/self_improvement.py`), written by Janus through tools.
+
+Not designed yet, and to be decided there: which collectors become skills and which become plain
+tools Janus calls; what runs when Janus is switched off (today the loop runs without it); how the
+spend of a nightly Janus run is capped; and what happens to the safety boundary's readers
+(`core/safety.py` stays core).
 
 ## From the security review of the fix (no critical or high finding)
 
@@ -282,3 +317,54 @@ Left alone, noticed during the split:
 Not verified outside CI: the conformance suite (the pinned Janus against a stub model) skips
 locally; CI's `janus-conformance` job is the proof that the split changed nothing for a real turn.
 
+## What v0.200.0 shipped (batch 4: the small open items)
+
+D6, D8, A8, G4, G7, K3, K5, K6 and E8, each with a test that failed against the old code (37 of the
+171 tests in the touched modules failed or errored there), plus three found on the way.
+
+- **G4.** An API token is never offered `run_python` (`gates.NOT_FOR_TOKENS`). Its script bridge
+  falls back to the whole default catalogue for a caller that is not an agent run and checks no
+  scope there, so a token with `system.read` alone read orders, customers and the shop memory. The
+  other Developer tools a token can list (`db.*`, `platform.capabilities`, `plugins.describe`,
+  `delegate.list_agents`) only describe the platform and stay.
+- **G7.** A proposal is approved by a staff member whose role allows the change, while roles are
+  enforced, and approval is one swap in the database, so two clicks apply once.
+- **D6, D8.** A self-update (platform, app or theme) stops when its backup fails, runs alone, and
+  `pg_dump` / `psql` connect with the TLS options Django uses.
+- **A8.** The OpenAI provider asks again with `max_completion_tokens` and the default temperature
+  when a model refuses the older parameters, and remembers the model. Checked against the
+  reports for o4-mini and GPT-5: both refuse `max_tokens` and a set `temperature` with a 400.
+- **K3.** Embeddings read their key in one place. The store's key is used only once the merchant
+  switches ai_assistant's `embeddings_use_store_key` on (off by default: it starts paid requests
+  the spend cap does not count), and a vector is kept only when it is comparable with the others.
+- **K5, K6.** An async hook handler runs; the outbox drain locks each row for its own publish.
+- **E8.** A translation its page would never show is refused, also by `i18n.translate_product`.
+- **Found on the way.** catalog's file download checked only the first host, by name, and followed
+  redirects on its own (`core.net.outbound_request(max_redirects=)` now carries it). The update
+  channel read `1.0.0` as newer than `1.0`. A scheduled turn on a store that names no host got
+  `https:///mcp/admin/v1/`; it now fails with the reason.
+
+- **Both provider stacks.** ai_assistant's gateway sent the same older parameters; both now ask
+  through `core.agents.llm.chat_completion`.
+
+From the security review of this batch (one pass over the whole diff; no critical or high finding),
+fixed before it shipped: a 400 about the value of `max_tokens` read as the refusal, and the model
+was remembered before the second call had worked; Reject overwrote an applied proposal's status;
+`changes` stored as something other than a list of objects raised in `approve` and `apply`; the
+update lock file was opened through a link; a refused redirect was left open, and a followed one
+would have carried a body or a credential to another host (only a plain GET follows now).
+
+From Codex's review of the pull request, both fixed in it: the embeddings switch was read from each process's own copy of the settings, so switching it off left other workers paying (it is read again after 10 s); and the switch was added to the list the dashboard shell hard-codes, so it showed with ai_assistant off (the page now takes an undeclared switch from the app's schema and shows none while the app is off). The six older switches are still named in the shell.
+
+Left as they are, from the same review:
+
+- `OpsProposal.apply()` still accepts a proposal that is only 'proposed'. The view always approves
+  first; a new caller must too, or it skips the capability check.
+- The dashboard and Linda's `updates.apply` have no way to update without a backup; only the
+  command line does (`--allow-without-backup`). Meant: the door that skips the backup is the one
+  an operator types.
+- Two async handlers of one event with the same name (two lambdas from one function) resolve to
+  the first.
+
+Not verified outside tests: no self-update was run on a git install, no OpenAI reasoning model was
+called, and no store has `embeddings_use_store_key` on.

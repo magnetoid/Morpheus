@@ -903,10 +903,29 @@ def settings_ai(request: HttpRequest) -> HttpResponse:
         # 'agent_purchase_requires_approval' removed — it was consumed by
         # nothing (purchase gating is the per-tool confirmed/hard-gate flow).
     ]
-    features = [
-        {'key': k, 'label': lbl, 'description': desc, 'coming_soon': cs, 'value': bool(cfg.get(k))}
-        for k, lbl, desc, cs in feature_flags
-    ]
+    # A switch the app declares and this list does not name is shown with the
+    # app's own title and description, so a new one needs no edit here; and none
+    # is shown while the app is switched off (a toggle for an app that is off
+    # would post to that app's settings and change nothing).
+    features = []
+    if ai_plugin is not None and app_registry.is_active('ai_assistant'):
+        listed = {k for k, _lbl, _desc, _cs in feature_flags}
+        declared = (ai_plugin.get_config_schema() or {}).get('properties') or {}
+        feature_flags += [
+            (key, prop.get('title') or key, prop.get('description') or '', False)
+            for key, prop in declared.items()
+            if prop.get('type') == 'boolean' and key not in listed
+        ]
+        features = [
+            {
+                'key': k,
+                'label': lbl,
+                'description': desc,
+                'coming_soon': cs,
+                'value': bool(cfg.get(k)),
+            }
+            for k, lbl, desc, cs in feature_flags
+        ]
 
     # Every category='ai' SettingsPanel renders on this page (via the shared
     # panel-field helper) so it stays the single home for AI config — brand

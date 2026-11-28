@@ -31,7 +31,7 @@ import ipaddress
 import logging
 import re
 import socket
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 logger = logging.getLogger('morpheus.net')
 
@@ -162,28 +162,49 @@ def is_safe_outbound_url(url: str, *, require_https: bool = True) -> bool:
 
 
 def outbound_request(
-    method: str, url: str, *, require_https: bool = True, field: str = 'url', **kwargs
+    method: str,
+    url: str,
+    *,
+    require_https: bool = True,
+    field: str = 'url',
+    max_redirects: int = 0,
+    **kwargs,
 ):
     """Send a server-initiated request to a URL someone entered (staff, an
-    agent's setting, a webhook endpoint): public hosts only, never a redirect.
+    agent's setting, a webhook endpoint): public hosts only.
 
-    A redirect is refused because the check covers only the first host — a
-    public URL answering 302 to 169.254.169.254 would otherwise reach it. A host
-    that does not resolve is let through so the caller's retry path handles it
-    (an unresolvable host cannot be connected to).
+    A redirect is refused by default, because a check that covers only the first
+    host lets a public URL answering 302 to 169.254.169.254 reach it. A download
+    passes ``max_redirects``: each hop is then checked like the first address and
+    followed, up to that many. A host that does not resolve is let through so the
+    caller's retry path handles it (an unresolvable host cannot be connected to).
     """
     import requests
 
-    with contextlib.suppress(UnresolvableHostError):
-        check_outbound_url(url, field=field, require_https=require_https)
+    if max_redirects and (method.upper() != 'GET' or _CARRIES_SOMETHING.intersection(kwargs)):
+        # Everything in `kwargs` is sent again to each hop, which may be another
+        # host: a body or a credential would go with it.
+        raise ValueError('outbound_request follows redirects only for a plain GET')
+    send = getattr(requests, method.lower())
     kwargs['allow_redirects'] = False
-    response = getattr(requests, method.lower())(url, **kwargs)
-    if response.status_code in _REDIRECT_STATUSES:
-        # Refused, and said so: a store entered as http:// that moved to https
-        # otherwise fails as unreadable JSON, and a webhook reads as delivered.
-        target = response.headers.get('Location') or 'another address'
-        raise UnsafeUrlError(f'{field} redirects to {target} — enter that address instead')
-    return response
+    hops = 0
+    while True:
+        with contextlib.suppress(UnresolvableHostError):
+            check_outbound_url(url, field=field, require_https=require_https)
+        response = send(url, **kwargs)
+        if response.status_code not in _REDIRECT_STATUSES:
+            return response
+        target = response.headers.get('Location') or ''
+        response.close()
+        if hops >= max_redirects or not target:
+            # Refused, and said so: a store entered as http:// that moved to https
+            # otherwise fails as unreadable JSON, and a webhook reads as delivered.
+            where = target or 'another address'
+            raise UnsafeUrlError(f'{field} redirects to {where} — enter that address instead')
+        url = urljoin(url, target)
+        hops += 1
 
 
 _REDIRECT_STATUSES = frozenset({301, 302, 303, 307, 308})
+#: Request arguments that carry a body or a credential.
+_CARRIES_SOMETHING = frozenset({'auth', 'cookies', 'data', 'files', 'headers', 'json'})

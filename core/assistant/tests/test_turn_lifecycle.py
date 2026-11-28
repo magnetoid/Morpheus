@@ -100,6 +100,23 @@ class _EngineCase(SimpleTestCase):
         return out['usage']['input_tokens'], out['usage']['output_tokens']
 
 
+class NoAddressTests(_EngineCase):
+    def test_a_scheduled_turn_on_a_store_with_no_address_fails_with_the_reason(self):
+        with (
+            self.settings(ALLOWED_HOSTS=['*'], SITE_BASE_URL=''),
+            mock.patch.object(eng.subprocess, 'run') as spawn,
+        ):
+            out = eng.run_janus_turn(
+                message='hi',
+                conversation_key='conv-1',
+                system_prompt='p',
+                context={'mcp_public': True},
+            )
+        self.assertIn('names no public address', out['error'])
+        self.assertEqual(out['text'], '')
+        spawn.assert_not_called()
+
+
 class SpendFromTheHomeTests(_EngineCase):
     """A home is one conversation: all its sessions' totals are what it spent."""
 

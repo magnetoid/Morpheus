@@ -45,6 +45,8 @@ high-stakes path and it is deliberately conservative:
 - **Opt-in.** Even with `confirm`, it refuses unless `MORPHEUS_SELF_UPDATE_ENABLED` is on (it is **off** by default).
 - **Fast-forward only.** Aborts if the local checkout has diverged. Never force-updates.
 - **Dependency guard.** Refuses with `deps_changed` if upstream touched a dependency manifest, because an in-place apply cannot `pip install` — see the native-dep landmine in [`CLAUDE.md`](../CLAUDE.md). Rebuild the image instead, or pass `allow_dependency_changes` once you've installed them.
+- **One at a time.** A second apply on the same install answers `busy` while the first runs (a lock file per checkout); a dry run needs no lock.
+- **No backup, no update.** When the backup taken first fails, the apply answers `backup_failed` and changes nothing. `allow_without_backup` (CLI `--allow-without-backup`) updates without one on purpose; until v0.200.0 a failed backup was noted in the plan and the update migrated anyway.
 - **Ordered safety:** backup (`morph_backup`) → `git merge --ff-only` → **boot probe** (`manage.py check` in a *fresh interpreter*, so the new code is genuinely re-imported) → `migrate` → in-process `check`. Any failure rolls the **code** back to the prior commit.
 - The boot probe runs **before** `migrate` on purpose, so a non-bootable update reverts with the database untouched.
 

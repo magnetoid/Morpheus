@@ -201,12 +201,18 @@ class OpenAIGateway(LLMGateway):
         timeout = kwargs.get('timeout')
         per_call = {'timeout': timeout} if timeout else {}
         try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                **per_call,
+            from core.agents.llm import chat_completion
+
+            request = {
+                'model': self.model,
+                'messages': messages,
+                'temperature': temperature,
+                'max_tokens': max_tokens,
+            }
+            # Asked again the newer way when the model refuses these parameters
+            # (OpenAI's reasoning models): the helper core's provider uses.
+            response = chat_completion(
+                self.client, {**request, **per_call}, owner=type(self).__name__
             )
             result = response.choices[0].message.content or ''
             if not result and _truncated_while_reasoning(response):
@@ -226,12 +232,14 @@ class OpenAIGateway(LLMGateway):
                     max_tokens,
                     retry_tokens,
                 )
-                response = self.client.chat.completions.create(
-                    model=self.model,
-                    messages=messages,
-                    temperature=temperature,
-                    max_tokens=retry_tokens,
-                    timeout=max(_REASONING_RETRY_TIMEOUT_SECS, timeout or 0),
+                response = chat_completion(
+                    self.client,
+                    {
+                        **request,
+                        'max_tokens': retry_tokens,
+                        'timeout': max(_REASONING_RETRY_TIMEOUT_SECS, timeout or 0),
+                    },
+                    owner=type(self).__name__,
                 )
                 result = response.choices[0].message.content or ''
             elapsed = int((time.monotonic() - start) * 1000)

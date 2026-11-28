@@ -374,10 +374,22 @@ def translate_product_tool(
         product = Product.objects.get(slug=slug)
     except Product.DoesNotExist as e:
         raise ToolError(f'Unknown product: {slug}') from e
+    from core.i18n.services import translation_problem
+
+    values = {'name': name, 'short_description': short_description, 'description': description}
+    # The check `i18n.set_translation` makes: a language the product's page is never
+    # shown in (the store's own, one it does not have) would store text nobody sees.
+    problems = [
+        problem
+        for field, value in values.items()
+        if value and (problem := translation_problem(product, field, language_code))
+    ]
+    if problems:
+        raise ToolError(problems[0])
     n = bulk_set_translations(
         product,
         language_code,
-        {'name': name, 'short_description': short_description, 'description': description},
+        values,
         # A translation a store agent writes is AI-written (EU AI Act Art. 50).
         machine_translated=bool(ai_author(agent, context)),
     )

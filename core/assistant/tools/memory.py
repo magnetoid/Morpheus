@@ -64,7 +64,7 @@ def memory_remember_tool(
     if not key or not value:
         raise ToolError('key and value are both required')
     from core.assistant.models import LindaMemory
-    from core.embeddings import embed
+    from core.embeddings import embed_comparable
 
     value = value[:5000]
     obj, created = LindaMemory.objects.update_or_create(
@@ -74,8 +74,9 @@ def memory_remember_tool(
             'value': value,
             'source': source[:40],
             # Embed "key: value" so recall can match by meaning, not just
-            # substring. Hash-fallback when no provider is configured.
-            'embedding': embed(f'{key}: {value}'),
+            # substring. Empty while the provider cannot answer: the backfill
+            # command fills it in, and recall matches by keyword until then.
+            'embedding': embed_comparable(f'{key}: {value}') or [],
         },
     )
     return ToolResult(
@@ -121,14 +122,14 @@ def memory_recall_tool(*, query: str = '', scope: str = '', limit: int = 50) -> 
         # win (precise); semantic matches above the floor are added so Linda
         # recalls a fact phrased differently from how it was stored. Bounded
         # candidate scan keeps the in-Python sort cheap.
-        from core.embeddings import cosine_similarity, embed
+        from core.embeddings import cosine_similarity, embed_comparable
 
-        qvec = embed(query)
+        qvec = embed_comparable(query)
         ql = query.lower()
         scored: list[tuple[float, object]] = []
         for r in qs[:1000]:
             keyword = 1.0 if (ql in (r.key or '').lower() or ql in (r.value or '').lower()) else 0.0
-            semantic = cosine_similarity(qvec, r.embedding) if r.embedding else 0.0
+            semantic = cosine_similarity(qvec, r.embedding) if qvec and r.embedding else 0.0
             if keyword or semantic >= _SEMANTIC_FLOOR:
                 scored.append((keyword + semantic, r))
         scored.sort(key=lambda t: t[0], reverse=True)
@@ -195,9 +196,9 @@ def get_recent_memories(limit: int = 50, *, query: str = '') -> list[dict]:
         qvec = None
         if (query or '').strip():
             try:
-                from core.embeddings import embed
+                from core.embeddings import embed_comparable
 
-                qvec = embed(query.strip()[:2000])
+                qvec = embed_comparable(query.strip()[:2000])
             except Exception:  # noqa: BLE001 — embedding outage → decay-only
                 qvec = None
 

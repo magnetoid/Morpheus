@@ -95,10 +95,14 @@ def ops_proposal_action(request, proposal_id):
             messages.error(request, summary)
 
     elif action == 'reject':
-        proposal.status = 'rejected'
-        proposal.save(update_fields=['status', 'updated_at'])
-        _audit_ops(request, 'rejected', proposal)
-        messages.info(request, f'Rejected "{proposal.title}".')
+        if proposal.reject():
+            _audit_ops(request, 'rejected', proposal)
+            messages.info(request, f'Rejected "{proposal.title}".')
+        else:
+            # Applied, rejected or expired meanwhile: the record stays as it is.
+            messages.warning(
+                request, f'"{proposal.title}" was already {proposal.status}; nothing changed.'
+            )
 
     else:
         messages.error(request, f'Unknown action: {action!r}')

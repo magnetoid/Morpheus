@@ -15,8 +15,15 @@ view recording, search logging).
 # hooks intentionally swallow errors. Pre-existing idioms.
 # ruff: noqa: PLC0415, S110, I001
 
+import time
+
 from morpheus.core import events
 from morpheus.app import Plugin, SettingsPanel
+
+
+#: How old this process's copy of the settings may be when the embeddings switch
+#: is read (seconds); see `on_embeddings_api_key`.
+_EMBEDDINGS_SETTINGS_FRESH_S = 10.0
 
 
 class AIAssistantPlugin(Plugin):
@@ -115,6 +122,7 @@ class AIAssistantPlugin(Plugin):
         self.register_hook(events.BRAIN_SIGNALS, self.on_brain_signals, priority=50)
         # This app's own model calls count toward the merchant's daily spend cap.
         self.register_hook(events.AI_USAGE_TODAY, self.on_ai_usage_today, priority=50)
+        self.register_hook(events.EMBEDDINGS_API_KEY, self.on_embeddings_api_key, priority=50)
 
         # Autonomy gate: answer the background-agent scheduler's AUTONOMY_ENABLED
         # filter from the `enable_autonomous_operator` flag (Settings → AI). This
@@ -242,6 +250,19 @@ class AIAssistantPlugin(Plugin):
             pt=Sum('prompt_tokens'), ct=Sum('completion_tokens')
         )
         return [*value, *({'model': r['model_used'], 'pt': r['pt'], 'ct': r['ct']} for r in rows)]
+
+    def on_embeddings_api_key(self, value, **_):
+        """The OpenAI key saved here, for core's embeddings (Linda's shop memory
+        and knowledge base), once the merchant switched that on. Off, core keeps
+        the environment's key, or none."""
+        # Each web and Celery worker keeps its own copy of the settings, and this
+        # switch decides whether requests are paid for: a copy older than the
+        # window is read again, so switching it off stops every worker.
+        if time.monotonic() - self._config_read_at >= _EMBEDDINGS_SETTINGS_FRESH_S:
+            self.invalidate_config_cache()
+        if not self.get_config_value('embeddings_use_store_key', False):
+            return value
+        return (self.get_config_value('openai_api_key') or '').strip() or value
 
     def on_brain_signals(self, value, **kwargs):
         """Merge unread merchant insights into the Brain's Improvements panel
@@ -569,6 +590,24 @@ class AIAssistantPlugin(Plugin):
                         'Gives Linda the catalog.semantic_search tool — meaning-based '
                         'product retrieval (dense embeddings, keyword fallback). Off '
                         'removes the tool from her catalogue.'
+                    ),
+                },
+                'embeddings_use_store_key': {
+                    'type': 'boolean',
+                    'default': False,
+                    # It starts calls to the provider that the daily spend cap
+                    # does not count, so the merchant switches it, not an agent.
+                    'x-agent-writable': False,
+                    # The AI settings page prints this title and description as
+                    # they are (admin_dashboard reads them from here).
+                    'title': 'Memory and knowledge search with the OpenAI key',
+                    'description': (
+                        "Search Linda's shop memory and knowledge base by meaning, using the "
+                        'OpenAI key saved above. Each note and each search is a small paid '
+                        'request outside the daily spend cap. Off, only a key set on the '
+                        'server is used. What was saved before stays searchable by keyword '
+                        'until the server commands backfill_memory_embeddings --all and '
+                        'rebuild_knowledge --all are run once.'
                     ),
                 },
                 'enable_dynamic_pricing': {

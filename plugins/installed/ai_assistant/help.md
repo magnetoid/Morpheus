@@ -11,6 +11,7 @@ Add an API key for at least one provider and choose it as the active provider; a
 ## Common tasks
 - Add a key and choose the active provider in [](settings:ai_assistant).
 - Turn on [](field:ai_assistant.enable_semantic_search) so search understands meaning, not only keywords.
+- Turn on [](field:ai_assistant.embeddings_use_store_key) to search Linda's shop memory and knowledge base by meaning with your OpenAI key. Each saved note and each search is a small paid request that the daily spend cap does not count.
 - Turn on [](field:ai_assistant.enable_dynamic_pricing) to let prices adjust on their own.
 - Read the day's suggestions and warnings on the dashboard home's Pulse cards, and dismiss the ones you've handled.
 - Browse every open insight, not only the newest few, on the Insights page.

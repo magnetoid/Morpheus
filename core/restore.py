@@ -251,7 +251,22 @@ def restore_database(dump: Path) -> None:
         raise RestoreError(f'This store cannot restore a {engine} database.')
 
 
-def _pg_connection(db: dict) -> tuple[list[str], dict]:
+#: The libpq TLS settings a store may set in ``DATABASES[...]['OPTIONS']``, and
+#: the environment variable each client program reads it from.
+_PG_TLS_ENV = {
+    'sslmode': 'PGSSLMODE',
+    'sslrootcert': 'PGSSLROOTCERT',
+    'sslcert': 'PGSSLCERT',
+    'sslkey': 'PGSSLKEY',
+    'sslcrl': 'PGSSLCRL',
+}
+
+
+def pg_connection(db: dict) -> tuple[list[str], dict]:
+    """The arguments and environment that point ``pg_dump``, ``pg_restore`` and
+    ``psql`` at this database, with the TLS settings Django itself connects
+    with. Without them the client fell back to libpq's ``prefer``: a store set
+    to ``verify-full`` dumped and restored over a connection nothing verified."""
     args, env = [], os.environ.copy()
     if db.get('HOST'):
         args += ['-h', db['HOST']]
@@ -261,6 +276,10 @@ def _pg_connection(db: dict) -> tuple[list[str], dict]:
         args += ['-U', db['USER']]
     if db.get('PASSWORD'):
         env['PGPASSWORD'] = db['PASSWORD']
+    options = db.get('OPTIONS') or {}
+    for option, variable in _PG_TLS_ENV.items():
+        if options.get(option):
+            env[variable] = str(options[option])
     return args, env
 
 
@@ -276,7 +295,7 @@ def _pg_restore(db: dict, dump: Path) -> None:
     all inside one transaction (``--single-transaction`` with ON_ERROR_STOP).
     The pre-commit hook refuses SQL that drops tables one by one; the schema
     goes as a whole, with everything in it."""
-    conn, env = _pg_connection(db)
+    conn, env = pg_connection(db)
     script = dump.with_name('restore.sql')
     render_cmd = ['pg_restore', '--no-owner', '--no-acl', '-f', str(script), str(dump)]
     render = subprocess.run(  # noqa: S603
