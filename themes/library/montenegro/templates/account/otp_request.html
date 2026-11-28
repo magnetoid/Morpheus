@@ -1,4 +1,5 @@
 {% extends "storefront/base.html" %}
+{% load static %}
 {% load i18n morph %}
 {% comment %}
   Montenegro-branded passwordless sign-in: email a code. Same form contract as
@@ -13,9 +14,7 @@
     <div class="rounded-2xl border border-border shadow-card bg-card p-6 sm:p-8">
       <div class="text-center mb-6">
         <a href="/" class="inline-flex items-center gap-2 mb-5">
-          <span class="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
-            <span class="text-primary-foreground font-display font-bold text-xl">{{ STORE_NAME|slice:":1" }}</span>
-          </span>
+          <img src="{% static 'montenegro/brand-symbol-v2.png' %}" width="40" height="40" class="rounded-lg object-contain" alt="">
           <span class="font-display text-xl font-semibold text-foreground">{{ STORE_NAME }}</span>
         </a>
         <h1 class="font-display text-2xl font-bold text-foreground">{% trans "Sign in with a code" %}</h1>
