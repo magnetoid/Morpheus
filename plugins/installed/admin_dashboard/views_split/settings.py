@@ -877,6 +877,14 @@ def settings_ai(request: HttpRequest) -> HttpResponse:
             False,
         ),
         (
+            'embeddings_use_store_key',
+            'Memory and knowledge search with the OpenAI key',
+            "Search Linda's shop memory and knowledge base by meaning, using the OpenAI key saved above. "
+            'Each note and search is a small paid request outside the daily spend cap. '
+            'Off, only a key set on the server is used.',
+            False,
+        ),
+        (
             'enable_dynamic_pricing',
             'Dynamic pricing',
             'Let rules adjust prices by demand/margin. Off by default — it only acts once you enable it.',

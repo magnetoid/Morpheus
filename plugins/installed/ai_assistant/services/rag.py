@@ -15,7 +15,7 @@ from __future__ import annotations
 import hashlib
 import re
 
-from core.embeddings import cosine_similarity, embed
+from core.embeddings import cosine_similarity, embed_comparable
 
 # Platform docs worth indexing so Linda can answer "how does X work / what
 # changed" from real sources. Relative to the repo's docs/ directory.
@@ -117,8 +117,10 @@ def _contributed_items() -> list[dict]:
     return out
 
 
-def ingest(items: list[dict]) -> int:
-    """Upsert chunk dicts into the index, embedding only changed text.
+def ingest(items: list[dict], *, force: bool = False) -> int:
+    """Upsert chunk dicts into the index, embedding only changed text
+    (``force``: every chunk again). A chunk the provider cannot embed right now
+    is left as it was, for the next rebuild.
 
     Returns the number of rows written (created or updated)."""
     from plugins.installed.ai_assistant.models import KnowledgeChunk
@@ -130,9 +132,11 @@ def ingest(items: list[dict]) -> int:
         text = it['text']
         h = _hash(text)
         existing = KnowledgeChunk.objects.filter(source=source, ref=ref).first()
-        if existing is not None and existing.source_text_hash == h:
+        if not force and existing is not None and existing.source_text_hash == h:
             continue  # unchanged — skip the embed call
-        vector = embed(text)
+        vector = embed_comparable(text)
+        if not vector:
+            continue
         KnowledgeChunk.objects.update_or_create(
             source=source,
             ref=ref,
@@ -148,7 +152,7 @@ def ingest(items: list[dict]) -> int:
     return written
 
 
-def rebuild() -> int:
+def rebuild(*, force: bool = False) -> int:
     """(Re)build the whole index from platform docs + plugin contributions.
 
     Prunes rows whose ``(source, ref)`` no longer appears. Returns the total
@@ -156,7 +160,7 @@ def rebuild() -> int:
     from plugins.installed.ai_assistant.models import KnowledgeChunk
 
     items = _platform_doc_items() + _contributed_items()
-    ingest(items)
+    ingest(items, force=force)
     keep = {(it['source'], it['ref']) for it in items}
     # Prune stale rows (deleted headings / removed sources).
     for row in KnowledgeChunk.objects.all().only('id', 'source', 'ref'):
@@ -172,7 +176,7 @@ def retrieve(query: str, k: int = 4) -> list[dict]:
     keeps near-irrelevant chunks out of the prompt."""
     from plugins.installed.ai_assistant.models import KnowledgeChunk
 
-    qv = embed(query)
+    qv = embed_comparable(query)
     if not qv:
         return []
     scored: list[tuple[float, KnowledgeChunk]] = []

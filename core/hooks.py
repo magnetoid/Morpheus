@@ -80,10 +80,10 @@ class HookRegistry:
         not in the critical path. Critical side effects (inventory decrement,
         order state transitions, fulfillment) must stay sync.
 
-        Note: async mode requires JSON-serialisable kwargs. Pass model PKs
-        + class names, not raw model instances. The async dispatcher
-        re-resolves them inside the worker. Non-serialisable kwargs cause
-        the handler to fall back to sync execution with a WARNING log.
+        An async handler gets the event's arguments as JSON: a model instance
+        arrives as ``{'id', 'model', ...}`` (see ``_serialize_payload``), so
+        the handler reads the row again by its id. When the task cannot be
+        queued the handler runs in-request instead, with a WARNING.
         """
         if mode not in ('sync', 'async'):
             raise ValueError(f"Invalid hook mode {mode!r} — must be 'sync' or 'async'.")
@@ -144,6 +144,23 @@ class HookRegistry:
                 results.append(result)
         return results
 
+    @staticmethod
+    def _handler_path(handler: Callable) -> str:
+        return f'{handler.__module__}.{handler.__qualname__}'
+
+    def async_handler(self, event: str, handler_path: str) -> Callable | None:
+        """The ``mode='async'`` handler of ``event`` that goes by this name in
+        this process, or None: nothing subscribed under it here, or its app is
+        switched off. The Celery task that runs async handlers asks this. Two
+        async handlers of one event need different names (two lambdas made in
+        one function share one): the first is the one that runs."""
+        for entry in self._handlers.get(event, []):
+            _priority, handler, mode, plugin = self._unpack(entry)
+            if mode != 'async' or self._handler_path(handler) != handler_path:
+                continue
+            return None if self._owner_inactive(plugin) else handler
+        return None
+
     def _enqueue_async(self, event: str, handler: Callable, kwargs: dict) -> None:
         """Send a hook-handler invocation to Celery.
 
@@ -154,7 +171,7 @@ class HookRegistry:
         try:
             from core.tasks import run_hook_handler_async
 
-            handler_path = f'{handler.__module__}.{handler.__qualname__}'
+            handler_path = self._handler_path(handler)
             # Best-effort serialisation check — bail to sync if anything's
             # non-trivial (Model instances, Decimal, datetime).
             serialisable = self._serialize_payload(kwargs)
@@ -999,6 +1016,11 @@ class MorpheusEvents:
     #   toward the merchant's daily spend cap. ai_assistant reports its provider
     #   gateway's calls (its AIInteraction rows); core never imports the app.
     AI_USAGE_TODAY = 'ai.usage_today'  # filter
+    # EMBEDDINGS_API_KEY — filter, value=the OpenAI key from the environment ('' for
+    #   none). Fired by core/embeddings.py before each embedding. ai_assistant
+    #   answers with the key saved under Settings → AI, only while its
+    #   `embeddings_use_store_key` setting is on; core never imports the app.
+    EMBEDDINGS_API_KEY = 'embeddings.api_key'  # filter
     # AI_CONTENT_WRITTEN — fire, kwargs: instance (the model row whose text an AI
     #   wrote), fields (list of field names), source ('linda' | 'worker' |
     #   'editor' | 'bulk'). Fired through core/agents/provenance.py:mark_ai_written

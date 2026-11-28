@@ -546,11 +546,18 @@ def translation_problem(obj, field: str, language_code: str) -> str:
 
     For an object an app registered: the field must be one of its registered fields
     and the language one it can be translated into (not its own, not the default).
-    An object no app registered is not checked.
+    An object its owner leaves out (`applies`: a CMS page built from sections) shows
+    none of them, so nothing can be translated on it. An object no app registered
+    is not checked.
     """
     spec = spec_for(obj)
     if spec is None:
         return ''
+    if not _applies(spec, obj):
+        return (
+            'a translation here would never be shown: the page of this object is not '
+            'built from these fields'
+        )
     if field not in spec['fields']:
         return f'{field} is not translatable here; the fields are: {", ".join(spec["fields"])}'
     languages = translatable_into(obj)

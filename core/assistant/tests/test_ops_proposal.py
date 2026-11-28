@@ -206,3 +206,112 @@ class ApplyTests(TestCase):
         self.assertEqual(len(result['errors']), 1)
         proposal.refresh_from_db()
         self.assertEqual(proposal.status, 'rejected')  # terminal status untouched
+
+
+class ApproveOnceTests(TestCase):
+    """Two clicks on Approve (v0.200.0): both loaded the proposal as 'proposed';
+    the second found every change already made, called it drifted, applied
+    nothing and overwrote 'applied' with 'failed'."""
+
+    def test_the_second_of_two_approvals_changes_nothing(self):
+        staff = get_user_model().objects.create_user(username='twice', password='x', is_staff=True)
+        product = _product()
+        first = _stage(changes=[_change(product)])
+        second = OpsProposal.objects.get(pk=first.pk)  # the other request's copy
+
+        self.assertTrue(first.approve(staff))
+        self.assertEqual(first.apply(staff)['applied'], 1)
+        with self.assertRaises(ValueError):
+            second.approve(staff)
+
+        first.refresh_from_db()
+        self.assertEqual(first.status, 'applied')
+        self.assertEqual(first.apply_error, '')
+
+
+class ApproveByRoleTests(TestCase):
+    """While the store enforces roles, a proposal is approved by someone whose
+    role allows the change on the dashboard. Any staff member could before."""
+
+    def setUp(self):
+        from plugins.installed.rbac.models import Role
+
+        Role.ensure_system_roles()
+        self.addCleanup(self._mode, 'log')
+
+    @staticmethod
+    def _mode(mode):
+        from plugins.registry import app_registry
+
+        plugin = app_registry.get('rbac')
+        plugin.set_config('enforcement_mode', mode)
+        plugin.invalidate_config_cache()
+
+    @staticmethod
+    def _staff(username, role=''):
+        user = get_user_model().objects.create_user(username=username, password='x', is_staff=True)
+        if role:
+            from plugins.installed.rbac.services import grant
+
+            grant(user, role)
+        return user
+
+    def test_a_proposal_names_the_capability_of_the_app_it_changes(self):
+        product = _product()
+        proposal = _stage(changes=[_change(product)])
+        self.assertEqual(proposal.capabilities_needed(), ['catalog.write'])
+        other = _stage(changes=[{'object': 'metafields.metafield:1', 'field': 'value'}])
+        self.assertEqual(other.capabilities_needed(), ['system.write'])
+
+    def test_a_role_without_the_capability_cannot_approve_under_enforce(self):
+        self._mode('enforce')
+        support = self._staff('support-agent', role='support_agent')
+        proposal = _stage(changes=[_change(_product())])
+        with self.assertRaises(PermissionError):
+            proposal.approve(support)
+        proposal.refresh_from_db()
+        self.assertEqual(proposal.status, 'proposed')
+
+    def test_the_same_person_can_while_roles_only_log(self):
+        self._mode('log')
+        support = self._staff('support-agent-2', role='support_agent')
+        proposal = _stage(changes=[_change(_product())])
+        self.assertTrue(proposal.approve(support))
+
+    def test_a_superuser_always_can(self):
+        self._mode('enforce')
+        owner = get_user_model().objects.create_superuser(username='owner', password='x')
+        proposal = _stage(changes=[_change(_product())])
+        self.assertTrue(proposal.approve(owner))
+
+
+class RecordStaysTests(TestCase):
+    """What a proposal's row says happened is not overwritten afterwards."""
+
+    def test_rejecting_an_applied_proposal_changes_nothing(self):
+        staff = get_user_model().objects.create_user(username='late', password='x', is_staff=True)
+        proposal = _stage(changes=[_change(_product())])
+        proposal.approve(staff)
+        proposal.apply(staff)
+
+        stale = OpsProposal.objects.get(pk=proposal.pk)
+        self.assertFalse(stale.reject())
+        proposal.refresh_from_db()
+        self.assertEqual(proposal.status, 'applied')
+
+    def test_a_proposed_one_is_rejected(self):
+        proposal = _stage(changes=[_change(_product())])
+        self.assertTrue(proposal.reject())
+        self.assertEqual(OpsProposal.objects.get(pk=proposal.pk).status, 'rejected')
+
+    def test_changes_that_are_not_changes_never_raise(self):
+        staff = get_user_model().objects.create_user(username='odd', password='x', is_staff=True)
+        for stored in ({'object': 'catalog.product:1'}, ['not a change', 7, None]):
+            with self.subTest(stored=stored):
+                proposal = _stage()
+                OpsProposal.objects.filter(pk=proposal.pk).update(changes=stored)
+                proposal.refresh_from_db()
+                self.assertEqual(proposal.capabilities_needed(), [])
+                self.assertTrue(proposal.approve(staff))
+                self.assertEqual(proposal.apply(staff)['applied'], 0)
+                self.assertEqual(proposal.status, 'failed')

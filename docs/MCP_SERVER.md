@@ -157,6 +157,10 @@ Linda's engine calls `/mcp/admin/v1/` with a short-lived signed **turn token**
 else, including `/graphql/`. It names one staff user, one conversation and the
 conversation's mode, and expires shortly after the turn's timeout.
 
+An API token is never offered `run_python` (since v0.200.0), the shop memory or the Worker's
+`delegate.*` tools (`gates.NOT_FOR_TOKENS`): a script, the memory and the Worker each reach
+beyond the token's own scopes.
+
 A call under a turn token runs as the real staff user, not `mcp-service`, and
 passes the same gates as Linda's in-process loop (`core/assistant/gates.py`):
 

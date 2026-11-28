@@ -363,29 +363,91 @@ class OpsProposal(models.Model):
     def __str__(self) -> str:
         return f'OpsProposal({self.kind}/{self.status})'
 
+    def _changes(self) -> list[dict]:
+        """The staged changes that are changes: ``changes`` is stored JSON, so a
+        row written by hand may hold anything."""
+        stored = self.changes if isinstance(self.changes, list) else []
+        return [change for change in stored if isinstance(change, dict)]
+
+    def reject(self) -> bool:
+        """Turn a proposal down. True when this call did it; False when it was
+        no longer 'proposed' (applied, rejected or expired meanwhile), which a
+        rejection must not overwrite."""
+        from django.utils import timezone
+
+        mine = (
+            type(self)
+            .objects.filter(pk=self.pk, status='proposed')
+            .update(status='rejected', updated_at=timezone.now())
+        )
+        self.refresh_from_db(fields=['status'])
+        return bool(mine)
+
+    def capabilities_needed(self) -> list[str]:
+        """The dashboard capabilities a person needs to apply this proposal: the
+        write capability of each app whose rows it changes, as the role tiers
+        name it (``gates.CAPABILITY_FOR_SCOPE``), and ``system.write`` for an app
+        Linda's profile has no write scope for."""
+        from core.assistant import gates
+
+        known = {
+            gates.CAPABILITY_FOR_SCOPE.get(scope, scope)
+            for scope in gates.LINDA_SCOPES
+            if scope.endswith('.write')
+        }
+        needed: list[str] = []
+        for change in self._changes():
+            app_label = str(change.get('object', '')).partition('.')[0]
+            capability = f'{app_label}.write'
+            capability = gates.CAPABILITY_FOR_SCOPE.get(capability, capability)
+            if capability not in known:
+                capability = 'system.write'
+            if capability not in needed:
+                needed.append(capability)
+        return needed
+
     def approve(self, user) -> bool:
-        """Staff approval — fail-closed (staff
-        suffices: ops proposals run through class-allowlisted data rails, they
-        don't land code). Returns True on approve; False if the proposal had
-        expired (status flips to 'expired'). Raises PermissionError for
-        non-staff and ValueError for a non-'proposed' status.
+        """A staff member approves the proposal. Fails closed.
+
+        Staff suffices while roles are not enforced (ops proposals run through
+        class-allowlisted data rails, they don't land code). While they are, the
+        person needs the capability for each app the proposal changes, as for the
+        same change on the dashboard. Returns True on approve; False if the
+        proposal had expired (status flips to 'expired'). Raises PermissionError
+        for a person who may not approve it and ValueError when it is no longer
+        'proposed': the status is swapped in the database, so of two clicks on
+        Approve only one goes on to apply (the second used to find every change
+        drifted and overwrite 'applied' with 'failed').
         """
         from django.utils import timezone
 
+        from core import authz
+
         if user is None or not getattr(user, 'is_staff', False):
             raise PermissionError('only staff may approve an ops proposal')
-        if self.status != 'proposed':
-            raise ValueError(f'cannot approve an ops proposal in status {self.status!r}')
+        for capability in self.capabilities_needed():
+            if not authz.check(user, capability, target=f'ops_proposal/{self.pk}'):
+                raise PermissionError(
+                    f'Your role does not allow this change (it needs {capability}).'
+                )
         now = timezone.now()
-        if self.expires_at is not None and self.expires_at < now:
-            self.status = 'expired'
-            self.save(update_fields=['status', 'updated_at'])
-            return False
-        self.approved_by = user
-        self.approved_at = now
-        self.status = 'approved'
-        self.save(update_fields=['approved_by', 'approved_at', 'status', 'updated_at'])
-        return True
+        expired = self.expires_at is not None and self.expires_at < now
+        fields = (
+            {'status': 'expired'}
+            if expired
+            else {'status': 'approved', 'approved_by': user, 'approved_at': now}
+        )
+        mine = (
+            type(self)
+            .objects.filter(pk=self.pk, status='proposed')
+            .update(updated_at=now, **fields)
+        )
+        if not mine:
+            self.refresh_from_db(fields=['status'])
+            raise ValueError(f'cannot approve an ops proposal in status {self.status!r}')
+        for name, value in fields.items():
+            setattr(self, name, value)
+        return not expired
 
     def apply(self, user=None) -> dict:
         """Apply each staged change, fail-soft per change. Never raises.
@@ -413,7 +475,7 @@ class OpsProposal(models.Model):
         applied = 0
         skipped: list[dict] = []
         errors: list[dict] = []
-        for change in self.changes or []:
+        for change in self._changes():
             ref = str(change.get('object', ''))
             field = str(change.get('field', ''))
             try:

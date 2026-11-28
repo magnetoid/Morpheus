@@ -238,8 +238,13 @@ class MorpheusPlugin:
             raise RuntimeError('register_graphql_extension called before activation.')
         self._registry.add_graphql_extension(module)
 
-    def register_hook(self, event: str, handler: Callable, priority: int = 50) -> None:
-        """Subscribe a callable to a domain event. Lower priority runs first."""
+    def register_hook(
+        self, event: str, handler: Callable, priority: int = 50, mode: str = 'sync'
+    ) -> None:
+        """Subscribe a callable to a domain event. Lower priority runs first.
+
+        ``mode='async'`` runs the handler on a Celery worker after the request,
+        with the event's arguments as JSON (``hook_registry.register``)."""
         if not callable(handler):
             raise TypeError('register_hook: handler must be callable.')
         if not isinstance(event, str) or not event:
@@ -250,7 +255,7 @@ class MorpheusPlugin:
 
         # Tag the subscription with the owning plugin so the bus skips it while
         # the plugin is disabled (ADR 0023) — deactivate() doesn't unwind hooks.
-        hook_registry.register(event, handler, priority=priority, plugin=self.name)
+        hook_registry.register(event, handler, priority=priority, mode=mode, plugin=self.name)
 
     def register_admin(self, model: Any, admin_class: Any) -> None:
         """Register a Django admin entry. Idempotent; ignores AlreadyRegistered."""

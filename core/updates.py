@@ -17,10 +17,15 @@ the working tree / code).
 
 from __future__ import annotations
 
+import contextlib
+import functools
+import hashlib
+import os
 import re
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 # Dependency manifests — if any of these change upstream, an in-place git apply
@@ -260,8 +265,90 @@ def _boot_probe(root: Path) -> tuple[bool, str]:
     return ok, (proc.stderr or proc.stdout or '')[-400:]
 
 
+@contextlib.contextmanager
+def apply_lock(root: Path):
+    """One apply at a time on this install. Yields True to the caller that
+    holds the lock and False while another apply does: two at once would merge,
+    migrate and roll back over each other."""
+    import fcntl
+
+    name = hashlib.sha256(str(root.resolve()).encode()).hexdigest()[:16]
+    path = Path(tempfile.gettempdir()) / f'morpheus-apply-{name}.lock'
+    try:
+        # Never through a link, and nobody else's file: the temp folder can be
+        # shared, and the name is predictable.
+        handle = os.open(path, os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
+    except OSError:
+        yield False
+        return
+    try:
+        try:
+            fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            yield False
+            return
+        try:
+            yield True
+        finally:
+            fcntl.flock(handle, fcntl.LOCK_UN)
+    finally:
+        os.close(handle)
+
+
+def one_apply_at_a_time(apply):
+    """Run a confirmed apply under ``apply_lock``; a dry run needs none."""
+
+    @functools.wraps(apply)
+    def locked(*args, confirm: bool = False, **kwargs) -> dict:
+        if not confirm:
+            return apply(*args, confirm=False, **kwargs)
+        with apply_lock(_repo_root()) as mine:
+            if not mine:
+                return {
+                    'ok': False,
+                    'status': 'busy',
+                    'reason': (
+                        'Another update is being applied on this install, or its lock file '
+                        'cannot be opened. Wait for it to end.'
+                    ),
+                }
+            return apply(*args, confirm=True, **kwargs)
+
+    return locked
+
+
+def backup_before_apply() -> str:
+    """Take the backup an apply starts with. Returns '' when it was taken, else
+    why it was not."""
+    from django.core.management import call_command
+
+    try:
+        call_command('morph_backup')
+    except Exception as e:  # noqa: BLE001 — the caller decides what a failure means
+        return (str(e) or type(e).__name__)[:200]
+    return ''
+
+
+def no_backup_refusal(problem: str, plan: dict) -> dict:
+    return {
+        'ok': False,
+        'status': 'backup_failed',
+        'plan': plan,
+        'reason': (
+            f'The backup before the update failed ({problem}), so nothing was changed. '
+            'Fix the backup, or pass allow_without_backup=True (CLI: --allow-without-backup) '
+            'to update without one.'
+        ),
+    }
+
+
+@one_apply_at_a_time
 def apply_platform_update(  # noqa: PLR0911, PLR0912
-    *, confirm: bool = False, run_migrations: bool = True, allow_dependency_changes: bool = False
+    *,
+    confirm: bool = False,
+    run_migrations: bool = True,
+    allow_dependency_changes: bool = False,
+    allow_without_backup: bool = False,
 ) -> dict:
     """Fast-forward the deployed checkout to the release's commit (the signed
     channel's), else to its upstream — phase 4.
@@ -276,7 +363,10 @@ def apply_platform_update(  # noqa: PLR0911, PLR0912
         a dependency manifest, because in-place apply can't pip-install (the
         native-dep landmine); rebuild the image instead, or pass
         ``allow_dependency_changes`` once you've installed them.
-      * **backup first** (``morph_backup``), then ``git merge --ff-only`` →
+      * **one at a time** — a second apply on the same install is refused
+        (``busy``) while the first runs.
+      * **backup first** (``morph_backup``; when it fails nothing is changed,
+        ``backup_failed``, unless ``allow_without_backup``), then ``git merge --ff-only`` →
         **boot-probe** (``manage.py check`` in a *fresh* interpreter, so the
         new code is actually re-imported — runs **before** ``migrate`` so a
         non-bootable update reverts with the DB untouched) → ``migrate`` →
@@ -389,9 +479,12 @@ def apply_platform_update(  # noqa: PLR0911, PLR0912
 
     from django.core.management import call_command
 
-    try:
-        call_command('morph_backup')
-    except Exception:  # noqa: BLE001 — proceed even if backup is unavailable, but note it
+    # The backup is the only way back from a migration, so without it the
+    # update stops here, before the code or the database changed.
+    problem = backup_before_apply()
+    if problem:
+        if not allow_without_backup:
+            return no_backup_refusal(problem, plan)
         plan['backup'] = 'failed'
 
     if not _git_ok(['merge', '--ff-only', target], root, timeout=120):

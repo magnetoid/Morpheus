@@ -142,6 +142,19 @@ class TokenWritesTests(TestCase):
                 ).json()
                 self.assertIn('error', call, path)
 
+    def test_a_token_cannot_script_its_way_past_its_scopes(self):
+        # The token holds `system.read`, the scope `run_python` declares, and no
+        # `orders.read`. The script bridge checks no scope for a caller that is not
+        # an agent run, so the script reached every read tool in the catalogue.
+        listed = {t['name'] for t in self._post(TOKEN, 'tools/list')['result']['tools']}
+        self.assertNotIn('run_python', listed)
+        params = {
+            'name': 'run_python',
+            'arguments': {'code': "result = call('orders.search', query='')"},
+        }
+        answer = self._post(TOKEN, 'tools/call', params)
+        self.assertIn('not exposed', answer['error']['message'])
+
     def test_janus_for_a_token_is_not_offered_them_either(self):
         listed = {t['name'] for t in self._post(self._turn(), 'tools/list')['result']['tools']}
         self.assertIn('loyalty.balance', listed)

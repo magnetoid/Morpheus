@@ -44,6 +44,15 @@ class VersionComparisonTests(SimpleTestCase):
         self.assertFalse(is_newer('garbage', 'v0.43.1'))
 
 
+class SameVersionWrittenTwoWaysTests(SimpleTestCase):
+    def test_a_version_with_a_trailing_zero_is_not_newer(self):
+        # An app installed as '1.0' was offered the channel's '1.0.0' for good.
+        self.assertFalse(is_newer('1.0.0', '1.0'))
+        self.assertFalse(is_newer('1.0', '1.0.0'))
+        self.assertTrue(is_newer('1.0.1', '1.0'))
+        self.assertTrue(is_newer('1.1', '1.0.9'))
+
+
 class GitHubSourceTests(SimpleTestCase):
     def _source(self, token=''):
         return GitHubReleaseSource('magnetoid/morpheus', token)

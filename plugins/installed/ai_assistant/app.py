@@ -115,6 +115,7 @@ class AIAssistantPlugin(Plugin):
         self.register_hook(events.BRAIN_SIGNALS, self.on_brain_signals, priority=50)
         # This app's own model calls count toward the merchant's daily spend cap.
         self.register_hook(events.AI_USAGE_TODAY, self.on_ai_usage_today, priority=50)
+        self.register_hook(events.EMBEDDINGS_API_KEY, self.on_embeddings_api_key, priority=50)
 
         # Autonomy gate: answer the background-agent scheduler's AUTONOMY_ENABLED
         # filter from the `enable_autonomous_operator` flag (Settings → AI). This
@@ -242,6 +243,14 @@ class AIAssistantPlugin(Plugin):
             pt=Sum('prompt_tokens'), ct=Sum('completion_tokens')
         )
         return [*value, *({'model': r['model_used'], 'pt': r['pt'], 'ct': r['ct']} for r in rows)]
+
+    def on_embeddings_api_key(self, value, **_):
+        """The OpenAI key saved here, for core's embeddings (Linda's shop memory
+        and knowledge base), once the merchant switched that on. Off, core keeps
+        the environment's key, or none."""
+        if not self.get_config_value('embeddings_use_store_key', False):
+            return value
+        return (self.get_config_value('openai_api_key') or '').strip() or value
 
     def on_brain_signals(self, value, **kwargs):
         """Merge unread merchant insights into the Brain's Improvements panel
@@ -569,6 +578,23 @@ class AIAssistantPlugin(Plugin):
                         'Gives Linda the catalog.semantic_search tool — meaning-based '
                         'product retrieval (dense embeddings, keyword fallback). Off '
                         'removes the tool from her catalogue.'
+                    ),
+                },
+                'embeddings_use_store_key': {
+                    'type': 'boolean',
+                    'default': False,
+                    # It starts calls to the provider that the daily spend cap
+                    # does not count, so the merchant switches it, not an agent.
+                    'x-agent-writable': False,
+                    'title': 'Use the OpenAI key above for memory and knowledge search',
+                    'description': (
+                        "Linda's shop memory and knowledge base are searched by meaning with "
+                        'OpenAI embeddings made with the OpenAI key saved here. Each saved note '
+                        'and each search is one small paid request, outside the daily spend '
+                        'cap. Off, only a key set on the server is used. After switching it '
+                        'on, run `manage.py backfill_memory_embeddings --all` and '
+                        '`manage.py rebuild_knowledge --all` once, so what was kept before is '
+                        'searchable too.'
                     ),
                 },
                 'enable_dynamic_pricing': {

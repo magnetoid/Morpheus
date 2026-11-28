@@ -147,7 +147,7 @@ self.register_hook(events.ORDER_PAID, self.fire_ga4, priority=95, mode='async')
 self.register_hook(events.ORDER_PAID, self.decrement_stock, priority=80, mode='sync')
 ```
 
-`priority`: lower number runs first. `mode='async'`: handler runs in a Celery worker after the request returns (use for analytics, embeddings, marketing emails — anything not in the critical path). `mode='sync'` (default): handler runs in-request.
+`priority`: lower number runs first. `mode='async'`: handler runs in a Celery worker after the request returns (use for analytics, embeddings, marketing emails — anything not in the critical path). It gets the event's arguments as JSON: a model instance arrives as `{'id', 'model', …}`, so read the row again by its id. `mode='sync'` (default): handler runs in-request.
 
 ---
 

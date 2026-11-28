@@ -76,3 +76,94 @@ class RedirectReplyTests(SimpleTestCase):
             patch('requests.post', return_value=reply),
         ):
             self.assertIs(outbound_request('POST', 'https://example.com/x'), reply)
+
+
+class CheckedRedirectTests(SimpleTestCase):
+    """A download may follow redirects (`max_redirects`): each hop is checked
+    like the first address, so a public URL cannot lead to a private one."""
+
+    @staticmethod
+    def _public(host):
+        return not host.startswith(('10.', '127.', '169.254.'))
+
+    def test_a_redirect_to_a_public_address_is_followed(self):
+        first = Mock(status_code=302, headers={'Location': 'https://cdn.example.com/b.pdf'})
+        last = Mock(status_code=200, headers={})
+        with (
+            patch('core.net.is_safe_remote_host', side_effect=self._public),
+            patch('requests.get', side_effect=[first, last]) as get,
+        ):
+            reply = outbound_request('GET', 'https://example.com/a.pdf', max_redirects=3)
+        self.assertIs(reply, last)
+        self.assertEqual(
+            [call.args[0] for call in get.call_args_list],
+            ['https://example.com/a.pdf', 'https://cdn.example.com/b.pdf'],
+        )
+        first.close.assert_called_once()
+
+    def test_a_relative_redirect_stays_on_the_host(self):
+        first = Mock(status_code=301, headers={'Location': '/files/b.pdf'})
+        last = Mock(status_code=200, headers={})
+        with (
+            patch('core.net.is_safe_remote_host', side_effect=self._public),
+            patch('requests.get', side_effect=[first, last]) as get,
+        ):
+            outbound_request('GET', 'https://example.com/a.pdf', max_redirects=3)
+        self.assertEqual(get.call_args_list[1].args[0], 'https://example.com/files/b.pdf')
+
+    def test_a_redirect_to_a_private_address_is_refused_before_it_is_fetched(self):
+        first = Mock(status_code=302, headers={'Location': 'https://169.254.169.254/latest/'})
+        with (
+            patch('core.net.is_safe_remote_host', side_effect=self._public),
+            patch('requests.get', side_effect=[first]) as get,
+            self.assertRaises(UnsafeUrlError),
+        ):
+            outbound_request('GET', 'https://example.com/a.pdf', max_redirects=3)
+        self.assertEqual(get.call_count, 1)
+
+    def test_a_redirect_down_to_http_is_refused(self):
+        first = Mock(status_code=302, headers={'Location': 'http://example.com/a.pdf'})
+        with (
+            patch('core.net.is_safe_remote_host', side_effect=self._public),
+            patch('requests.get', side_effect=[first]) as get,
+            self.assertRaises(UnsafeUrlError),
+        ):
+            outbound_request('GET', 'https://example.com/a.pdf', max_redirects=3)
+        self.assertEqual(get.call_count, 1)
+
+    def test_more_redirects_than_allowed_is_an_error(self):
+        hop = Mock(status_code=302, headers={'Location': 'https://example.com/again'})
+        with (
+            patch('core.net.is_safe_remote_host', side_effect=self._public),
+            patch('requests.get', return_value=hop) as get,
+            self.assertRaises(UnsafeUrlError),
+        ):
+            outbound_request('GET', 'https://example.com/a.pdf', max_redirects=2)
+        self.assertEqual(get.call_count, 3)
+
+    def test_a_refused_redirect_is_closed(self):
+        hop = Mock(status_code=302, headers={'Location': 'https://example.com/b'})
+        with (
+            patch('core.net.is_safe_remote_host', side_effect=self._public),
+            patch('requests.get', return_value=hop),
+            self.assertRaises(UnsafeUrlError),
+        ):
+            outbound_request('GET', 'https://example.com/a')
+        hop.close.assert_called_once()
+
+    def test_only_a_plain_get_follows_redirects(self):
+        # Whatever is sent goes to every hop, which may be another host.
+        for method, extra in (
+            ('POST', {}),
+            ('GET', {'headers': {'Authorization': 'Bearer x'}}),
+            ('GET', {'auth': ('u', 'p')}),
+        ):
+            with (
+                self.subTest(method=method, extra=extra),
+                patch('requests.get') as get,
+                patch('requests.post') as post,
+                self.assertRaises(ValueError),
+            ):
+                outbound_request(method, 'https://example.com/a', max_redirects=2, **extra)
+            get.assert_not_called()
+            post.assert_not_called()

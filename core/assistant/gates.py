@@ -305,11 +305,15 @@ NOT_LINDAS: frozenset[str] = frozenset(
 #:   fact only on the merchant's own yes.
 #: - the Worker: it holds every merchant scope and runs the job it is handed, so a
 #:   token with `system.write` could make changes its own scopes forbid.
+#: - `run_python`: its script calls any read tool in the catalogue, and the bridge
+#:   checks no scope for a caller that is not an agent run, so a token holding only
+#:   `system.read` read orders, customers and the shop memory through it.
 NOT_FOR_TOKENS: frozenset[str] = frozenset(
     {
         'memory.recall',
         'memory.remember',
         'memory.forget',
+        'run_python',
         'delegate.spawn_workers',
         'delegate.invoke_agent',
         'delegate.poll_workers',

@@ -254,6 +254,52 @@ def _truncated_while_reasoning(completion: Any) -> bool:
         return False
 
 
+#: (provider class, model) pairs whose API refused `max_tokens` or a set
+#: `temperature`: OpenAI's reasoning models (the o-series, GPT-5) take
+#: `max_completion_tokens` and only the default temperature. Learned from the
+#: API's own refusal, per process, so no list of model names has to be kept.
+_NEWER_PARAMS: set[tuple[str, str]] = set()
+
+
+def _refuses_older_params(error: Exception) -> bool:
+    """Whether a 400 from a Chat Completions API says the model does not take
+    `max_tokens` or the `temperature` that was sent. A 400 that only names one
+    of them is not that: "max_tokens is too large" is about the value."""
+    if getattr(error, 'status_code', None) != 400:
+        return False
+    text = str(error).lower()
+    named = 'max_tokens' in text or 'temperature' in text
+    refused = getattr(error, 'code', None) in ('unsupported_parameter', 'unsupported_value')
+    return named and (refused or 'unsupported' in text or 'not supported' in text)
+
+
+def _with_newer_params(kwargs: dict[str, Any]) -> dict[str, Any]:
+    out = {k: v for k, v in kwargs.items() if k not in ('max_tokens', 'temperature')}
+    if 'max_tokens' in kwargs:
+        out['max_completion_tokens'] = kwargs['max_tokens']
+    return out
+
+
+def chat_completion(client: Any, kwargs: dict[str, Any], *, owner: str) -> Any:
+    """One Chat Completions call, for both provider stacks (this module's and
+    ai_assistant's gateway). A model that refuses `max_tokens` or a set
+    `temperature` is asked again with `max_completion_tokens` and the default
+    temperature, and is remembered, so the refusal costs one call per process.
+    Until v0.200.0 every call to such a model failed."""
+    key = (owner, str(kwargs.get('model') or ''))
+    if key in _NEWER_PARAMS:
+        return client.chat.completions.create(**_with_newer_params(kwargs))
+    try:
+        return client.chat.completions.create(**kwargs)
+    except Exception as e:  # noqa: BLE001 — re-raised unless it is that one refusal
+        if not _refuses_older_params(e):
+            raise
+    answer = client.chat.completions.create(**_with_newer_params(kwargs))
+    # Remembered only once the newer way has worked for this model.
+    _NEWER_PARAMS.add(key)
+    return answer
+
+
 class OpenAIProvider(LLMProvider):
     name = 'openai'
     #: Provider-specific request fields an OpenAI-compatible API needs
@@ -296,6 +342,9 @@ class OpenAIProvider(LLMProvider):
             out.append(entry)
         return out
 
+    def _create(self, kwargs: dict[str, Any]) -> Any:
+        return chat_completion(self._client, kwargs, owner=type(self).__name__)
+
     @_llm_breaker
     def respond(
         self,
@@ -315,7 +364,7 @@ class OpenAIProvider(LLMProvider):
             kwargs['tools'] = [t.to_openai_schema() for t in tools]
         if self.extra_body:
             kwargs['extra_body'] = dict(self.extra_body)
-        completion = self._client.chat.completions.create(**kwargs)
+        completion = self._create(kwargs)
         choice = completion.choices[0]
         msg = choice.message
         # A reasoning model can spend its whole budget on hidden thinking and
@@ -329,7 +378,7 @@ class OpenAIProvider(LLMProvider):
         ):
             kwargs['max_tokens'] = max(max_tokens * 8, _REASONING_MIN_TOKENS)
             kwargs['timeout'] = _REASONING_RETRY_TIMEOUT_SECS
-            completion = self._client.chat.completions.create(**kwargs)
+            completion = self._create(kwargs)
             choice = completion.choices[0]
             msg = choice.message
         tool_calls: list[LLMToolCall] = []

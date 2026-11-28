@@ -15,6 +15,19 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.200.0 — 2026-11-28
+
+**An API token cannot script past its scopes, and an update needs its backup**
+
+- An API token is no longer offered run_python. Its script could call every read tool whatever the token's scopes, so a token allowed only system reads could read orders, customers and the shop memory through it. Linda keeps it in Developer mode.
+- A staged proposal is approved by a staff member whose role allows the change, while roles are enforced. Two clicks on Approve apply once (the second used to mark an applied proposal as failed), and Reject no longer overwrites a proposal that was already applied.
+- A self-update of the platform, an app or a theme stops when the backup taken first fails, and only one runs at a time. It used to note the failed backup and migrate anyway. Backups and restores connect to the database with its TLS settings.
+- A product file named by URL (a PDF, a cover, an image) is fetched only from public https addresses, also after a redirect. A redirect to a private address was followed.
+- OpenAI's reasoning models (the o-series, GPT-5) work as a provider. They refuse two older request settings, so every call to them failed.
+- New setting, off by default: Settings → AI → Memory and knowledge search with the OpenAI key. It searches Linda's shop memory and knowledge base by meaning with the key saved there; each note and search is a small paid request outside the daily spend cap. A note saved while the provider is down is no longer stored in a form that never matches.
+- Linda's product translation tool refuses a language the store does not have. A scheduled Linda turn on a store that names no address fails with the reason. An app installed as version 1.0 is no longer offered 1.0.0 as an update.
+- Inside: a hook handler registered to run in the background now runs (it never did), the event outbox no longer publishes a row twice when two workers drain it together, and both provider stacks send a chat request through one helper.
+
 ## v0.199.0 — 2026-11-27
 
 **What an agent run spends is counted in full, and a tool has one name**

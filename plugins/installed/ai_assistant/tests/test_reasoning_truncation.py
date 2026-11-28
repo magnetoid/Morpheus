@@ -116,3 +116,43 @@ class ReasoningRetryTests(TestCase):
         create.side_effect = [_response('{"description": "Fine."}', 'stop')]
         self.assertEqual(gateway.complete('write copy', max_tokens=400), '{"description": "Fine."}')
         self.assertEqual(create.call_count, 1)
+
+
+class NewerParamsGatewayTests(TestCase):
+    """The gateway sent ``max_tokens`` and ``temperature`` to every model, as
+    core's provider did; OpenAI's reasoning models refuse both. Both stacks now
+    ask through one helper (``core.agents.llm.chat_completion``)."""
+
+    def setUp(self):
+        from core.agents import llm
+
+        before = set(llm._NEWER_PARAMS)
+        self.addCleanup(lambda: (llm._NEWER_PARAMS.clear(), llm._NEWER_PARAMS.update(before)))
+
+    @patch('plugins.installed.ai_assistant.services.llm.LLMGateway._log', MagicMock())
+    def test_a_model_that_refuses_max_tokens_is_asked_again_the_newer_way(self):
+        class Refusal(Exception):  # noqa: N818 — stands in for openai.BadRequestError
+            status_code = 400
+
+            def __str__(self):
+                return "Unsupported parameter: 'max_tokens' is not supported with this model."
+
+        with patch('core.agents.llm._openai_client', return_value=MagicMock()):
+            gateway = OpenAIGateway(
+                ProviderConfig(
+                    provider='openai',
+                    api_key='k',
+                    base_url='',
+                    model='o4-mini-gateway-test',
+                    embedding_model='',
+                )
+            )
+        create = gateway.client.chat.completions.create
+        create.side_effect = [Refusal(), _response('Real copy.', 'stop')]
+
+        self.assertEqual(gateway.complete('write copy', max_tokens=400), 'Real copy.')
+        self.assertEqual(create.call_count, 2)
+        second = create.call_args_list[1].kwargs
+        self.assertEqual(second['max_completion_tokens'], 400)
+        self.assertNotIn('max_tokens', second)
+        self.assertNotIn('temperature', second)

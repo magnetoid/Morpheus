@@ -34,6 +34,11 @@ class Command(BaseCommand):
             action='store_true',
             help='Platform only: apply even if dependency manifests changed (you must pip-install them).',
         )
+        parser.add_argument(
+            '--allow-without-backup',
+            action='store_true',
+            help='Apply even when the backup taken first fails (there is then no way back).',
+        )
         target = parser.add_mutually_exclusive_group()
         target.add_argument('--app', default='', help='Update this app from the signed manifest.')
         target.add_argument(
@@ -49,12 +54,14 @@ class Command(BaseCommand):
                 name,
                 confirm=opts.get('confirm', False),
                 run_migrations=not opts.get('no_migrate', False),
+                allow_without_backup=opts.get('allow_without_backup', False),
             )
         else:
             result = apply_platform_update(
                 confirm=opts.get('confirm', False),
                 run_migrations=not opts.get('no_migrate', False),
                 allow_dependency_changes=opts.get('allow_dep_changes', False),
+                allow_without_backup=opts.get('allow_without_backup', False),
             )
         if opts.get('json'):
             self.stdout.write(json.dumps(result, indent=2))

@@ -64,6 +64,7 @@ from core.update_sources import (
     configured_source,
     is_newer,
 )
+from core.updates import one_apply_at_a_time
 
 logger = logging.getLogger('morpheus.updates')
 
@@ -317,15 +318,22 @@ def find_component_release(kind: str, name: str) -> ComponentRelease | None:
 # ── Apply ──────────────────────────────────────────────────────────────────────
 
 
+@one_apply_at_a_time
 def apply_component_update(  # noqa: PLR0911, PLR0912, PLR0915 — a guarded ladder, on purpose
-    kind: str, name: str, *, confirm: bool = False, run_migrations: bool = True
+    kind: str,
+    name: str,
+    *,
+    confirm: bool = False,
+    run_migrations: bool = True,
+    allow_without_backup: bool = False,
 ) -> dict:
     """Update one app or theme from the signed manifest. Dry-run by default.
 
     Status vocabulary (mirrors `apply_platform_update`): `unavailable` (no
     source / no entry / not installed), `noop`, `dry_run`, `disabled`,
     `blocked` (ships with core, protected path, core too old), `verify_failed`
-    (checksum / archive), `apply_failed`, `rolled_back`, `applied`.
+    (checksum / archive), `busy` (another apply is running), `backup_failed`
+    (nothing changed), `apply_failed`, `rolled_back`, `applied`.
     """
     from django.conf import settings
 
@@ -411,11 +419,12 @@ def apply_component_update(  # noqa: PLR0911, PLR0912, PLR0915 — a guarded lad
 
     from django.core.management import call_command
 
-    from core.updates import _boot_probe
+    from core.updates import _boot_probe, backup_before_apply, no_backup_refusal
 
-    try:
-        call_command('morph_backup')
-    except Exception:  # noqa: BLE001 — proceed even if backup is unavailable, but note it
+    problem = backup_before_apply()
+    if problem:
+        if not allow_without_backup:
+            return no_backup_refusal(problem, plan)
         plan['backup'] = 'failed'
 
     parent = target.parent
