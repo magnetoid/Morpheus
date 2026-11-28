@@ -87,7 +87,7 @@ class LindaRunTests(TestCase):
         # The run reads the build the turn ran (janus_engine.build_of on its own
         # command), never one looked up again after it.
         failed = {'version': '0.19.0', 'commit': 'f' * 40}
-        with mock.patch('core.assistant.janus_engine._build_of', return_value=('0.18.0', 'e' * 40)):
+        with mock.patch('core.assistant.janus_binary._build_of', return_value=('0.18.0', 'e' * 40)):
             self._turn({'text': '', 'error': 'janus exited 1', 'duration_ms': 5, 'build': failed})
         meta = AgentRun.objects.get().metadata
         self.assertEqual((meta['janus_version'], meta['janus_commit']), ('0.19.0', 'f' * 40))

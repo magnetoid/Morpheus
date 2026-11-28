@@ -110,12 +110,21 @@ def run_daily_briefing(*, provider=None, force: bool = False) -> dict[str, Any]:
             if getattr(provider, 'name', '') in _SKIP_PROVIDERS:
                 return {'skipped': 'no provider configured'}
 
-        from core.agents import AgentRuntime
+        from core.agents import AgentRuntime, run_store
+        from core.agents.usage import RunUsage
         from core.llm_parsing import parse_llm_json
 
         started = time.monotonic()
+        usage = RunUsage()
         runtime = AgentRuntime(_read_only_worker(), provider=provider)
-        result = runtime.run(user_message=_OBJECTIVE, history=[], context={'briefing': True})
+        try:
+            result = runtime.run(
+                user_message=_OBJECTIVE, history=[], context={'briefing': True}, usage=usage
+            )
+        finally:
+            # This run has no AgentRun row, so nothing else counts its tokens
+            # toward the spend cap.
+            run_store.record_unstored(provider, usage)
         duration_ms = int((time.monotonic() - started) * 1000)
 
         parsed = parse_llm_json(result.text or '')

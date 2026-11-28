@@ -116,7 +116,12 @@ def _runs_today(exclude_id=None):
     # and her turns are not Worker runs for the run cap — count her once.
     qs = AgentRun.objects.filter(started_at__gte=today_start()).exclude(agent_name='linda')
     if exclude_id is not None:
-        qs = qs.exclude(pk=exclude_id)
+        from django.core.exceptions import ValidationError
+
+        # The runtime passes its run id, which is the row's key only when the
+        # caller keeps a row for the run. Any other id names no row.
+        with contextlib.suppress(ValidationError, ValueError, TypeError):
+            qs = qs.exclude(pk=exclude_id)
     return qs
 
 
@@ -127,19 +132,39 @@ def daily_run_count(exclude_id=None) -> int:
 def daily_spend_usd(exclude_id=None) -> float:
     """Summed estimated USD across today's runs. Priced per-model (price depends
     on a model-prefix match, so it can't be a plain SQL SUM)."""
-    from django.db.models import Sum
-
     from core.agents.pricing import estimate_cost
 
-    rows = list(
-        _runs_today(exclude_id)
-        .values('model')
-        .annotate(pt=Sum('prompt_tokens'), ct=Sum('completion_tokens'))
-    )
+    rows = _run_usage_today(exclude_id)
     rows += _assistant_usage_today()
     rows += _app_usage_today()
     rows += _outside_run_usage_today()
     return sum(estimate_cost(r['model'] or '', r['pt'] or 0, r['ct'] or 0) for r in rows)
+
+
+def _run_usage_today(exclude_id=None) -> list[dict]:
+    """Today's runs as (model, tokens) rows. A run is priced by its own model,
+    except one whose answers came from another model too (the fallback router's
+    secondary): its row keeps the split in its metadata, and each share is
+    priced by the model that answered (``core/agents/usage.py``)."""
+    from django.db.models import Sum
+
+    from core.agents.usage import USAGE_KEY
+
+    runs = _runs_today(exclude_id)
+    split = list(runs.filter(metadata__has_key=USAGE_KEY).values_list('pk', 'metadata'))
+    rows = list(
+        runs.exclude(pk__in=[pk for pk, _md in split])
+        .values('model')
+        .annotate(pt=Sum('prompt_tokens'), ct=Sum('completion_tokens'))
+    )
+    for _pk, metadata in split:
+        shares = metadata.get(USAGE_KEY) if isinstance(metadata, dict) else None
+        for model, pair in (shares or {}).items() if isinstance(shares, dict) else ():
+            try:
+                rows.append({'model': str(model), 'pt': int(pair[0]), 'ct': int(pair[1])})
+            except (TypeError, ValueError, IndexError):
+                continue
+    return rows
 
 
 def _app_usage_today() -> list[dict]:

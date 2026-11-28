@@ -96,9 +96,9 @@ writes; `HasScopePermission` (no callers); `core/images.py` drops the config cac
 | A1 | high | An open circuit, a failed fallback and an unconfigured provider answer with their message as reply text; the content-fill view and `catalog.fill_missing_content` save it as product copy | **fixed** |
 | A2 | high | `run_python`'s validator blocks dunder attributes only; frame attributes (`gi_frame`, `f_back`, `f_globals`) are a way out (Developer mode, superusers) | **fixed** |
 | A3 | medium | The Gemini key rides in the URL (`?key=`), and `requests`' error text carries the URL into `AgentRun.error`, API answers and Janus's context | **fixed** |
-| A4 | medium | The spend cap misses compaction calls, the daily briefing, timed-out runs and fallback answers | open |
-| A5 | medium-low | After the tool lookup the runtime keeps the model's spelling (`catalog__update_product`) for approvals, usage counts and the audit trail | open |
-| A6 | low-medium | The Worker gets the Developer-mode tools (`fs.*`, `logs.search`, `system.*`) | open |
+| A4 | medium | The spend cap misses compaction calls, the daily briefing, timed-out runs and fallback answers | **fixed** (v0.199.0) |
+| A5 | medium-low | After the tool lookup the runtime keeps the model's spelling (`catalog__update_product`) for approvals, usage counts and the audit trail | **fixed** (v0.199.0) |
+| A6 | low-medium | The Worker gets the Developer-mode tools (`fs.*`, `logs.search`, `system.*`) | **fixed** (v0.199.0) |
 | A7 | low | The breaker's response cache keeps empty replies for an hour and reports the original tokens again on a hit | **fixed** |
 | A8 | low | `OpenAIProvider` always sends `max_tokens` and `temperature`, which o4-mini and gpt-5 are said to reject | open |
 
@@ -192,21 +192,17 @@ dashboard shell.
 
 ## Next batches
 
-1. **Janus turn lifecycle (J1, J3, J5, J6, J7, J4).** A turn that outlives its HTTP stream, spend
-   across a compressed session, a per-home lock, the unmapped-provider error. Needs the conformance
-   suite, so it is its own release. The `janus_engine.py` split along its five seams belongs here.
-2. **Spend accounting and the runtime's names (A4, A5, A6).** One helper for step saving and run
-   finalisation (`agent_core/services.py` and `core/assistant/tools/spawn.py` hold two copies), which
-   closes A4's gaps in one place.
-3. **Self-improvement, second pass (SI3, SI8)** and its unreachable surface: policy classes with no
+Batches 1 to 3 are shipped (v0.197.0, v0.198.0, v0.199.0; see the sections below). Still open:
+
+1. **Self-improvement, second pass (SI3, SI8)** and its unreachable surface: policy classes with no
    producer, `Healer.propose()`, the `dead_link` healer.
-4. **Owner's calls.** K4 (which of three "store currency" rules is the one), E6 (wire or remove
+2. **Owner's calls.** K4 (which of three "store currency" rules is the one), E6 (wire or remove
    Permalinks), G5 (which roles read `system.*` tools under enforce), K3 (embeddings would start
    calling the provider on stores whose key is in the dashboard), the `morph_i18n` template tags
    (unused here, but a theme outside this repository could load them).
-5. **Smaller open items.** G4, G7, D6, D8, K5, K6, E8, A8, the five copies of version parsing, the
-   two provider stacks, the approval machinery nothing resolves, `catalog/services/_helpers._download`
-   (its own copy of the outbound check, and it follows redirects).
+3. **Smaller open items.** G4, G7, D6, D8, K5, K6, E8, A8, the five copies of version parsing, the
+   two provider stacks, `catalog/services/_helpers._download` (its own copy of the outbound check,
+   and it follows redirects), and the notes under v0.199.0 below.
 
 ## From the security review of the fix (no critical or high finding)
 
@@ -241,3 +237,48 @@ diff. It is the next refactor, on its own.
 Before deploying: a store whose AI provider is openrouter, apikey, packy, moonshot, ollama or hermes,
 with Janus on "the store's provider", gets the refusal on every message until a provider is chosen
 under Settings → AI → Janus. Those turns ran on Janus's `auto` before.
+
+## What v0.199.0 shipped (batch 3: what a run spends, tool names, the Worker, the engine split)
+
+A4, A5 and A6, each with a test that failed first, and two refactors without behaviour change.
+
+- **A4, spend.** The runtime adds every provider answer to a meter the caller owns
+  (`core/agents/usage.py`), the compaction summary included. One module saves a run
+  (`core/agents/run_store.py`: steps, audit rows, the end of the run) for `run_agent` and the spawned
+  Worker, which each had a copy. A run that timed out or raised now keeps its tokens and its model,
+  and the thread a timeout leaves behind writes its last tokens when it ends. A run answered by the
+  fallback router's secondary keeps the split in `metadata['usage_by_model']` and is priced per
+  model. The daily briefing, and a run whose row could not be created, are counted in
+  `ModelUsageDay`.
+- **A5, names.** After the tool lookup the runtime uses the tool's registered name for the trace,
+  the audit trail, the events and the approval request. Tool schemas go to the model under the
+  provider-safe spelling (`catalog__update_product`), so that is what models answer with: until now
+  every approval request, usage count and audit row of a Worker run carried it, and an approved
+  request could never be found by the resolver, which looks up the dotted name.
+- **A6, the Worker's tools.** The Worker is never offered `gates.DEVELOPER_TOOLS`. It held seven of
+  them (`fs.list_dir`, `fs.read_file`, `fs.search_files`, `logs.search`, `system.disk_usage`,
+  `system.git_log`, `system.server_info`), and so did the briefing's read-only Worker.
+- **Found on the way.** A run was counted against the daily run cap by its own row whenever its
+  caller did not put the row in the context (a spawned Worker), so the cap was one lower for those.
+  A spawned Worker's run never said when one of its steps could not be saved.
+- **The engine split.** `janus_engine.py` (1,398 lines) is the turn runner (632); `janus_binary`,
+  `janus_providers`, `janus_home` and `janus_sessions` hold the rest. All 86 top-level definitions
+  moved unchanged (compared by syntax tree), every name still resolves on `janus_engine`, and eight
+  test patches moved to the leaf whose function reads the patched name.
+
+Left alone, noticed during the split:
+
+- `_mcp_endpoint({'mcp_public': True})` returns `https:///mcp/admin/v1/` when `ALLOWED_HOSTS` holds no
+  concrete host, so an automation's turn would get a URL with no host instead of an error.
+- Three tests patch `engine_root` on a path that never reads it once `janus_cmd` is mocked.
+- Three near-identical read-only `sqlite3.connect` blocks in `janus_sessions`; `_settings()` cannot
+  return None, so its `if s else` branches are dead; `engine_root()` also checks
+  `BASE_DIR/vendor/janus`, which its docstring does not list.
+- The approval flow can now find an approved request by name, but nothing re-invokes a paused run,
+  so the standing rule holds: never flag an everyday write.
+- An error raised inside a moved function gets a new error-group fingerprint once, because the file
+  name is part of it.
+
+Not verified outside CI: the conformance suite (the pinned Janus against a stub model) skips
+locally; CI's `janus-conformance` job is the proof that the split changed nothing for a real turn.
+

@@ -30,7 +30,7 @@ from django.test import SimpleTestCase, TestCase, override_settings
 import core.assistant.janus_engine as eng
 from core.agents.models import AgentRun
 from core.assistant import janus_learning as jl
-from core.assistant import runtime
+from core.assistant import janus_sessions, runtime
 from core.assistant.models import AssistantMessage, JanusLearning
 from core.assistant.runtime import Assistant
 
@@ -175,7 +175,7 @@ class SpendFromTheHomeTests(_EngineCase):
             reads.append(args)
             return {} if len(reads) == 1 else real(*args)
 
-        with mock.patch.object(eng, '_home_usage', side_effect=unreadable_once):
+        with mock.patch.object(janus_sessions, '_home_usage', side_effect=unreadable_once):
             out, _ = self._turn(_janus(('s1', 1400, 60)))
         self.assertEqual(self._tokens(out), (400, 10))
 

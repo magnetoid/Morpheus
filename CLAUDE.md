@@ -667,8 +667,8 @@ Janus home and session, and its own consent context — an "ok" in one chat neve
 approves a change proposed in another. A chat id from the browser is never trusted:
 `core/assistant/chats.py:owned_chat` checks the owner on every read and write; the
 widget keeps its one `user:<pk>` thread. Homes idle for a week are pruned
-(`janus_engine.prune_idle_homes`). A message may pick its model
-(`janus_engine.selectable_providers`: Janus can run it, it has a key, its model is
+(`janus_home.prune_idle_homes`). A message may pick its model
+(`janus_providers.selectable_providers`: Janus can run it, it has a key, its model is
 priced — an unpriced pick would escape the spend cap), and backups go into the
 generated config as `fallback_providers` with their keys in the turn env (v0.86.0;
 the key is in `janus_contract.CONFIG_KEYS`). Automations (the store's cron, v0.87.0)
@@ -739,6 +739,13 @@ session in `state.db` less what was already billed (`counted` in
 nobody counted, and everything spent on the parent session when Janus compressed
 the context and went on in a new one. A store provider Janus has no name for is
 refused with the reason; it used to fall to Janus's own `auto` (trap 4 above).
+**Since v0.199.0 `janus_engine.py` is the turn runner and four leaves hold the rest**: `janus_binary`
+(the program and its build), `janus_providers` (provider wiring), `janus_home` (the home, its config,
+skills, pruning and lock) and `janus_sessions` (the session id and the `state.db` reader). Every name
+still resolves on `janus_engine`, so importers did not change, but a patch on `janus_engine.<name>`
+changes only what the engine itself reads: a test that replaces a helper another leaf function calls
+(`_build_of` for `build_of`, `_home_usage` for `_bill`, `_default_host` for `_mcp_endpoint`) patches the
+leaf, or it patches nothing and still passes.
 Guarded by `core/assistant/tests/test_janus_engine.py`, `test_turn_identity.py`,
 `test_turn_lifecycle.py`, `agent_mcp/tests/test_linda_turn.py` and the conformance suite.
 
@@ -1719,8 +1726,9 @@ go through `ai_assistant`'s provider gateway, which ran with the switch off and 
 check (raises `AIPaused`, a message fit for the merchant; the run cap is skipped — a click is not
 a run), and the app reports its `AIInteraction` usage to the cap through the `AI_USAGE_TODAY`
 filter, so core never imports the app. A new way to call a model goes through that gateway or
-the agent runtime, never a raw provider. (5) **The provider class is guarded too (v0.113.0):** `core.agents.llm.LLMProvider.__init_subclass__` wraps every `respond` (`guardrails.guard_model_call`) — six callers reached a model there directly. A refusal raises `guardrails.AIPaused`; a call outside the runtime's own `run_scope()` is recorded in `ModelUsageDay`, which `daily_spend_usd` adds, so a tool that calls a model inside a run is counted while the runtime's own calls are neither re-checked nor re-counted (the loop's tokens are stored on the `AgentRun`). Embeddings and text-to-speech obey the kill switch. Guarded by `core/agents/tests/test_provider_guard.py` +
-`core/agents/tests/test_guardrails.py` +
+the agent runtime, never a raw provider. (5) **The provider class is guarded too (v0.113.0):** `core.agents.llm.LLMProvider.__init_subclass__` wraps every `respond` (`guardrails.guard_model_call`) — six callers reached a model there directly. A refusal raises `guardrails.AIPaused`; a call outside the runtime's own `run_scope()` is recorded in `ModelUsageDay`, which `daily_spend_usd` adds, so a tool that calls a model inside a run is counted while the runtime's own calls are neither re-checked nor re-counted (the loop's tokens are stored on the `AgentRun`). Embeddings and text-to-speech obey the kill switch. (6) **A run's tokens come from its meter, and one module saves a run (v0.199.0).** The runtime adds every provider answer to the caller's `RunUsage` (`core/agents/usage.py`), the compaction summary included, and `core/agents/run_store.py` writes the steps and the end of the run for `run_agent` and the spawned Worker, also when the run timed out or raised: a row closed with no tokens and no model counted as free, and the thread a timeout leaves behind writes its last tokens when it ends. A run the fallback router's secondary answered keeps the split in `metadata['usage_by_model']` and each share is priced by its own model; a run with no row (the daily briefing) is counted in `ModelUsageDay`. A new caller of `AgentRuntime.run` passes a meter and saves through the run store. After the tool lookup the runtime uses the tool's own name for the trace, the audit trail, the events and the approval request (the model's `catalog__update_product` spelling made an approval unfindable); only the message back to the model keeps the model's spelling. The Worker is never offered `gates.DEVELOPER_TOOLS`: any staff member can start one. Guarded by `core/agents/tests/test_provider_guard.py` +
+`core/agents/tests/test_guardrails.py` + `test_run_usage.py` + `test_run_store.py` + `test_worker_tools.py` +
+`agent_core/tests/test_run_spend.py` +
 `catalog/tests/test_price_cap.py` + `orders/tests/test_refund_cap.py`.
 
 **Landmine — a new LLM provider must be wired in *three* places or it silently

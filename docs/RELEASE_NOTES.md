@@ -15,6 +15,17 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.199.0 — 2026-11-27
+
+**What an agent run spends is counted in full, and a tool has one name**
+
+- A Worker run that timed out or failed still records its tokens and its model. It was recorded with neither, so the daily spend cap counted it as free. The thread a timeout leaves behind now writes its last tokens when it ends.
+- The summary call of a long run, a run the backup provider answered and the daily briefing are counted toward the spend cap. A run the backup provider answered is priced by that provider's model.
+- Approval requests, usage counts and the audit trail name a tool by its registered name (catalog.update_product). They carried the spelling the model answers with (catalog__update_product), so an approved request could never be found.
+- The Worker is no longer offered the seven server tools (reading files and logs on the server, disk use, the git log, server facts). They stay Linda's in Developer mode, which is for superusers.
+- A spawned Worker is no longer counted against the daily run cap by its own row, and its run says when one of its steps could not be saved.
+- Inside: one module saves a run for the agents API and for spawned Workers (core/agents/run_store.py), and the Janus engine file is split into the turn runner and four smaller modules, with no change in behaviour.
+
 ## v0.198.0 — 2026-11-27
 
 **Linda finishes a turn you walked away from, and counts all of its cost**

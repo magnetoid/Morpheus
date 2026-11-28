@@ -103,7 +103,9 @@ days, because an IP address is personal data.
 ```
 core/agents/                          ← runtime (LLM loop, providers) + run-state
                                         models (AgentRun/AgentStep/ApprovalRequest,
-                                        ADR 0034 — the runtime owns its state)
+                                        ADR 0034 — the runtime owns its state);
+                                        run_store.py saves a run's steps and its end,
+                                        usage.py meters what it spent, per model
 core/assistant/                       ← Linda (hard-coded merchant operator)
 plugins/installed/agent_core/         ← runs dashboard/GraphQL, conversations,
                                         background-agent scheduler, custom agents

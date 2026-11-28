@@ -19,8 +19,9 @@ callers:
 * the Janus settings page, which shows the report the build recorded.
 
 Standard library only, and no Morpheus imports: it runs inside Janus's venv.
-Every expectation mirrors core/assistant/janus_engine.py, and
-core/assistant/tests/test_janus_contract.py keeps the two in step.
+Every expectation mirrors core/assistant/janus_engine.py and its leaves
+(janus_home.py writes the config), and
+core/assistant/tests/test_janus_contract.py keeps them in step.
 """
 
 from __future__ import annotations
@@ -55,7 +56,7 @@ TOOLSETS = {
 # steps, the plan, the words between tool calls, token use and provider retries.
 HOOK_EVENTS = ('pre_tool_call', 'post_tool_call', 'post_api_request', 'api_request_error')
 
-# Config keys janus_engine writes, each with a pattern Janus's source must still
+# Config keys janus_home.py writes, each with a pattern Janus's source must still
 # contain, as proof that something reads the key. A key nothing reads is a
 # setting silently ignored, and several of these are safety settings.
 CONFIG_KEYS = {
@@ -84,7 +85,7 @@ CONFIG_KEYS = {
     'tools.tool_search.enabled': r'get\(\s*["\']tool_search["\']\s*\)',
 }
 
-# Environment variables and home files janus_engine relies on.
+# Environment variables and home files the engine and its leaves rely on.
 NAMES = {
     'env JANUS_HOME': r'JANUS_HOME',
     'env JANUS_EPHEMERAL_SYSTEM_PROMPT': r'JANUS_EPHEMERAL_SYSTEM_PROMPT',

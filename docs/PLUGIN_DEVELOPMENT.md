@@ -547,7 +547,7 @@ Conventions:
   refund), ship a Janus skill: a folder `janus_skills/<skill-name>/SKILL.md` in
   the app, with `name:` and `description:` front matter, plus any plain text files
   it refers to. Each turn copies the skills of core and of every active app into
-  the conversation's home (`janus_engine.stage_store_skills`), so a switched-off
+  the conversation's home (`janus_home.stage_store_skills`), so a switched-off
   app's skills are gone from the next turn and an edit the agent makes lasts that
   turn only. Links and hidden files are not copied. A skill names only tools Linda
   has, from core or from its own app: another app's tool stops existing when that
